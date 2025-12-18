@@ -1,374 +1,287 @@
 <script lang="ts">
   import type { PageData } from "./$types";
-  import { invalidateAll } from "$app/navigation";
 
-  let { data }: { data: PageData } = $props();
-
-  let testing = $state(false);
-
-  async function retest() {
-    testing = true;
-    await invalidateAll();
-    testing = false;
+  interface Props {
+    data: PageData;
   }
 
-  function getHealthColor(score: number) {
-    if (score >= 80) return "text-green-600";
-    if (score >= 60) return "text-yellow-600";
-    return "text-red-600";
-  }
+  let { data }: Props = $props();
 
-  function getHealthBg(score: number) {
-    if (score >= 80) return "bg-green-100 border-green-300";
-    if (score >= 60) return "bg-yellow-100 border-yellow-300";
-    return "bg-red-100 border-red-300";
-  }
+  const allPassed =
+    data.clientCheck &&
+    data.adminCheck &&
+    data.drizzleCheck &&
+    data.tablesCheck &&
+    data.authCheck;
+
+  const percentage = [
+    data.clientCheck,
+    data.adminCheck,
+    data.drizzleCheck,
+    data.tablesCheck,
+    data.authCheck,
+  ].filter(Boolean).length * 20;
 </script>
 
 <svelte:head>
-  <title>Connection Checker - Supabase Status</title>
+  <title>Supabase Connection Test</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto p-8">
-  <!-- Header -->
+<div class="max-w-4xl mx-auto">
   <div class="mb-8">
-    <h1 class="text-4xl font-bold mb-2">🔌 Supabase Connection Checker</h1>
+    <h1 class="text-4xl font-bold mb-2">Supabase Connection Test</h1>
     <p class="text-gray-600">
-      Comprehensive diagnostic tool for your Supabase and database connections
+      Testing your Supabase configuration and database connection
     </p>
   </div>
 
-  <!-- Health Score -->
-  <div class="mb-6 {getHealthBg(data.healthScore)} border-2 rounded-lg p-6">
+  <!-- Overall Status -->
+  <div
+    class="mb-8 p-6 rounded-lg border-2 {allPassed
+      ? 'bg-green-50 border-green-300'
+      : 'bg-yellow-50 border-yellow-300'}"
+  >
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold {getHealthColor(data.healthScore)}">
-          Health Score: {data.healthScore}%
+        <h2 class="text-2xl font-bold {allPassed ? 'text-green-700' : 'text-yellow-700'}">
+          {allPassed ? "✅ All Systems Operational" : "⚠️ Setup Incomplete"}
         </h2>
-        <p class="text-sm text-gray-600 mt-1">
-          {#if data.healthScore >= 80}
-            🎉 All systems operational!
-          {:else if data.healthScore >= 60}
-            ⚠️ Some features may not work properly
-          {:else}
-            ❌ Critical issues detected - setup required
-          {/if}
+        <p class="text-gray-600 mt-1">
+          {allPassed
+            ? "Your Supabase connection is fully configured and working!"
+            : "Some configuration steps are needed"}
         </p>
       </div>
-      <button
-        onclick={retest}
-        disabled={testing}
-        class="bg-white border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
-      >
-        {testing ? "Testing..." : "🔄 Re-test"}
-      </button>
-    </div>
-    <div class="mt-3 text-xs text-gray-500">
-      Last tested: {new Date(data.timestamp).toLocaleString()}
+      <div class="text-right">
+        <div class="text-5xl font-bold {allPassed ? 'text-green-600' : 'text-yellow-600'}">
+          {percentage}%
+        </div>
+        <div class="text-sm text-gray-600">Complete</div>
+      </div>
     </div>
   </div>
 
-  <!-- Environment Variables -->
-  <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
-      <span>📝</span> Environment Variables
-    </h2>
-    <div class="space-y-3">
-      <div class="flex items-start justify-between border-b pb-2">
-        <div class="flex-1">
-          <div class="font-medium text-sm">PUBLIC_SUPABASE_URL</div>
-          <div class="text-xs text-gray-500 font-mono mt-1">
-            {data.connectionStatus.supabaseUrl}
-          </div>
+  <!-- Test Results -->
+  <div class="space-y-4">
+    <!-- Client Check -->
+    <div
+      class="p-4 rounded-lg border-2 {data.clientCheck
+        ? 'bg-green-50 border-green-300'
+        : 'bg-red-50 border-red-300'}"
+    >
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            {data.clientCheck ? "✅" : "❌"}
+            Client Connection (PUBLIC_SUPABASE_ANON_KEY)
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">
+            {data.clientCheck
+              ? "Client-side Supabase connection is working"
+              : "Client-side connection failed - check your PUBLIC_SUPABASE_ANON_KEY"}
+          </p>
         </div>
-        <span
-          class="px-3 py-1 rounded text-sm {data.connectionStatus
-            .supabaseConfigured
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'}"
-        >
-          {data.connectionStatus.supabaseConfigured ? "✅ Set" : "❌ Missing"}
-        </span>
       </div>
+    </div>
 
-      <div class="flex items-start justify-between border-b pb-2">
-        <div class="flex-1">
-          <div class="font-medium text-sm">PUBLIC_SUPABASE_ANON_KEY</div>
-          <div class="text-xs text-gray-500 font-mono mt-1">
-            {data.connectionStatus.supabaseAnonKey}
-          </div>
+    <!-- Admin Check -->
+    <div
+      class="p-4 rounded-lg border-2 {data.adminCheck
+        ? 'bg-green-50 border-green-300'
+        : 'bg-red-50 border-red-300'}"
+    >
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            {data.adminCheck ? "✅" : "❌"}
+            Admin Connection (SUPABASE_SERVICE_ROLE_KEY)
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">
+            {data.adminCheck
+              ? "Server-side admin connection is working"
+              : "Admin connection failed - check your SUPABASE_SERVICE_ROLE_KEY"}
+          </p>
         </div>
-        <span
-          class="px-3 py-1 rounded text-sm {data.connectionStatus
-            .supabaseConfigured
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'}"
-        >
-          {data.connectionStatus.supabaseConfigured ? "✅ Set" : "❌ Missing"}
-        </span>
       </div>
+    </div>
 
-      <div class="flex items-start justify-between border-b pb-2">
-        <div class="flex-1">
-          <div class="font-medium text-sm">SUPABASE_SERVICE_ROLE_KEY</div>
-          <div class="text-xs text-gray-500 font-mono mt-1">
-            {data.connectionStatus.serviceRoleKey}
-          </div>
+    <!-- Drizzle Check -->
+    <div
+      class="p-4 rounded-lg border-2 {data.drizzleCheck
+        ? 'bg-green-50 border-green-300'
+        : 'bg-red-50 border-red-300'}"
+    >
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            {data.drizzleCheck ? "✅" : "❌"}
+            Drizzle ORM (DATABASE_URL)
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">
+            {data.drizzleCheck
+              ? "Direct database connection via Drizzle ORM is working"
+              : "Drizzle connection failed - check your DATABASE_URL"}
+          </p>
         </div>
-        <span
-          class="px-3 py-1 rounded text-sm {data.connectionStatus
-            .serviceRoleConfigured
-            ? 'bg-green-100 text-green-800'
-            : 'bg-yellow-100 text-yellow-800'}"
-        >
-          {data.connectionStatus.serviceRoleConfigured
-            ? "✅ Set"
-            : "⚠️ Optional"}
-        </span>
       </div>
+    </div>
 
+    <!-- Tables Check -->
+    <div
+      class="p-4 rounded-lg border-2 {data.tablesCheck
+        ? 'bg-green-50 border-green-300'
+        : 'bg-red-50 border-red-300'}"
+    >
       <div class="flex items-start justify-between">
         <div class="flex-1">
-          <div class="font-medium text-sm">DATABASE_URL</div>
-          <div class="text-xs text-gray-500 font-mono mt-1 break-all">
-            {data.connectionStatus.databaseUrl}
-          </div>
-        </div>
-        <span
-          class="px-3 py-1 rounded text-sm {data.connectionStatus
-            .databaseConfigured
-            ? 'bg-green-100 text-green-800'
-            : 'bg-yellow-100 text-yellow-800'}"
-        >
-          {data.connectionStatus.databaseConfigured
-            ? "✅ Set"
-            : "⚠️ Optional"}
-        </span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Connection Tests -->
-  <div class="grid md:grid-cols-2 gap-6 mb-6">
-    <!-- Auth Test -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
-        <span>🔐</span> Supabase Auth
-      </h3>
-      {#if data.authTest.connected}
-        <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
-          <div class="font-semibold">✅ Connected</div>
-          <div class="text-sm mt-1">{data.authTest.details}</div>
-        </div>
-      {:else}
-        <div class="bg-red-50 border border-red-200 text-red-800 p-3 rounded">
-          <div class="font-semibold">❌ Failed</div>
-          <div class="text-sm mt-1">{data.authTest.details}</div>
-          {#if data.authTest.error}
-            <div class="text-xs mt-2 font-mono">{data.authTest.error}</div>
-          {/if}
-        </div>
-      {/if}
-    </div>
-
-    <!-- Supabase DB Test -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
-        <span>🗄️</span> Supabase Database
-      </h3>
-      {#if data.supabaseTest.connected}
-        <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
-          <div class="font-semibold">✅ Connected</div>
-          <div class="text-sm mt-1">{data.supabaseTest.details}</div>
-          {#if data.supabaseTest.productCount === 0}
-            <div class="text-xs mt-2 text-yellow-700 bg-yellow-50 p-2 rounded">
-              ⚠️ No products found. Run SQL schema to add sample products.
-            </div>
-          {/if}
-        </div>
-      {:else}
-        <div class="bg-red-50 border border-red-200 text-red-800 p-3 rounded">
-          <div class="font-semibold">❌ Failed</div>
-          <div class="text-sm mt-1">{data.supabaseTest.details}</div>
-          {#if data.supabaseTest.error}
-            <div class="text-xs mt-2 font-mono">{data.supabaseTest.error}</div>
-          {/if}
-        </div>
-      {/if}
-    </div>
-
-    <!-- Drizzle Test -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
-        <span>⚡</span> Drizzle ORM
-      </h3>
-      {#if data.drizzleTest.connected}
-        <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
-          <div class="font-semibold">✅ Connected</div>
-          <div class="text-sm mt-1">{data.drizzleTest.details}</div>
-        </div>
-      {:else}
-        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded">
-          <div class="font-semibold">⚠️ Not Available</div>
-          <div class="text-sm mt-1">{data.drizzleTest.details}</div>
-          {#if data.drizzleTest.error}
-            <div class="text-xs mt-2 font-mono">{data.drizzleTest.error}</div>
-          {/if}
-        </div>
-      {/if}
-    </div>
-
-    <!-- Admin Test -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
-        <span>👑</span> Service Role (Admin)
-      </h3>
-      {#if data.adminTest.connected}
-        <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
-          <div class="font-semibold">✅ Connected</div>
-          <div class="text-sm mt-1">{data.adminTest.details}</div>
-        </div>
-      {:else}
-        <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded">
-          <div class="font-semibold">⚠️ Not Available</div>
-          <div class="text-sm mt-1">{data.adminTest.details}</div>
-          {#if data.adminTest.error}
-            <div class="text-xs mt-2 font-mono">{data.adminTest.error}</div>
-          {/if}
-        </div>
-      {/if}
-    </div>
-  </div>
-
-  <!-- Schema Test -->
-  <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-    <h3 class="text-lg font-semibold mb-3 flex items-center gap-2">
-      <span>📊</span> Database Schema
-    </h3>
-    {#if data.schemaTest.connected}
-      <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
-        <div class="font-semibold">✅ {data.schemaTest.details}</div>
-        <div class="mt-3 grid grid-cols-2 gap-2">
-          {#each data.schemaTest.tables as table}
-            <div class="text-sm bg-white border border-green-300 px-3 py-1 rounded">
-              ✓ {table}
-            </div>
-          {/each}
-        </div>
-      </div>
-    {:else}
-      <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-3 rounded">
-        <div class="font-semibold">⚠️ Schema Not Verified</div>
-        <div class="text-sm mt-1">{data.schemaTest.details}</div>
-        {#if data.schemaTest.tables.length > 0}
-          <div class="mt-3">
-            <div class="text-sm mb-2">Found tables:</div>
-            <div class="grid grid-cols-2 gap-2">
-              {#each data.schemaTest.tables as table}
-                <div class="text-sm bg-white border border-yellow-300 px-3 py-1 rounded">
-                  ✓ {table}
-                </div>
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            {data.tablesCheck ? "✅" : "❌"}
+            Database Tables
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">
+            {data.tablesCheck
+              ? "All required tables exist"
+              : "Some tables are missing - run supabase-schema.sql"}
+          </p>
+          {#if data.details.tables.length > 0}
+            <div class="mt-2 flex flex-wrap gap-2">
+              {#each data.details.tables as table}
+                <span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-mono">
+                  {table}
+                </span>
               {/each}
             </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
       </div>
-    {/if}
-  </div>
+    </div>
 
-  <!-- Quick Actions -->
-  <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-    <h3 class="text-lg font-semibold mb-3">🚀 Quick Actions</h3>
-    <div class="grid md:grid-cols-3 gap-4">
-      <a
-        href="/auth/signup"
-        class="bg-white border border-blue-300 text-blue-700 px-4 py-3 rounded-md hover:bg-blue-50 transition-colors text-center font-medium"
-      >
-        Test Sign Up
-      </a>
-      <a
-        href="/products"
-        class="bg-white border border-blue-300 text-blue-700 px-4 py-3 rounded-md hover:bg-blue-50 transition-colors text-center font-medium"
-      >
-        View Products
-      </a>
-      <a
-        href="https://app.supabase.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="bg-white border border-blue-300 text-blue-700 px-4 py-3 rounded-md hover:bg-blue-50 transition-colors text-center font-medium"
-      >
-        Open Supabase ↗
-      </a>
+    <!-- Auth Check -->
+    <div
+      class="p-4 rounded-lg border-2 {data.authCheck
+        ? 'bg-green-50 border-green-300'
+        : 'bg-red-50 border-red-300'}"
+    >
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            {data.authCheck ? "✅" : "❌"}
+            Authentication System
+          </h3>
+          <p class="text-sm text-gray-600 mt-1">
+            {data.authCheck
+              ? "Supabase Auth is working correctly"
+              : "Auth system failed - check your service role key"}
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Setup Help -->
-  {#if data.healthScore < 80}
-    <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6 mb-6">
-      <h3 class="text-lg font-semibold mb-3">💡 Setup Help</h3>
-      <div class="space-y-2 text-sm">
-        {#if !data.connectionStatus.supabaseConfigured}
-          <div class="flex items-start gap-2">
-            <span class="text-red-600">❌</span>
-            <div>
-              <strong>Add Supabase credentials to .env file</strong>
-              <div class="text-xs text-gray-600 mt-1">
-                Get them from: Settings → API in your Supabase project
-              </div>
-            </div>
-          </div>
-        {/if}
-        {#if !data.supabaseTest.connected && data.connectionStatus.supabaseConfigured}
-          <div class="flex items-start gap-2">
-            <span class="text-red-600">❌</span>
-            <div>
-              <strong>Run SQL schema in Supabase</strong>
-              <div class="text-xs text-gray-600 mt-1">
-                Copy supabase-schema.sql → Supabase SQL Editor → Run
-              </div>
-            </div>
-          </div>
-        {/if}
-        {#if !data.connectionStatus.databaseConfigured}
-          <div class="flex items-start gap-2">
-            <span class="text-yellow-600">⚠️</span>
-            <div>
-              <strong>Add DATABASE_URL for Drizzle ORM (optional)</strong>
-              <div class="text-xs text-gray-600 mt-1">
-                Get it from: Settings → Database → Connection string
-              </div>
-            </div>
-          </div>
-        {/if}
-        {#if data.supabaseTest.connected && data.supabaseTest.productCount === 0}
-          <div class="flex items-start gap-2">
-            <span class="text-yellow-600">⚠️</span>
-            <div>
-              <strong>No products found</strong>
-              <div class="text-xs text-gray-600 mt-1">
-                The SQL schema includes 5 sample products. Make sure you ran the complete schema.
-              </div>
-            </div>
-          </div>
-        {/if}
+  <!-- Errors Section -->
+  {#if data.errors.length > 0}
+    <div class="mt-8 p-6 bg-red-50 border-2 border-red-300 rounded-lg">
+      <h3 class="font-bold text-lg text-red-700 mb-3">🚨 Errors Detected</h3>
+      <ul class="space-y-2">
+        {#each data.errors as error}
+          <li class="text-sm text-red-700 font-mono bg-red-100 p-2 rounded">
+            {error}
+          </li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
+
+  <!-- Environment Details -->
+  <div class="mt-8 p-6 bg-gray-50 border-2 border-gray-300 rounded-lg">
+    <h3 class="font-bold text-lg text-gray-700 mb-3">📋 Configuration Details</h3>
+    <div class="space-y-2 text-sm font-mono">
+      <div class="flex justify-between">
+        <span class="text-gray-600">Supabase URL:</span>
+        <span class="text-gray-900">{data.details.supabaseUrl}</span>
       </div>
-      <div class="mt-4">
-        <a
-          href="/QUICK_START.md"
-          class="text-blue-600 hover:underline text-sm font-medium"
-        >
-          📖 Read Setup Guide
-        </a>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Anon Key Set:</span>
+        <span class="{data.details.hasAnonKey ? 'text-green-600' : 'text-red-600'}">
+          {data.details.hasAnonKey ? "✅ Yes" : "❌ No"}
+        </span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Service Key Set:</span>
+        <span class="{data.details.hasServiceKey ? 'text-green-600' : 'text-red-600'}">
+          {data.details.hasServiceKey ? "✅ Yes" : "❌ No"}
+        </span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Database URL Set:</span>
+        <span class="{data.details.hasDatabaseUrl ? 'text-green-600' : 'text-red-600'}">
+          {data.details.hasDatabaseUrl ? "✅ Yes" : "❌ No"}
+        </span>
+      </div>
+      <div class="flex justify-between">
+        <span class="text-gray-600">Tables Found:</span>
+        <span class="text-gray-900">{data.details.tables.length} / 4</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Instructions -->
+  {#if !allPassed}
+    <div class="mt-8 p-6 bg-blue-50 border-2 border-blue-300 rounded-lg">
+      <h3 class="font-bold text-lg text-blue-700 mb-3">📚 Setup Instructions</h3>
+      <div class="space-y-4 text-sm">
+        {#if !data.details.hasAnonKey || !data.details.hasServiceKey || !data.details.hasDatabaseUrl}
+          <div>
+            <h4 class="font-bold text-blue-700 mb-1">1. Set Environment Variables</h4>
+            <p class="text-gray-700 mb-2">
+              Create or update your <code class="bg-blue-100 px-1 rounded">.env</code> file with:
+            </p>
+            <pre class="bg-blue-100 p-3 rounded text-xs overflow-x-auto">PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres</pre>
+          </div>
+        {/if}
+
+        {#if !data.tablesCheck}
+          <div>
+            <h4 class="font-bold text-blue-700 mb-1">2. Create Database Tables</h4>
+            <p class="text-gray-700 mb-2">
+              In Supabase SQL Editor, run the <code class="bg-blue-100 px-1 rounded">supabase-schema.sql</code> file from your project.
+            </p>
+            <ol class="list-decimal list-inside space-y-1 text-gray-700 ml-2">
+              <li>Go to Supabase Dashboard → SQL Editor</li>
+              <li>Copy content from supabase-schema.sql</li>
+              <li>Paste and click "Run"</li>
+              <li>Verify tables in Table Editor</li>
+            </ol>
+          </div>
+        {/if}
+
+        <div>
+          <h4 class="font-bold text-blue-700 mb-1">3. Restart Dev Server</h4>
+          <p class="text-gray-700">
+            After making changes, restart your dev server to load new environment variables.
+          </p>
+        </div>
       </div>
     </div>
   {/if}
 
-  <!-- Navigation -->
-  <div class="text-center space-x-4">
-    <a href="/" class="text-blue-600 hover:underline">← Back to Home</a>
-    <span class="text-gray-400">|</span>
-    <a href="/products" class="text-blue-600 hover:underline">View Products →</a>
+  <!-- Actions -->
+  <div class="mt-8 flex gap-4">
+    <a
+      href="/"
+      class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+    >
+      Go to Home
+    </a>
+    <button
+      onclick={() => window.location.reload()}
+      class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+    >
+      🔄 Retest Connection
+    </button>
   </div>
 </div>
 

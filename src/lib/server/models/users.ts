@@ -75,3 +75,35 @@ export async function updateProfile(
     .returning();
   return result[0] || null;
 }
+
+/**
+ * Get all user profiles (Admin only)
+ * @returns Array of all profiles
+ */
+export async function getAllProfiles(): Promise<Profile[]> {
+  if (!db) {
+    throw new Error("Database connection not available");
+  }
+  return await db.select().from(profiles);
+}
+
+/**
+ * Update user role (Admin only)
+ * @param id - User UUID
+ * @param role - New role ('user' or 'admin')
+ * @returns Updated profile or null if not found
+ */
+export async function updateUserRole(
+  id: string,
+  role: "user" | "admin"
+): Promise<Profile | null> {
+  if (!db) {
+    throw new Error("Database connection not available");
+  }
+  const result = await db
+    .update(profiles)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(profiles.id, id))
+    .returning();
+  return result[0] || null;
+}

@@ -1,6 +1,9 @@
 import { pgTable, text, uuid, decimal, integer, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
+// User role enum
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin']);
+
 // Order status enum
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'shipped', 'delivered', 'cancelled']);
 
@@ -11,6 +14,7 @@ export const profiles = pgTable('profiles', {
 	email: text('email').notNull(),
 	fullName: text('full_name'),
 	avatarUrl: text('avatar_url'),
+	role: userRoleEnum('role').default('user').notNull(), // Default role is 'user'
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull()
 });

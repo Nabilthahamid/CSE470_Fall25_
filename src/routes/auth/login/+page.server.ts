@@ -1,6 +1,7 @@
 import { redirect, fail } from "@sveltejs/kit";
 import type { Actions } from "./$types";
 import { supabase } from "$lib/db/client";
+import { isUserAdmin } from "$lib/server/models/users";
 
 export const actions = {
   login: async ({ request, cookies }) => {
@@ -52,6 +53,14 @@ export const actions = {
       maxAge: 60 * 60 * 24 * 7, // 1 week
     });
 
-    throw redirect(303, "/");
+    // Check if user is an admin and redirect accordingly
+    const userId = authData.session.user.id;
+    const isAdmin = await isUserAdmin(userId);
+
+    if (isAdmin) {
+      throw redirect(303, "/admin");
+    } else {
+      throw redirect(303, "/");
+    }
   },
 } satisfies Actions;

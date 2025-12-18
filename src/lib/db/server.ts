@@ -28,7 +28,12 @@ if (!connectionString) {
   console.warn("DATABASE_URL not set. Drizzle ORM will not be available.");
 }
 
-const client = connectionString ? postgres(connectionString) : null;
+const client = connectionString ? postgres(connectionString, {
+  ssl: 'require',
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+}) : null;
 export const db = client ? drizzle(client, { schema }) : null;
 
 // Export schema for use in models

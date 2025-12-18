@@ -132,6 +132,10 @@
         >
         <a href="/cart" class="text-gray-700 hover:text-blue-600">Cart</a>
         {#if session}
+          <!-- Show Admin link if user has admin role -->
+          <a href="/admin" class="text-purple-600 hover:text-purple-800 font-semibold">
+            👑 Admin
+          </a>
           <span class="text-gray-700">{session.user.email}</span>
           <form method="POST" action="/auth/logout">
             <button type="submit" class="text-gray-700 hover:text-blue-600">
@@ -155,7 +159,7 @@
 
 	<!-- Main Content -->
 	<main class="flex-1 container mx-auto px-4 py-8">
-		{@render children()}
+{@render children()}
 	</main>
 
 	<!-- Footer -->

@@ -6,12 +6,20 @@
 -- Run this file in your Supabase SQL Editor to apply changes.
 -- ============================================================================
 
+-- Create user_role enum
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('user', 'admin');
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
+
 -- Create profiles table (linked to auth.users)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   full_name TEXT,
   avatar_url TEXT,
+  role user_role DEFAULT 'user' NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
