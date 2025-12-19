@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
+
 	interface ButtonProps {
 		variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
 		size?: 'sm' | 'md' | 'lg';
@@ -6,6 +8,7 @@
 		type?: 'button' | 'submit' | 'reset';
 		class?: string;
 		onclick?: (event: MouseEvent) => void;
+		children?: Snippet;
 	}
 
 	let {
@@ -14,7 +17,8 @@
 		disabled = false,
 		type = 'button',
 		class: className = '',
-		onclick
+		onclick,
+		children
 	}: ButtonProps = $props();
 
 	const variants = {
@@ -37,6 +41,8 @@
 	{onclick}
 	class="rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed {variants[variant]} {sizes[size]} {className}"
 >
-	<slot />
+	{#if children}
+		{@render children()}
+	{/if}
 </button>
 

@@ -23,11 +23,18 @@ export const load: PageServerLoad = async () => {
     try {
       const result = await db.select({ count: count() }).from(orders);
       totalOrders = Number(result[0]?.count || 0);
-    } catch (error) {
-      console.warn(
-        "Drizzle orders count failed, trying Supabase fallback:",
-        error
-      );
+    } catch (error: any) {
+      // Only log non-connection errors to avoid spam
+      const isConnectionError =
+        error?.code === "ENOTFOUND" ||
+        error?.cause?.code === "ENOTFOUND" ||
+        error?.message?.includes("getaddrinfo");
+      if (!isConnectionError) {
+        console.warn(
+          "Drizzle orders count failed, trying Supabase fallback:",
+          error
+        );
+      }
     }
   }
 

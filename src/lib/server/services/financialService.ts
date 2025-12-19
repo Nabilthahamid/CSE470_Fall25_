@@ -79,11 +79,8 @@ export async function calculateFinancialMetrics(
         error?.message?.includes("getaddrinfo") ||
         error?.message?.includes("ENOTFOUND");
 
-      if (isConnectionError) {
-        console.error(
-          "Database connection error - cannot resolve hostname. Please check your DATABASE_URL and ensure your Supabase project is active."
-        );
-      } else {
+      if (!isConnectionError) {
+        // Only log non-connection errors (connection errors are expected when DATABASE_URL is not set)
         console.warn("Drizzle financial query failed, trying Supabase:", error);
       }
     }
@@ -256,11 +253,8 @@ export async function getDailyFinancialData(
         error?.message?.includes("getaddrinfo") ||
         error?.message?.includes("ENOTFOUND");
 
-      if (isConnectionError) {
-        console.error(
-          "Database connection error - cannot resolve hostname. Please check your DATABASE_URL and ensure your Supabase project is active."
-        );
-      } else {
+      if (!isConnectionError) {
+        // Only log non-connection errors (connection errors are expected when DATABASE_URL is not set)
         console.warn(
           "Drizzle daily financial query failed, trying Supabase:",
           error
@@ -491,11 +485,8 @@ export async function getTopSellingProducts(
         error?.message?.includes("getaddrinfo") ||
         error?.message?.includes("ENOTFOUND");
 
-      if (isConnectionError) {
-        console.error(
-          "Database connection error - cannot resolve hostname. Please check your DATABASE_URL and ensure your Supabase project is active."
-        );
-      } else {
+      if (!isConnectionError) {
+        // Only log non-connection errors (connection errors are expected when DATABASE_URL is not set)
         console.warn(
           "Drizzle top products query failed, trying Supabase:",
           error

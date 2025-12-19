@@ -16,7 +16,7 @@
 	};
 
 	let shippingCost = $derived(shippingCosts[shippingMethod] || 0);
-	let total = $derived(data.cart.subtotal + shippingCost);
+	let total = $derived(() => data.cart.subtotal + shippingCost);
 
 	// Form fields
 	let firstName = $state('');

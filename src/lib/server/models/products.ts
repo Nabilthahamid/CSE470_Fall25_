@@ -14,8 +14,15 @@ export async function getAllProducts(): Promise<Product[]> {
   if (db) {
     try {
       return await db.select().from(products);
-    } catch (error) {
-      console.warn("Drizzle query failed, trying Supabase client:", error);
+    } catch (error: any) {
+      // Only log non-connection errors to avoid spam
+      const isConnectionError =
+        error?.code === "ENOTFOUND" ||
+        error?.cause?.code === "ENOTFOUND" ||
+        error?.message?.includes("getaddrinfo");
+      if (!isConnectionError) {
+        console.warn("Drizzle query failed, trying Supabase client:", error);
+      }
     }
   }
 
@@ -51,11 +58,18 @@ export async function getProductById(id: string): Promise<Product | null> {
         .where(eq(products.id, id))
         .limit(1);
       return result[0] || null;
-    } catch (error) {
-      console.warn(
-        "Drizzle getProductById failed, trying Supabase fallback:",
-        error
-      );
+    } catch (error: any) {
+      // Only log non-connection errors to avoid spam
+      const isConnectionError =
+        error?.code === "ENOTFOUND" ||
+        error?.cause?.code === "ENOTFOUND" ||
+        error?.message?.includes("getaddrinfo");
+      if (!isConnectionError) {
+        console.warn(
+          "Drizzle getProductById failed, trying Supabase fallback:",
+          error
+        );
+      }
     }
   }
 
@@ -105,11 +119,18 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
         .where(eq(products.slug, slug))
         .limit(1);
       return result[0] || null;
-    } catch (error) {
-      console.warn(
-        "Drizzle getProductBySlug failed, trying Supabase fallback:",
-        error
-      );
+    } catch (error: any) {
+      // Only log non-connection errors to avoid spam
+      const isConnectionError =
+        error?.code === "ENOTFOUND" ||
+        error?.cause?.code === "ENOTFOUND" ||
+        error?.message?.includes("getaddrinfo");
+      if (!isConnectionError) {
+        console.warn(
+          "Drizzle getProductBySlug failed, trying Supabase fallback:",
+          error
+        );
+      }
     }
   }
 
