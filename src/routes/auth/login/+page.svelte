@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-  <title>Sign In - E-Commerce</title>
+  <title>Sign In - Tinytech</title>
 </svelte:head>
 
 <div class="max-w-md mx-auto mt-12">

@@ -18,21 +18,21 @@ export async function getAllProducts(): Promise<Product[]> {
       console.warn("Drizzle query failed, trying Supabase client:", error);
     }
   }
-  
+
   // Fallback to Supabase Admin (bypasses RLS)
   if (supabaseAdmin) {
     try {
-      const { data, error } = await supabaseAdmin
-        .from('products')
-        .select('*');
+      const { data, error } = await supabaseAdmin.from("products").select("*");
       if (error) throw error;
       return data || [];
     } catch (error) {
       console.error("Supabase query failed:", error);
     }
   }
-  
-  console.warn("Database connection not available - returning empty products array");
+
+  console.warn(
+    "Database connection not available - returning empty products array"
+  );
   return [];
 }
 
@@ -42,16 +42,52 @@ export async function getAllProducts(): Promise<Product[]> {
  * @returns Product or null if not found or database unavailable
  */
 export async function getProductById(id: string): Promise<Product | null> {
-  if (!db) {
-    console.warn("Database connection not available");
-    return null;
+  // Try Drizzle first
+  if (db) {
+    try {
+      const result = await db
+        .select()
+        .from(products)
+        .where(eq(products.id, id))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      console.warn(
+        "Drizzle getProductById failed, trying Supabase fallback:",
+        error
+      );
+    }
   }
-  const result = await db
-    .select()
-    .from(products)
-    .where(eq(products.id, id))
-    .limit(1);
-  return result[0] || null;
+
+  // Fallback to Supabase Admin client
+  if (supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("products")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows returned
+          return null;
+        }
+        console.error("Supabase getProductById failed:", error);
+        return null;
+      }
+
+      return data as Product | null;
+    } catch (error) {
+      console.error("Error getting product by ID:", error);
+      return null;
+    }
+  }
+
+  console.warn(
+    "Database connection not available - getProductById returning null"
+  );
+  return null;
 }
 
 /**
@@ -60,14 +96,50 @@ export async function getProductById(id: string): Promise<Product | null> {
  * @returns Product or null if not found or database unavailable
  */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  if (!db) {
-    console.warn("Database connection not available");
-    return null;
+  // Try Drizzle first
+  if (db) {
+    try {
+      const result = await db
+        .select()
+        .from(products)
+        .where(eq(products.slug, slug))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      console.warn(
+        "Drizzle getProductBySlug failed, trying Supabase fallback:",
+        error
+      );
+    }
   }
-  const result = await db
-    .select()
-    .from(products)
-    .where(eq(products.slug, slug))
-    .limit(1);
-  return result[0] || null;
+
+  // Fallback to Supabase Admin client
+  if (supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("products")
+        .select("*")
+        .eq("slug", slug)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows returned
+          return null;
+        }
+        console.error("Supabase getProductBySlug failed:", error);
+        return null;
+      }
+
+      return data as Product | null;
+    } catch (error) {
+      console.error("Error getting product by slug:", error);
+      return null;
+    }
+  }
+
+  console.warn(
+    "Database connection not available - getProductBySlug returning null"
+  );
+  return null;
 }

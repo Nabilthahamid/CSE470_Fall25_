@@ -1,8 +1,11 @@
 import { redirect, fail } from "@sveltejs/kit";
 import type { Actions } from "./$types";
-import { supabase } from "$lib/db/client";
-import { supabaseAdmin } from "$lib/db/server";
-import { createProfile } from "$lib/server/models/users";
+import { createClient } from "@supabase/supabase-js";
+import {
+  PUBLIC_SUPABASE_URL,
+  PUBLIC_SUPABASE_ANON_KEY,
+} from "$env/static/public";
+import { isUserAdmin } from "$lib/server/models/users";
 
 export const actions = {
   signup: async ({ request, cookies }) => {
@@ -37,6 +40,12 @@ export const actions = {
       });
     }
 
+    // Create Supabase client for server-side
+    const supabase = createClient(
+      PUBLIC_SUPABASE_URL,
+      PUBLIC_SUPABASE_ANON_KEY
+    );
+
     // Sign up with Supabase
     const { data: authData, error } = await supabase.auth.signUp({
       email,
@@ -64,25 +73,9 @@ export const actions = {
       });
     }
 
-    // Create profile in database (if database is available)
-    // The profile will be created automatically on first login via hooks if database is unavailable
-    try {
-      if (supabaseAdmin) {
-        await createProfile({
-          id: authData.user.id,
-          email: authData.user.email!,
-          fullName: fullName || null,
-          avatarUrl: null,
-        });
-      } else {
-        console.warn(
-          "Database not available - profile will be created on first login"
-        );
-      }
-    } catch (err) {
-      console.error("Failed to create profile:", err);
-      // Continue anyway - profile will be created on first login if it fails here
-    }
+    // Profile will be automatically created by the database trigger
+    // The trigger (on_auth_user_created) will create the profile when the user is inserted into auth.users
+    // No manual profile creation needed here - relying on the trigger ensures proper transaction handling
 
     // If session exists (no email confirmation required), set cookies and redirect
     if (authData.session) {
@@ -102,7 +95,32 @@ export const actions = {
         maxAge: 60 * 60 * 24 * 7, // 1 week
       });
 
-      throw redirect(303, "/");
+      // Check if user is an admin and redirect accordingly
+      // Note: Profile should be created by trigger by now, but we'll wait a moment if needed
+      const userId = authData.session.user.id;
+      let userIsAdmin = false;
+
+      try {
+        // Give the trigger a moment to create the profile, then check
+        // The trigger runs synchronously, but we'll add a small delay just in case
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        userIsAdmin = await isUserAdmin(userId);
+        console.log(
+          `Signup admin check for user ${userId} (${email}): ${userIsAdmin}`
+        );
+      } catch (error) {
+        // If admin check fails (e.g., profile not created yet, database error), treat as regular user
+        console.error("Failed to check admin status during signup:", error);
+        userIsAdmin = false;
+      }
+
+      if (userIsAdmin) {
+        console.log(`Redirecting admin user ${email} to /admin after signup`);
+        throw redirect(303, "/admin");
+      } else {
+        console.log(`Redirecting regular user ${email} to / after signup`);
+        throw redirect(303, "/");
+      }
     }
 
     // Email confirmation required

@@ -5,8 +5,9 @@ import type { LayoutServerLoad } from "./$types";
 export const load: LayoutServerLoad = async ({ locals }) => {
   const userId = locals.user?.id;
 
-  // Protect all admin routes
-  await requireAdmin(userId);
+  // TEMPORARILY DISABLED: Protect all admin routes
+  // TODO: Re-enable authentication before production
+  // await requireAdmin(userId);
 
   // Get admin user profile
   const profile = userId ? await getProfileById(userId) : null;
@@ -15,4 +16,3 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     profile,
   };
 };
-

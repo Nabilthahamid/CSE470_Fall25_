@@ -26,14 +26,53 @@ const connectionString = privateEnv.DATABASE_URL || "";
 
 if (!connectionString) {
   console.warn("DATABASE_URL not set. Drizzle ORM will not be available.");
+} else {
+  // Validate connection string format
+  try {
+    const url = new URL(connectionString);
+    if (!url.hostname || url.hostname === "") {
+      console.warn(
+        "Invalid DATABASE_URL format - hostname is missing. Please check your .env file."
+      );
+    }
+  } catch (e) {
+    console.warn(
+      "Invalid DATABASE_URL format. Please ensure it follows the format: postgresql://postgres:password@host:5432/postgres"
+    );
+  }
 }
 
-const client = connectionString ? postgres(connectionString, {
-  ssl: 'require',
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
-}) : null;
+const client = connectionString
+  ? postgres(connectionString, {
+      ssl: "require",
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 10,
+      onnotice: () => {}, // Suppress notices
+    })
+  : null;
+
+// Test connection on startup (non-blocking)
+if (client) {
+  client`SELECT 1`.catch((error: any) => {
+    if (
+      error?.code === "ENOTFOUND" ||
+      error?.message?.includes("getaddrinfo")
+    ) {
+      console.error(
+        "⚠️  Database connection failed: Cannot resolve hostname. Your Supabase project may be paused or the hostname is incorrect."
+      );
+      console.error("   Please check:");
+      console.error("   1. Your Supabase project is active (not paused)");
+      console.error("   2. Your DATABASE_URL in .env is correct");
+      console.error("   3. Your network connection is working");
+      console.error("   See TROUBLESHOOTING_DB_CONNECTION.md for more help");
+    } else {
+      console.warn("Database connection warning:", error?.message || error);
+    }
+  });
+}
+
 export const db = client ? drizzle(client, { schema }) : null;
 
 // Export schema for use in models

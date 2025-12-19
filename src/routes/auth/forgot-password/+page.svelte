@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-  <title>Reset Password - E-Commerce</title>
+  <title>Reset Password - Tinytech</title>
 </svelte:head>
 
 <div class="max-w-md mx-auto mt-12">

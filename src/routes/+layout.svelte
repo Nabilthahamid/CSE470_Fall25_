@@ -13,21 +13,43 @@
   let session = $state<any>(null);
   let connectionHealth = $state<number | null>(null);
   let showConnectionTooltip = $state(false);
+  let isAdmin = $state(false);
 
   onMount(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      session = session;
+    supabase.auth.getSession().then(({ data: { session: newSession } }) => {
+      session = newSession;
+      checkAdminStatus(newSession?.user?.id);
     });
 
     // Listen for auth changes
     supabase.auth.onAuthStateChange((_event, newSession) => {
       session = newSession;
+      checkAdminStatus(newSession?.user?.id);
     });
 
     // Check connection health
     checkHealth();
   });
+
+  async function checkAdminStatus(userId: string | undefined) {
+    if (userId) {
+      try {
+        const response = await fetch(`/api/admin/check-role?userId=${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          isAdmin = data.isAdmin || false;
+        } else {
+          isAdmin = false;
+        }
+      } catch (error) {
+        console.error("Failed to check admin status:", error);
+        isAdmin = false;
+      }
+    } else {
+      isAdmin = false;
+    }
+  }
 
   async function checkHealth() {
     try {
@@ -63,7 +85,7 @@
   <header class="bg-white shadow-sm border-b">
     <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <a href="/" class="text-2xl font-bold text-blue-600">E-Commerce</a>
+        <a href="/" class="text-2xl font-bold text-blue-600">Tinytech</a>
 
         <!-- Connection Status Indicator -->
         <div class="relative">
@@ -127,18 +149,19 @@
       </div>
 
       <div class="flex items-center gap-4">
-        <a href="/products" class="text-gray-700 hover:text-blue-600"
-          >Products</a
-        >
         <a href="/cart" class="text-gray-700 hover:text-blue-600">Cart</a>
         {#if session}
-          <!-- Show Admin link if user has admin role -->
-          <a href="/admin" class="text-purple-600 hover:text-purple-800 font-semibold">
-            👑 Admin
-          </a>
+          {#if isAdmin}
+            <a href="/admin" class="text-purple-600 hover:text-purple-800 font-semibold">
+              👑 Admin
+            </a>
+          {/if}
           <span class="text-gray-700">{session.user.email}</span>
-          <form method="POST" action="/auth/logout">
-            <button type="submit" class="text-gray-700 hover:text-blue-600">
+          <form method="POST" action="/auth/logout" class="inline">
+            <button
+              type="submit"
+              class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+            >
               Sign Out
             </button>
           </form>
@@ -165,7 +188,7 @@
 	<!-- Footer -->
 	<footer class="bg-gray-100 border-t mt-auto">
 		<div class="container mx-auto px-4 py-6 text-center text-gray-600">
-			<p>&copy; 2024 E-Commerce Store. All rights reserved.</p>
+			<p>&copy; 2024 Tinytech. All rights reserved.</p>
 		</div>
 	</footer>
 </div>

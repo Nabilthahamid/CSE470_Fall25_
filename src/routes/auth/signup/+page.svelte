@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { page } from "$app/stores";
   import type { ActionData } from "./$types";
 
   interface Props {
@@ -9,16 +10,25 @@
   let { form }: Props = $props();
 
   let loading = $state(false);
+  
+  // Get message from URL query parameter
+  const urlMessage = $page.url.searchParams.get("message");
 </script>
 
 <svelte:head>
-  <title>Sign Up - E-Commerce</title>
+  <title>Sign Up - Tinytech</title>
 </svelte:head>
 
 <div class="max-w-md mx-auto mt-12">
   <div class="bg-white rounded-lg shadow-md p-8">
     <h1 class="text-3xl font-bold text-center mb-2">Create Account</h1>
     <p class="text-gray-600 text-center mb-8">Join us today</p>
+
+    {#if urlMessage}
+      <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
+        {urlMessage}
+      </div>
+    {/if}
 
     {#if form?.error}
       <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">

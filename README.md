@@ -1,4 +1,4 @@
-# E-Commerce Application
+# Tinytech
 
 A robust e-commerce application built with SvelteKit, TypeScript, TailwindCSS, and Supabase, following strict MVC architecture principles.
 
@@ -64,11 +64,13 @@ npm install
 ### 2. Environment Variables
 
 1. Copy `.env.example` to `.env`:
+
    ```bash
    cp .env.example .env
    ```
 
 2. Fill in your Supabase credentials in `.env`:
+
    - Get values from: **Supabase Dashboard → Settings → API**
    - For `DATABASE_URL`: **Settings → Database → Connection string** (URI tab)
    - Replace `[YOUR-PASSWORD]` with your actual database password
@@ -82,6 +84,7 @@ npm install
 Run the `supabase-schema.sql` file in your Supabase SQL Editor:
 
 Simply open `supabase-schema.sql` and execute it in your Supabase SQL Editor. This file contains:
+
 - All table definitions
 - Indexes for performance
 - Row Level Security (RLS) policies
@@ -100,21 +103,25 @@ Visit `http://localhost:5173` to see the application.
 ## Architecture Principles (MVC)
 
 ### Models (`lib/server/models`)
+
 - **ONLY** place where database queries happen
 - Return pure data interfaces/types
 - No business logic
 
 ### Services (`lib/server/services`)
+
 - Complex business logic (calculations, validations)
 - Use models to access data
 - Handle business rules
 
 ### Controllers (`+page.server.ts` / `+server.ts`)
+
 - Handle HTTP requests/responses
 - Import from models/services
 - Pass data to views
 
 ### Views (`+page.svelte`)
+
 - Dumb UI components
 - Receive data via `export let data`
 - No complex logic

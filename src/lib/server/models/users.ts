@@ -1,4 +1,4 @@
-import { db } from "$lib/db/server";
+import { db, supabaseAdmin } from "$lib/db/server";
 import { profiles } from "$lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { InferSelectModel, InferInsertModel } from "drizzle-orm";
@@ -12,15 +12,52 @@ export type NewProfile = InferInsertModel<typeof profiles>;
  * @returns Profile or null if not found
  */
 export async function getProfileById(id: string): Promise<Profile | null> {
-  if (!db) {
-    throw new Error("Database connection not available");
+  // Try Drizzle ORM first
+  if (db) {
+    try {
+      const result = await db
+        .select()
+        .from(profiles)
+        .where(eq(profiles.id, id))
+        .limit(1);
+      return result[0] || null;
+    } catch (error) {
+      console.warn(
+        "Drizzle getProfileById failed, trying Supabase fallback:",
+        error
+      );
+    }
   }
-  const result = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.id, id))
-    .limit(1);
-  return result[0] || null;
+
+  // Fallback to Supabase Admin client
+  if (supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          // No rows returned
+          return null;
+        }
+        console.error("Supabase getProfileById failed:", error);
+        return null;
+      }
+
+      return data as Profile | null;
+    } catch (error) {
+      console.error("Error getting profile by ID:", error);
+      return null;
+    }
+  }
+
+  console.warn(
+    "Database connection not available - getProfileById returning null"
+  );
+  return null;
 }
 
 /**
@@ -81,10 +118,82 @@ export async function updateProfile(
  * @returns Array of all profiles
  */
 export async function getAllProfiles(): Promise<Profile[]> {
-  if (!db) {
-    throw new Error("Database connection not available");
+  // Try Drizzle ORM first
+  if (db) {
+    try {
+      return await db.select().from(profiles);
+    } catch (error) {
+      console.warn(
+        "Drizzle getAllProfiles failed, trying Supabase fallback:",
+        error
+      );
+    }
   }
-  return await db.select().from(profiles);
+
+  // Fallback to Supabase Admin client
+  if (supabaseAdmin) {
+    try {
+      const { data, error } = await supabaseAdmin.from("profiles").select("*");
+
+      if (error) {
+        console.error("Supabase getAllProfiles failed:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error getting all profiles:", error);
+      return [];
+    }
+  }
+
+  console.warn(
+    "Database connection not available - returning empty profiles array"
+  );
+  return [];
+}
+
+/**
+ * Check if a user is an admin.
+ * @param userId - The ID of the user to check.
+ * @returns True if the user is an admin, false otherwise.
+ */
+export async function isUserAdmin(userId: string): Promise<boolean> {
+  // Try Drizzle ORM first
+  if (db) {
+    try {
+      const profile = await getProfileById(userId);
+      return profile?.role === "admin";
+    } catch (error) {
+      console.warn(
+        "Drizzle admin check failed, trying Supabase fallback:",
+        error
+      );
+    }
+  }
+
+  // Fallback to Supabase Admin client
+  if (supabaseAdmin) {
+    try {
+      const { data: profile, error } = await supabaseAdmin
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        console.error("Supabase admin check failed:", error);
+        return false;
+      }
+
+      return profile?.role === "admin";
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      return false;
+    }
+  }
+
+  return false;
 }
 
 /**

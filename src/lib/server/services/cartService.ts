@@ -40,8 +40,9 @@ export async function calculateCartTotals(items: CartItem[]): Promise<Cart> {
 		})
 	);
 
+	// Tax is calculated but not included in total (shipping added separately in checkout)
 	const tax = subtotal * TAX_RATE;
-	const total = subtotal + tax;
+	const total = subtotal; // No tax included, shipping added at checkout
 
 	return {
 		items: itemsWithProducts,

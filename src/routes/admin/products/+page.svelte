@@ -112,7 +112,11 @@
                   <button
                     type="submit"
                     class="text-red-600 hover:text-red-900"
-                    onclick="return confirm('Are you sure you want to delete this product?')"
+                    onclick={(e) => {
+                      if (!confirm(`Are you sure you want to delete ${product.name}?`)) {
+                        e.preventDefault();
+                      }
+                    }}
                   >
                     Delete
                   </button>

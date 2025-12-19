@@ -1,13 +1,9 @@
 /**
- * Format a number as currency
+ * Format a number as currency (BDT - Bangladeshi Taka)
  * @param amount - Amount to format
- * @param currency - Currency code (default: USD)
- * @returns Formatted currency string
+ * @returns Formatted currency string with ৳ symbol
  */
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
-	return new Intl.NumberFormat('en-US', {
-		style: 'currency',
-		currency
-	}).format(amount);
+export function formatCurrency(amount: number): string {
+	return `${amount.toFixed(2)}৳`;
 }
 
