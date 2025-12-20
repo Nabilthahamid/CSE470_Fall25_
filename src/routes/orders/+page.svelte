@@ -130,70 +130,48 @@
 											{getStatusLabel(order.status)}
 										</span>
 									</div>
-									{#if order.status === 'pending'}
-										<form
-											method="POST"
-											action="?/cancelOrder"
-											use:enhance={async ({ result, update, cancel }) => {
-												if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
-													cancel();
-													return;
-												}
-												
-												// Update the form state
-												await update();
-												
-												// Log result for debugging
-												console.log('Cancel order result:', result);
-												
-												// Check if cancellation was successful
-												// SvelteKit actions return 'success' when no fail() is called
-												// or 'failure' when fail() is called
-												if (result.type === 'success') {
-													console.log('Order cancelled successfully, refreshing page...');
-													// Invalidate all to refresh the page data
-													await invalidateAll();
-													
-													// Force a page reload to ensure fresh data is displayed
-													setTimeout(() => {
-														window.location.reload();
-													}, 300);
-												} else if (result.type === 'failure') {
-													console.error('Order cancellation failed:', result.data);
-													// Error will be shown via form.error in the template
-												}
-											}}
-										>
-											<input type="hidden" name="orderId" value={order.id} />
-											<button
-												type="submit"
-												class="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+									<div class="flex items-center gap-2">
+										{#if order.status !== 'delivered'}
+											<form
+												method="POST"
+												action="?/deleteOrder"
+												use:enhance={async ({ result, update, cancel }) => {
+													if (!confirm('Are you sure you want to delete this order? This action cannot be undone and all order data will be permanently removed.')) {
+														cancel();
+														return;
+													}
+													if (update && typeof update === 'function') {
+														await update();
+													}
+													if (result && result.type === 'success') {
+														await invalidateAll();
+													}
+												}}
 											>
-												<X class="h-4 w-4" />
-												Cancel Order
-											</button>
-										</form>
-									{/if}
+												<input type="hidden" name="orderId" value={order.id} />
+												<button
+													type="submit"
+													class="flex items-center gap-2 rounded-lg border border-red-500 bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+												>
+													<X class="h-4 w-4" />
+													Delete Order
+												</button>
+											</form>
+										{/if}
+									</div>
 								</div>
 							</div>
 						</div>
 
 						<!-- Success/Error Messages -->
-						{#if form?.error}
+						{#if form?.error && form?.orderId === order.id}
 							<div class="mx-6 mt-4 rounded-lg bg-red-50 border border-red-200 p-4">
 								<p class="text-sm text-red-700">{form.error}</p>
 							</div>
 						{/if}
 						{#if form?.success && form?.orderId === order.id}
 							<div class="mx-6 mt-4 rounded-lg bg-green-50 border border-green-200 p-4">
-								<p class="text-sm text-green-700">{form.message || 'Order cancelled successfully'}</p>
-							</div>
-						{/if}
-						
-						<!-- Debug info (remove in production) -->
-						{#if form && order.status === 'pending'}
-							<div class="mx-6 mt-2 text-xs text-slate-400">
-								Debug: form exists = {form ? 'yes' : 'no'}, form.success = {form?.success ? 'yes' : 'no'}
+								<p class="text-sm text-green-700">{form.message || 'Order action completed successfully'}</p>
 							</div>
 						{/if}
 

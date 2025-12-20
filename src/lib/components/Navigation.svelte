@@ -27,31 +27,24 @@
 		return cartItems.reduce((sum, item) => sum + item.quantity, 0);
 	});
 
-	// Handle logout - use fetch to submit logout request
-	async function handleLogout() {
+	// Handle logout - submit request and redirect immediately
+	function handleLogout() {
 		cart.clear();
 		
-		try {
-			// Submit logout request
-			const response = await fetch('/auth?/logout', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-				credentials: 'same-origin'
-			});
-			
-			// Redirect to login page after logout
-			if (response.redirected) {
-				window.location.href = response.url;
-			} else {
-				window.location.href = '/auth?tab=login';
-			}
-		} catch (error) {
-			// If fetch fails, still redirect to login page
-			console.error('Logout error:', error);
-			window.location.href = '/auth?tab=login';
-		}
+		// Submit logout request (fire and forget)
+		fetch('/auth?/logout', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			credentials: 'same-origin',
+			keepalive: true
+		}).catch(() => {
+			// Ignore errors
+		});
+		
+		// Redirect immediately to login page
+		window.location.href = '/auth?tab=login';
 	}
 </script>
 
@@ -75,17 +68,6 @@
 					<Home class="h-5 w-5" />
 					<span class="hidden sm:inline">Home</span>
 				</a>
-				<!-- Login Button (Always Visible) -->
-				{#if !user}
-					<a
-						href="/auth?tab=login"
-						class="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-						title="Login"
-					>
-						<LogIn class="h-5 w-5" />
-						<span class="hidden sm:inline">Login</span>
-					</a>
-				{/if}
 				{#if user}
 					<!-- Orders Button (Logged In Users) -->
 					<a
@@ -169,6 +151,15 @@
 							</div>
 						</div>
 					</div>
+				{:else}
+					<!-- Login Button (Not Logged In) - Shows where email was -->
+					<a
+						href="/auth?tab=login"
+						class="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+					>
+						<LogIn class="h-5 w-5" />
+						<span class="hidden sm:inline">Login</span>
+					</a>
 				{/if}
 			</div>
 		</div>

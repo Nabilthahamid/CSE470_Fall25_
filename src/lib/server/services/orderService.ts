@@ -392,3 +392,61 @@ export async function updateOrderStatus(
   console.log(`Order status updated successfully:`, data);
   return data;
 }
+
+/**
+ * Delete an order
+ * @param orderId - The order ID
+ * @param userId - The user ID (for authorization - only order owner can delete)
+ * @throws Error if order doesn't exist or doesn't belong to user
+ */
+export async function deleteOrder(
+  orderId: string,
+  userId: string
+): Promise<void> {
+  console.log(`Deleting order ${orderId} for user ${userId}`);
+
+  // First verify the order belongs to the user and check its status
+  const { data: order, error: fetchError } = await supabaseAdmin
+    .from("orders")
+    .select("id, user_id, status")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !order) {
+    throw new Error("Order not found");
+  }
+
+  if (order.user_id !== userId) {
+    throw new Error("You don't have permission to delete this order");
+  }
+
+  // Prevent deletion of delivered orders
+  if (order.status === "delivered") {
+    throw new Error("Cannot delete a delivered order");
+  }
+
+  // Delete order items first (due to foreign key constraint)
+  const { error: itemsError } = await supabaseAdmin
+    .from("order_items")
+    .delete()
+    .eq("order_id", orderId);
+
+  if (itemsError) {
+    console.error(`Error deleting order items:`, itemsError);
+    throw new Error(`Failed to delete order items: ${itemsError.message}`);
+  }
+
+  // Delete the order
+  const { error: orderError } = await supabaseAdmin
+    .from("orders")
+    .delete()
+    .eq("id", orderId)
+    .eq("user_id", userId);
+
+  if (orderError) {
+    console.error(`Error deleting order:`, orderError);
+    throw new Error(`Failed to delete order: ${orderError.message}`);
+  }
+
+  console.log(`Order deleted successfully`);
+}

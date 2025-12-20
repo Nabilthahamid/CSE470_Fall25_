@@ -7,29 +7,22 @@
 	 */
 	let { data }: { data: PageData } = $props();
 
-	// Handle logout - use fetch to submit logout request
-	async function handleLogout() {
-		try {
-			// Submit logout request
-			const response = await fetch('/auth?/logout', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-				credentials: 'same-origin'
-			});
-			
-			// Redirect to login page after logout
-			if (response.redirected) {
-				window.location.href = response.url;
-			} else {
-				window.location.href = '/auth?tab=login';
-			}
-		} catch (error) {
-			// If fetch fails, still redirect to login page
-			console.error('Logout error:', error);
-			window.location.href = '/auth?tab=login';
-		}
+	// Handle logout - submit request and redirect immediately
+	function handleLogout() {
+		// Submit logout request (fire and forget)
+		fetch('/auth?/logout', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			credentials: 'same-origin',
+			keepalive: true
+		}).catch(() => {
+			// Ignore errors
+		});
+		
+		// Redirect immediately to login page
+		window.location.href = '/auth?tab=login';
 	}
 </script>
 
@@ -104,7 +97,7 @@
 			<!-- Quick Actions -->
 			<div class="mt-8">
 				<h3 class="mb-4 text-lg font-semibold text-slate-900">Quick Actions</h3>
-				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
 					<a
 						href="/shop"
 						class="rounded-lg border border-slate-200 bg-white p-4 text-center hover:bg-slate-50"
@@ -125,13 +118,6 @@
 					>
 						<div class="font-semibold text-slate-900">Manage Orders</div>
 						<div class="mt-1 text-sm text-slate-600">View and update all orders</div>
-					</a>
-					<a
-						href="/admin/reports"
-						class="rounded-lg border border-slate-200 bg-white p-4 text-center hover:bg-slate-50"
-					>
-						<div class="font-semibold text-slate-900">Business Reports</div>
-						<div class="mt-1 text-sm text-slate-600">Profit/loss analysis</div>
 					</a>
 				</div>
 			</div>

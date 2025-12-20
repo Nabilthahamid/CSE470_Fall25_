@@ -96,6 +96,21 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ----------------------------------------------------------------------------
+-- Reviews Table
+-- Stores product reviews and ratings from users who purchased the product
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.reviews (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(product_id, user_id) -- One review per user per product
+);
+
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
@@ -117,6 +132,11 @@ CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DES
 -- Order items indexes
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON public.order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON public.order_items(product_id);
+
+-- Reviews indexes
+CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON public.reviews(product_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON public.reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON public.reviews(created_at DESC);
 
 -- ============================================================================
 -- FUNCTIONS & TRIGGERS
@@ -146,6 +166,12 @@ CREATE TRIGGER set_products_updated_at
 -- Trigger to auto-update updated_at for orders
 CREATE TRIGGER set_orders_updated_at
     BEFORE UPDATE ON public.orders
+    FOR EACH ROW
+    EXECUTE FUNCTION public.handle_updated_at();
+
+-- Trigger to auto-update updated_at for reviews
+CREATE TRIGGER set_reviews_updated_at
+    BEFORE UPDATE ON public.reviews
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_updated_at();
 
@@ -244,6 +270,18 @@ BEGIN
     END IF;
 END $$;
 
+-- Drop policies on reviews (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'reviews') THEN
+        DROP POLICY IF EXISTS "Anyone can view reviews" ON public.reviews;
+        DROP POLICY IF EXISTS "Users can create reviews for purchased products" ON public.reviews;
+        DROP POLICY IF EXISTS "Users can update own reviews" ON public.reviews;
+        DROP POLICY IF EXISTS "Users can delete own reviews" ON public.reviews;
+        DROP POLICY IF EXISTS "Admins can manage all reviews" ON public.reviews;
+    END IF;
+END $$;
+
 -- Enable RLS on all tables (only if they exist)
 DO $$ 
 BEGIN
@@ -261,6 +299,10 @@ BEGIN
     
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'order_items') THEN
         ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'reviews') THEN
+        ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
     END IF;
 END $$;
 
@@ -430,6 +472,46 @@ CREATE POLICY "Users can create own order items"
 CREATE POLICY "Admins can view all order items"
     ON public.order_items
     FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.profiles
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
+-- ----------------------------------------------------------------------------
+-- Reviews Policies
+-- ----------------------------------------------------------------------------
+
+-- Anyone can view reviews
+CREATE POLICY "Anyone can view reviews"
+    ON public.reviews
+    FOR SELECT
+    USING (true);
+
+-- Users can create reviews (purchase verification is done in service layer)
+CREATE POLICY "Users can create reviews"
+    ON public.reviews
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+-- Users can update their own reviews
+CREATE POLICY "Users can update own reviews"
+    ON public.reviews
+    FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+-- Users can delete their own reviews
+CREATE POLICY "Users can delete own reviews"
+    ON public.reviews
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Admins can manage all reviews
+CREATE POLICY "Admins can manage all reviews"
+    ON public.reviews
+    FOR ALL
     USING (
         EXISTS (
             SELECT 1 FROM public.profiles

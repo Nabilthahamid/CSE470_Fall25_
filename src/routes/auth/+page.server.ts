@@ -235,7 +235,7 @@ export const actions: Actions = {
       secure: process.env.NODE_ENV === "production",
     });
 
-    // Redirect to login page after clearing cookies
-    throw redirect(302, "/auth?tab=login");
+    // Redirect to auth page after clearing cookies
+    throw redirect(302, "/auth");
   },
 };
