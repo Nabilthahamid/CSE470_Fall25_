@@ -9,12 +9,12 @@
 
 	let { product }: Props = $props();
 
-	const formattedPrice = new Intl.NumberFormat('en-US', {
+	const formattedPrice = $derived(new Intl.NumberFormat('en-US', {
 		style: 'currency',
 		currency: 'USD'
-	}).format(product.price);
+	}).format(product.price));
 
-	const isInStock = product.stock > 0;
+	const isInStock = $derived(product.stock > 0);
 	let addedToCart = $state(false);
 
 	function handleAddToCart(e: MouseEvent) {

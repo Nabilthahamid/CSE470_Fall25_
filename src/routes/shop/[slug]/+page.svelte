@@ -97,18 +97,18 @@
 	<meta name="description" content={product.description || product.name} />
 </svelte:head>
 
-<div class="min-h-screen bg-slate-50">
+<div class="min-h-screen bg-slate-50bg-slate-950">
 	<div class="container mx-auto px-4 py-8 md:px-6 md:py-12">
 		<div class="mx-auto max-w-6xl">
 			<!-- Breadcrumb Navigation -->
-			<nav class="mb-6 text-sm text-slate-600">
-				<a href="/shop" class="hover:text-slate-900">Shop</a>
+			<nav class="mb-6 text-sm text-slate-600text-slate-400">
+				<a href="/shop" class="hover:text-slate-900hover:text-white">Shop</a>
 				<span class="mx-2">/</span>
-				<span class="text-slate-900">{product.name}</span>
+				<span class="text-slate-900text-white">{product.name}</span>
 			</nav>
 
 			<!-- Product Detail Card -->
-			<div class="overflow-hidden rounded-lg bg-white shadow-lg md:flex">
+			<div class="overflow-hidden rounded-lg bg-whitebg-slate-800 shadow-lg md:flex">
 				<!-- Product Image -->
 				<div class="h-96 w-full bg-slate-200 md:h-auto md:w-1/2">
 					{#if product.image_url}
@@ -126,7 +126,7 @@
 
 				<!-- Product Information -->
 				<div class="flex flex-1 flex-col p-6 md:p-8">
-					<h1 class="mb-4 text-3xl font-bold text-slate-900 md:text-4xl">
+					<h1 class="mb-4 text-3xl font-bold text-slate-900text-white md:text-4xl">
 						{product.name}
 					</h1>
 
@@ -140,23 +140,23 @@
 									/>
 								{/each}
 							</div>
-							<span class="text-sm font-semibold text-slate-900">
+							<span class="text-sm font-semibold text-slate-900text-white">
 								{data.reviewStats.average_rating.toFixed(1)}
 							</span>
-							<span class="text-sm text-slate-600">
+							<span class="text-sm text-slate-600text-slate-400">
 								({data.reviewStats.total_reviews} {data.reviewStats.total_reviews === 1 ? 'review' : 'reviews'})
 							</span>
 						</div>
 					{/if}
 
 					<div class="mb-6">
-						<p class="text-3xl font-bold text-slate-900">{formattedPrice}</p>
+						<p class="text-3xl font-bold text-slate-900text-white">{formattedPrice}</p>
 					</div>
 
 					{#if product.description}
 						<div class="mb-6">
-							<h2 class="mb-2 text-lg font-semibold text-slate-900">Description</h2>
-							<p class="text-slate-600 whitespace-pre-wrap">{product.description}</p>
+							<h2 class="mb-2 text-lg font-semibold text-slate-900text-white">Description</h2>
+							<p class="text-slate-600text-slate-300 whitespace-pre-wrap">{product.description}</p>
 						</div>
 					{/if}
 
@@ -177,12 +177,12 @@
 					<div class="mt-auto space-y-4">
 						{#if isInStock}
 							<div class="flex items-center gap-4">
-								<label for="quantity" class="text-sm font-medium text-slate-700">Quantity:</label>
+								<label for="quantity" class="text-sm font-medium text-slate-700text-slate-300">Quantity:</label>
 								<div class="flex items-center gap-2">
 									<button
 										type="button"
 										onclick={() => quantity > 1 && quantity--}
-										class="flex h-10 w-10 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+										class="flex h-10 w-10 items-center justify-center rounded border border-slate-300border-slate-600 bg-whitebg-slate-700 text-slate-700text-slate-300 hover:bg-slate-50hover:bg-slate-600"
 										aria-label="Decrease quantity"
 									>
 										−
@@ -193,13 +193,13 @@
 										bind:value={quantity}
 										min="1"
 										max={product.stock}
-										class="w-20 rounded border border-slate-300 px-3 py-2 text-center"
+										class="w-20 rounded border border-slate-300border-slate-600 bg-whitebg-slate-700 text-slate-900text-white px-3 py-2 text-center"
 									/>
 									<button
 										type="button"
 										onclick={() => quantity < product.stock && quantity++}
 										disabled={quantity >= product.stock}
-										class="flex h-10 w-10 items-center justify-center rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+										class="flex h-10 w-10 items-center justify-center rounded border border-slate-300border-slate-600 bg-whitebg-slate-700 text-slate-700text-slate-300 hover:bg-slate-50hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
 										aria-label="Increase quantity"
 									>
 										+
@@ -211,7 +211,7 @@
 						<button
 							type="button"
 							onclick={handleAddToCart}
-							class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3 font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:opacity-50 md:w-auto"
+							class="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900bg-slate-100 px-6 py-3 font-semibold text-whitetext-slate-900 transition-colors hover:bg-slate-800hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-400disabled:bg-slate-600 disabled:opacity-50 md:w-auto"
 							disabled={!isInStock || quantity <= 0}
 						>
 							<ShoppingCart class="h-5 w-5" />
@@ -222,10 +222,10 @@
 			</div>
 
 			<!-- Reviews Section -->
-			<div class="mt-8 rounded-lg bg-white shadow-lg p-6 md:p-8">
+			<div class="mt-8 rounded-lg bg-whitebg-slate-800 shadow-lg p-6 md:p-8">
 				<div class="mb-6 flex items-center justify-between">
 					<div>
-						<h2 class="text-2xl font-bold text-slate-900">Reviews & Ratings</h2>
+						<h2 class="text-2xl font-bold text-slate-900text-white">Reviews & Ratings</h2>
 						{#if data.reviewStats.total_reviews > 0}
 							<div class="mt-2 flex items-center gap-2">
 								<div class="flex items-center">
@@ -235,22 +235,22 @@
 										/>
 									{/each}
 								</div>
-								<span class="text-sm font-semibold text-slate-900">
+								<span class="text-sm font-semibold text-slate-900text-white">
 									{data.reviewStats.average_rating.toFixed(1)}
 								</span>
-								<span class="text-sm text-slate-600">
+								<span class="text-sm text-slate-600text-slate-400">
 									({data.reviewStats.total_reviews} {data.reviewStats.total_reviews === 1 ? 'review' : 'reviews'})
 								</span>
 							</div>
 						{:else}
-							<p class="mt-2 text-sm text-slate-600">No reviews yet. Be the first to review this product!</p>
+							<p class="mt-2 text-sm text-slate-600text-slate-400">No reviews yet. Be the first to review this product!</p>
 						{/if}
 					</div>
 					{#if data.canReview && !showReviewForm}
 						<button
 							type="button"
 							onclick={toggleReviewForm}
-							class="flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-colors"
+							class="flex items-center gap-2 rounded-lg bg-slate-900bg-slate-100 px-4 py-2 text-sm font-semibold text-whitetext-slate-900 hover:bg-slate-800hover:bg-slate-200 transition-colors"
 						>
 							{#if data.userReview}
 								<EditIcon class="h-4 w-4" />
@@ -265,18 +265,18 @@
 
 				<!-- Review Form -->
 				{#if showReviewForm && data.canReview}
-					<div class="mb-8 rounded-lg border border-slate-200 bg-slate-50 p-6">
-						<h3 class="mb-4 text-lg font-semibold text-slate-900">
+					<div class="mb-8 rounded-lg border border-slate-200border-slate-700 bg-slate-50bg-slate-900 p-6">
+						<h3 class="mb-4 text-lg font-semibold text-slate-900text-white">
 							{editingReview ? 'Edit Your Review' : 'Write a Review'}
 						</h3>
 						{#if form?.error}
-							<div class="mb-4 rounded-lg bg-red-50 border border-red-200 p-3">
-								<p class="text-sm text-red-700">{form.error}</p>
+							<div class="mb-4 rounded-lg bg-red-50bg-red-900/20 border border-red-200border-red-800 p-3">
+								<p class="text-sm text-red-700text-red-400">{form.error}</p>
 							</div>
 						{/if}
 						{#if form?.success}
-							<div class="mb-4 rounded-lg bg-green-50 border border-green-200 p-3">
-								<p class="text-sm text-green-700">{form.message || 'Review submitted successfully!'}</p>
+							<div class="mb-4 rounded-lg bg-green-50bg-green-900/20 border border-green-200border-green-800 p-3">
+								<p class="text-sm text-green-700text-green-400">{form.message || 'Review submitted successfully!'}</p>
 							</div>
 						{/if}
 						<form
@@ -289,7 +289,7 @@
 							{/if}
 							
 							<div class="mb-4">
-								<label for="rating" class="mb-2 block text-sm font-medium text-slate-700">Rating *</label>
+								<label for="rating" class="mb-2 block text-sm font-medium text-slate-700text-slate-300">Rating *</label>
 								<div class="flex items-center gap-2">
 									{#each Array(5) as _, i}
 										<button
@@ -311,7 +311,7 @@
 							</div>
 
 							<div class="mb-4">
-								<label for="comment" class="mb-2 block text-sm font-medium text-slate-700">
+								<label for="comment" class="mb-2 block text-sm font-medium text-slate-700text-slate-300">
 									Review Comment
 								</label>
 								<textarea
@@ -320,7 +320,7 @@
 									bind:value={reviewComment}
 									rows="4"
 									placeholder="Share your experience with this product..."
-									class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+									class="w-full rounded-lg border border-slate-300border-slate-600 bg-whitebg-slate-700 text-slate-900text-white px-3 py-2 focus:border-slate-900focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900focus:ring-slate-400"
 								></textarea>
 							</div>
 
@@ -328,14 +328,14 @@
 								<button
 									type="submit"
 									disabled={selectedRating === 0}
-									class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+									class="rounded-lg bg-slate-900bg-slate-100 px-4 py-2 text-sm font-semibold text-whitetext-slate-900 hover:bg-slate-800hover:bg-slate-200 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 								>
 									{editingReview ? 'Update Review' : 'Submit Review'}
 								</button>
 								<button
 									type="button"
 									onclick={toggleReviewForm}
-									class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+									class="rounded-lg border border-slate-300border-slate-600 bg-whitebg-slate-700 px-4 py-2 text-sm font-semibold text-slate-700text-slate-300 hover:bg-slate-50hover:bg-slate-600 transition-colors"
 								>
 									Cancel
 								</button>
@@ -352,10 +352,10 @@
 								<div class="mb-3 flex items-start justify-between">
 									<div>
 										<div class="mb-1 flex items-center gap-2">
-											<span class="font-semibold text-slate-900">
+											<span class="font-semibold text-slate-900text-white">
 												{review.user.full_name || review.user.email.split('@')[0]}
 											</span>
-											<span class="text-sm text-slate-500">
+											<span class="text-sm text-slate-500text-slate-400">
 												{formatDate(review.created_at)}
 											</span>
 										</div>
@@ -397,17 +397,17 @@
 									{/if}
 								</div>
 								{#if review.comment}
-									<p class="text-slate-700 whitespace-pre-wrap">{review.comment}</p>
+									<p class="text-slate-700text-slate-300 whitespace-pre-wrap">{review.comment}</p>
 								{/if}
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<div class="rounded-lg bg-slate-50 border border-slate-200 p-8 text-center">
-						<MessageSquare class="mx-auto h-12 w-12 text-slate-400 mb-4" />
-						<p class="text-slate-600">No reviews yet.</p>
+					<div class="rounded-lg bg-slate-50bg-slate-900 border border-slate-200border-slate-700 p-8 text-center">
+						<MessageSquare class="mx-auto h-12 w-12 text-slate-400text-slate-500 mb-4" />
+						<p class="text-slate-600text-slate-400">No reviews yet.</p>
 						{#if !data.canReview && data.user}
-							<p class="mt-2 text-sm text-slate-500">
+							<p class="mt-2 text-sm text-slate-500text-slate-400">
 								Purchase this product to leave a review.
 							</p>
 						{/if}

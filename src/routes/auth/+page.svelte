@@ -8,28 +8,29 @@
 	 */
 	let { data, form }: { data: PageData; form: any } = $props();
 
-	let activeTab: 'login' | 'register' = $state(
+	// Compute initial tab from data prop
+	let initialTab = $derived(
 		(data.initialTab === 'login' || data.initialTab === 'register') 
 			? data.initialTab 
 			: 'login'
 	);
+	let activeTab: 'login' | 'register' = $state(initialTab);
 	let isLoading = $state(false);
-	let errorMessage = $state(form?.error || (data.loggedOut ? 'You have been successfully logged out.' : ''));
-	let errorType = $state(form?.type || '');
-
-	// Reset error when switching tabs
+	
+	// Use derived for error message and type to react to form/data changes
+	let computedErrorMessage = $derived(
+		form?.error || (data.loggedOut ? 'You have been successfully logged out.' : '')
+	);
+	let computedErrorType = $derived(form?.type || '');
+	
+	// Local state for error message (can be cleared by user actions)
+	let errorMessage = $state(computedErrorMessage);
+	let errorType = $state(computedErrorType);
+	
+	// Update error message when form/data changes
 	$effect(() => {
-		if (activeTab) {
-			errorMessage = '';
-		}
-	});
-
-	// Update error message when form data changes
-	$effect(() => {
-		if (form?.error) {
-			errorMessage = form.error;
-			errorType = form.type || '';
-		}
+		errorMessage = computedErrorMessage;
+		errorType = computedErrorType;
 	});
 
 	function handleSubmit() {
@@ -85,18 +86,20 @@
 			</div>
 
 			<!-- Error Message -->
-			{#if errorMessage && (activeTab === errorType || !errorType || data.loggedOut)}
+			{@const isLoggedOut = $derived(data.loggedOut)}
+			{@const isSuccess = $derived(form?.success || isLoggedOut)}
+			{#if errorMessage && (activeTab === errorType || !errorType || isLoggedOut)}
 				<div
 					class="mx-6 mt-4 rounded-lg border p-3"
-					class:bg-red-50={!form?.success && !data.loggedOut}
-					class:border-red-200={!form?.success && !data.loggedOut}
-					class:bg-green-50={form?.success || data.loggedOut}
-					class:border-green-200={form?.success || data.loggedOut}
+					class:bg-red-50={!isSuccess}
+					class:border-red-200={!isSuccess}
+					class:bg-green-50={isSuccess}
+					class:border-green-200={isSuccess}
 				>
 					<p
 						class="text-sm"
-						class:text-red-800={!form?.success && !data.loggedOut}
-						class:text-green-800={form?.success || data.loggedOut}
+						class:text-red-800={!isSuccess}
+						class:text-green-800={isSuccess}
 					>
 						{errorMessage}
 					</p>

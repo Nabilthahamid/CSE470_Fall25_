@@ -132,12 +132,12 @@
 									</div>
 									<div class="flex items-center gap-2">
 										{#if order.status !== 'delivered'}
-											<form
-												method="POST"
+										<form
+											method="POST"
 												action="?/deleteOrder"
 												use:enhance={async ({ result, update, cancel }) => {
 													if (!confirm('Are you sure you want to delete this order? This action cannot be undone and all order data will be permanently removed.')) {
-														cancel();
+													cancel();
 														return;
 													}
 													if (update && typeof update === 'function') {
@@ -145,19 +145,19 @@
 													}
 													if (result && result.type === 'success') {
 														await invalidateAll();
-													}
-												}}
-											>
-												<input type="hidden" name="orderId" value={order.id} />
-												<button
-													type="submit"
+												}
+											}}
+										>
+											<input type="hidden" name="orderId" value={order.id} />
+											<button
+												type="submit"
 													class="flex items-center gap-2 rounded-lg border border-red-500 bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
-												>
-													<X class="h-4 w-4" />
+											>
+												<X class="h-4 w-4" />
 													Delete Order
-												</button>
-											</form>
-										{/if}
+											</button>
+										</form>
+									{/if}
 									</div>
 								</div>
 							</div>

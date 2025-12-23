@@ -57,7 +57,7 @@ export const actions: Actions = {
       return { success: true, message: "Order deleted successfully", orderId };
     } catch (error: any) {
       console.error("Error deleting order:", error);
-      return fail(400, {
+        return fail(400, {
         error: error.message || "Failed to delete order. Please try again.",
         orderId,
       });

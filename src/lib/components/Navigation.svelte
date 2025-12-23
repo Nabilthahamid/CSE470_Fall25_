@@ -3,6 +3,8 @@
 	import type { User as SupabaseUser } from "@supabase/supabase-js";
 	import { cart } from "$lib/stores/cart";
 	import { onMount } from "svelte";
+	import { enhance } from "$app/forms";
+	import { invalidateAll } from "$app/navigation";
 
 	interface Props {
 		user: SupabaseUser | null;
@@ -18,6 +20,7 @@
 		unsubscribe = cart.subscribe((items) => {
 			cartItems = items;
 		});
+		
 		return () => {
 			if (unsubscribe) unsubscribe();
 		};
@@ -27,24 +30,19 @@
 		return cartItems.reduce((sum, item) => sum + item.quantity, 0);
 	});
 
-	// Handle logout - submit request and redirect immediately
-	function handleLogout() {
+	// Handle logout form submission
+	async function handleLogout({ result, update }: any) {
+		// Clear cart
 		cart.clear();
 		
-		// Submit logout request (fire and forget)
-		fetch('/auth?/logout', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			credentials: 'same-origin',
-			keepalive: true
-		}).catch(() => {
-			// Ignore errors
-		});
+		// Update the form state (this calls the server action which deletes cookies)
+		if (update && typeof update === 'function') {
+			await update();
+		}
 		
-		// Redirect immediately to login page
-		window.location.href = '/auth?tab=login';
+		// Force a full page reload to ensure user data is cleared from the UI
+		// This ensures the email and profile dropdown disappear immediately
+		window.location.href = '/auth';
 	}
 </script>
 
@@ -78,17 +76,6 @@
 						<Package class="h-5 w-5" />
 						<span class="hidden sm:inline">Orders</span>
 					</a>
-					
-					<!-- Logout Button (Always Visible) -->
-					<button
-						type="button"
-						onclick={handleLogout}
-						class="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
-						title="Logout"
-					>
-						<LogOut class="h-5 w-5" />
-						<span class="hidden sm:inline">Logout</span>
-					</button>
 				{/if}
 				{#if user && role === "user"}
 					<!-- Cart Button (Only for regular users, not admins) -->
@@ -140,14 +127,15 @@
 										Admin Dashboard
 									</a>
 								{/if}
-								<button
-									type="button"
-									onclick={handleLogout}
-									class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded flex items-center gap-2"
-								>
-									<LogOut class="h-4 w-4" />
-									Logout
-								</button>
+								<form method="POST" action="/auth?/logout" use:enhance={handleLogout} class="w-full">
+									<button
+										type="submit"
+										class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded flex items-center gap-2"
+									>
+										<LogOut class="h-4 w-4" />
+										Logout
+									</button>
+								</form>
 							</div>
 						</div>
 					</div>

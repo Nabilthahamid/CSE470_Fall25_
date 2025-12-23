@@ -50,7 +50,7 @@
 					type="text"
 					placeholder="Search products by name, slug, or description..."
 					bind:value={searchQuery}
-					class="w-full rounded-lg border border-slate-300 bg-white py-3 pl-10 pr-10 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+					class="w-full rounded-lg border border-slate-300 bg-white text-slate-900 py-3 pl-10 pr-10 text-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
 				/>
 				{#if searchQuery}
 					<button

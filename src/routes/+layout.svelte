@@ -6,11 +6,11 @@
 	/** Global Layout Component
 	 * Wraps all pages with navigation and main content area
 	 */
-	let { data }: { data: LayoutData } = $props();
+	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 </script>
 
 <Navigation user={data.user} role={data.role} />
-<main>
-	<slot />
+<main class="bg-slate-50 min-h-screen">
+	{@render children()}
 </main>
 

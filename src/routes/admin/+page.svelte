@@ -1,28 +1,23 @@
 <script lang="ts">
 	import { LogOut, Shield, User, Home } from 'lucide-svelte';
 	import type { PageData } from './$types';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 
 	/** View (UI) - Admin Dashboard Page
 	 * This component uses Svelte 5 syntax
 	 */
 	let { data }: { data: PageData } = $props();
 
-	// Handle logout - submit request and redirect immediately
-	function handleLogout() {
-		// Submit logout request (fire and forget)
-		fetch('/auth?/logout', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
-			credentials: 'same-origin',
-			keepalive: true
-		}).catch(() => {
-			// Ignore errors
-		});
+	// Handle logout form submission
+	async function handleLogout({ result, update }: any) {
+		// Update the form state
+		if (update && typeof update === 'function') {
+			await update();
+		}
 		
-		// Redirect immediately to login page
-		window.location.href = '/auth?tab=login';
+		// Invalidate all data
+		await invalidateAll();
 	}
 </script>
 
@@ -52,14 +47,15 @@
 						<Home class="h-4 w-4" />
 						<span class="hidden sm:inline">Home</span>
 					</a>
-					<button
-						type="button"
-						onclick={handleLogout}
-						class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-					>
-						<LogOut class="h-4 w-4" />
-						Logout
-					</button>
+					<form method="POST" action="/auth?/logout" use:enhance={handleLogout} class="inline">
+						<button
+							type="submit"
+							class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+						>
+							<LogOut class="h-4 w-4" />
+							Logout
+						</button>
+					</form>
 				</div>
 			</div>
 		</div>

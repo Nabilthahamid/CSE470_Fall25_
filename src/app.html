@@ -1,16 +1,27 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="grammarly-disable" content="true" />
-    %sveltekit.head%
-  </head>
+    <script>
+      // Ensure light mode - remove dark class and clear theme from localStorage
+      (function () {
+        try {
+          document.documentElement.classList.remove("dark");
+          localStorage.removeItem("theme");
+        } catch (e) {
+          // Ignore errors
+        }
+      })();
+    </script>
+		%sveltekit.head%
+	</head>
   <body
     data-sveltekit-preload-data="hover"
     data-gramm="false"
     data-grammarly="false"
   >
-    <div style="display: contents">%sveltekit.body%</div>
-  </body>
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
 </html>
