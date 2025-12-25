@@ -5,7 +5,6 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params = {};
 
 	let email = form?.customer_email || data.user?.email || '';
 	let firstName = '';

@@ -6,7 +6,6 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	export let params = {};
 
 	let searchInput = data.searchQuery || '';
 
@@ -39,12 +38,12 @@
 	<title>Products - Shop</title>
 </svelte:head>
 
-<div class="products-page-container">
+<div class="bg-gray-50 min-h-screen py-8">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header Section -->
 		<div class="text-center mb-12">
-			<h1 class="page-title-modern text-4xl md:text-5xl mb-4">Our Products</h1>
-			<p class="text-white/80 text-lg">Discover amazing products at great prices</p>
+			<h1 class="text-4xl md:text-5xl mb-4 font-bold text-gray-900">Our Products</h1>
+			<p class="text-gray-600 text-lg">Discover amazing products at great prices</p>
 		</div>
 
 		<!-- Search Bar -->
@@ -58,7 +57,7 @@
 						type="text"
 						bind:value={searchInput}
 						placeholder="🔍 Search products by name or description..."
-						class="search-bar-modern w-full px-6 py-4 text-gray-800 placeholder-gray-400 focus:outline-none text-base"
+						class="w-full px-6 py-4 bg-white border-2 border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-500 text-base"
 					/>
 					{#if searchInput}
 						<button
@@ -73,13 +72,13 @@
 				</div>
 				<button
 					type="submit"
-					class="search-button-modern text-white border-none cursor-pointer transition-all"
+					class="bg-indigo-600 text-white border-none px-6 py-4 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700 font-semibold"
 				>
 					Search
 				</button>
 			</form>
 			{#if data.searchQuery}
-				<div class="search-results-badge">
+				<div class="mt-4 inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
 					<span>🔍</span>
 					<span>Found {data.products.length} {data.products.length === 1 ? 'result' : 'results'} for "{data.searchQuery}"</span>
 				</div>
@@ -107,8 +106,8 @@
 
 		<!-- Products Grid -->
 		{#if data.products.length === 0}
-			<div class="empty-state">
-				<div class="empty-state-icon">🔍</div>
+			<div class="text-center p-12 bg-white rounded-lg">
+				<div class="text-6xl mb-4">🔍</div>
 				<h3 class="text-2xl font-bold text-gray-800 mb-2">
 					{data.searchQuery ? 'No products found' : 'No products available'}
 				</h3>
@@ -121,9 +120,9 @@
 		{:else}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
 				{#each data.products as product (product.id)}
-					<div class="product-card-modern">
+					<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
 						<!-- Product Image -->
-						<div class="product-image-wrapper h-56 relative">
+						<div class="h-56 relative bg-gray-100">
 							{#if product.image_url}
 								<img
 									src={product.image_url}
@@ -133,21 +132,20 @@
 										e.currentTarget.style.display = 'none';
 									}}
 								/>
-								<div class="product-image-overlay"></div>
 							{:else}
-								<div class="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+								<div class="w-full h-full bg-gray-200 flex items-center justify-center">
 									<span class="text-gray-400 text-sm">No image</span>
 								</div>
 							{/if}
 							
 							<!-- Stock Badge -->
 							{#if product.stock > 0}
-								<div class="product-badge stock-badge in-stock">
+								<div class="absolute top-2 right-2 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
 									<span>✓</span>
 									<span>In Stock</span>
 								</div>
 							{:else}
-								<div class="product-badge stock-badge out-of-stock">
+								<div class="absolute top-2 right-2 bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
 									<span>✕</span>
 									<span>Out of Stock</span>
 								</div>
@@ -159,13 +157,13 @@
 							<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 min-h-[3rem]">
 								{product.name}
 							</h3>
-							<p class="product-description text-sm mb-4 min-h-[2.5rem]">
+							<p class="text-sm mb-4 min-h-[2.5rem] text-gray-600 line-clamp-2">
 								{product.description}
 							</p>
 							
 							<!-- Price and Stock -->
 							<div class="mb-4">
-								<p class="product-price-modern text-3xl font-extrabold mb-2">
+								<p class="text-3xl font-bold mb-2 text-gray-900">
 									Tk {product.price.toFixed(2)}
 								</p>
 								{#if product.stock > 0}
@@ -179,7 +177,7 @@
 							<div class="flex gap-2">
 								<a
 									href="/products/{product.id}"
-									class="view-details-button flex-1 text-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold transition-all"
+									class="flex-1 text-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
 								>
 									View Details
 								</a>
@@ -189,9 +187,9 @@
 										<input type="hidden" name="quantity" value="1" />
 										<button
 											type="submit"
-											class="product-button-modern w-full text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold"
+											class="w-full bg-indigo-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-indigo-700 transition-colors"
 										>
-											<span>Add to Cart</span>
+											Add to Cart
 										</button>
 									</form>
 								{:else}

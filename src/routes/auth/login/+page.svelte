@@ -4,15 +4,14 @@
 	import type { PageData, ActionData } from './$types';
 
 	export let form: ActionData;
-	export let params = {}; // Accept params but don't use it (may be passed by SvelteKit)
 </script>
 
 <svelte:head>
 	<title>Login - MVC SvelteKit App</title>
 </svelte:head>
 
-<div class="flex items-center justify-center min-h-screen p-8 bg-gradient-to-br from-indigo-500 to-purple-600">
-	<div class="bg-white/95 p-10 rounded-xl shadow-2xl w-full max-w-md">
+<div class="flex items-center justify-center min-h-screen p-8 bg-gray-50">
+	<div class="bg-white p-10 rounded-lg border border-gray-200 shadow-sm w-full max-w-md">
 		<h1 class="m-0 mb-2 text-gray-800 text-center text-3xl font-bold">Login</h1>
 		<p class="text-center text-gray-600 mb-8">Sign in to your account</p>
 

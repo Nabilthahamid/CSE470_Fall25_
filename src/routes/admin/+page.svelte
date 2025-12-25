@@ -4,7 +4,6 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	export let params = {}; // Accept params but don't use it (may be passed by SvelteKit)
 </script>
 
 <svelte:head>
@@ -12,14 +11,16 @@
 </svelte:head>
 
 <div class="max-w-7xl mx-auto p-8">
-	<h1 class="mb-4 text-center text-3xl font-bold">Admin Dashboard</h1>
-	<p class="text-center text-gray-400 mb-8 text-lg">Welcome, {data.user?.user_metadata?.name || data.user?.email}</p>
+	<h1 class="mb-4 text-center text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+	<p class="text-center text-gray-600 mb-8 text-lg">
+		Welcome, {data.user?.user_metadata?.name || data.user?.email}
+	</p>
 
 	<!-- Notifications Section -->
 	{#if data.unreadCount > 0}
-		<div class="bg-yellow-500/10 p-6 rounded-lg border border-yellow-500/30 mb-6">
+		<div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mb-6">
 			<div class="flex justify-between items-center mb-4">
-				<h2 class="m-0 text-xl font-semibold">
+				<h2 class="m-0 text-xl font-semibold text-gray-900">
 					🔔 Notifications ({data.unreadCount} unread)
 				</h2>
 				<form method="POST" action="?/markAllRead" use:enhance>
@@ -33,12 +34,10 @@
 			</div>
 			<div class="space-y-3">
 				{#each data.notifications.slice(0, 5) as notification (notification.id)}
-					<div
-						class="bg-white/5 p-4 rounded border border-white/10 flex justify-between items-start"
-					>
+					<div class="bg-white p-4 rounded border border-gray-200 flex justify-between items-start">
 						<div class="flex-1">
-							<h3 class="m-0 mb-1 font-semibold">{notification.title}</h3>
-							<p class="m-0 text-sm text-gray-400">{notification.message}</p>
+							<h3 class="m-0 mb-1 font-semibold text-gray-900">{notification.title}</h3>
+							<p class="m-0 text-sm text-gray-600">{notification.message}</p>
 							{#if notification.product_name}
 								<p class="mt-2 text-xs text-gray-500">
 									Product: {notification.product_name}
@@ -61,7 +60,7 @@
 				{/each}
 			</div>
 			{#if data.notifications.length > 5}
-				<p class="mt-4 text-sm text-gray-400 text-center">
+				<p class="mt-4 text-sm text-gray-600 text-center">
 					And {data.notifications.length - 5} more notifications...
 				</p>
 			{/if}
@@ -69,18 +68,22 @@
 	{/if}
 
 	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-		<div class="bg-white/5 p-6 rounded-lg border border-white/10">
-			<h2 class="m-0 mb-4 text-xl font-semibold">Admin Controls</h2>
-			<p class="mb-4">You have administrator privileges.</p>
+		<!-- Admin Controls Panel -->
+		<div class="bg-white p-6 rounded-lg border border-gray-200">
+			<h2 class="m-0 mb-4 text-xl font-semibold text-gray-900">Admin Controls</h2>
+			<p class="mb-4 text-gray-700">You have administrator privileges.</p>
 			<ul class="list-none p-0 m-4 mt-0">
-				<li class="py-2 border-b border-white/10">Role: <strong>{data.user?.role}</strong></li>
-				<li class="py-2 border-b border-white/10">Email: {data.user?.email}</li>
-				<li class="py-2 border-b border-white/10">User ID: {data.user?.id}</li>
+				<li class="py-2 border-b border-gray-200 text-gray-700">
+					Role: <strong class="text-gray-900">{data.user?.role}</strong>
+				</li>
+				<li class="py-2 border-b border-gray-200 text-gray-700">Email: {data.user?.email}</li>
+				<li class="py-2 border-b border-gray-200 text-gray-700">User ID: {data.user?.id}</li>
 			</ul>
 		</div>
 
-		<div class="bg-white/5 p-6 rounded-lg border border-white/10">
-			<h2 class="m-0 mb-4 text-xl font-semibold">Quick Actions</h2>
+		<!-- Quick Actions Panel -->
+		<div class="bg-white p-6 rounded-lg border border-gray-200">
+			<h2 class="m-0 mb-4 text-xl font-semibold text-gray-900">Quick Actions</h2>
 			<div class="flex flex-col gap-3 mt-4">
 				<a
 					href="/admin/products"
@@ -115,9 +118,12 @@
 			</div>
 		</div>
 
-		<div class="bg-yellow-500/10 p-6 rounded-lg border border-yellow-500/30">
-			<h2 class="m-0 mb-4 text-xl font-semibold">⚠️ Important</h2>
-			<p>Role changes can only be made from the Supabase dashboard. The application cannot modify user roles for security reasons.</p>
+		<!-- Important Notice Panel -->
+		<div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+			<h2 class="m-0 mb-4 text-xl font-semibold text-gray-900">⚠️ Important</h2>
+			<p class="text-gray-700">
+				Role changes can only be made from the Supabase dashboard. The application cannot modify user roles for security reasons.
+			</p>
 		</div>
 	</div>
 </div>

@@ -19,14 +19,27 @@ class ProductRepositoryImpl implements ProductRepository {
 		}
 
 		const searchTerm = `%${query.trim()}%`;
-		const { data, error } = await supabase
+		
+		// Search in both name and description fields
+		const { data: nameData } = await supabase
 			.from('products')
 			.select('*')
-			.or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`)
+			.ilike('name', searchTerm)
 			.order('created_at', { ascending: false });
-
-		if (error) throw new Error(`Failed to search products: ${error.message}`);
-		return data || [];
+		
+		const { data: descData } = await supabase
+			.from('products')
+			.select('*')
+			.ilike('description', searchTerm)
+			.order('created_at', { ascending: false });
+		
+		// Combine and deduplicate results
+		const combined = [...(nameData || []), ...(descData || [])];
+		const unique = combined.filter((product, index, self) => 
+			index === self.findIndex(p => p.id === product.id)
+		);
+		
+		return unique;
 	}
 
 	async getById(id: string): Promise<Product | null> {

@@ -65,16 +65,28 @@ class NotificationRepositoryImpl implements NotificationRepository {
 	}
 
 	async getUnreadCount(userId?: string): Promise<number> {
-		let query = supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false);
+		try {
+			let query = supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false);
 
-		if (userId) {
-			query = query.eq('user_id', userId);
+			if (userId) {
+				query = query.eq('user_id', userId);
+			}
+
+			const { count, error } = await query;
+
+			if (error) {
+				// If table doesn't exist or network error, return 0
+				if (error.code === 'PGRST301' || error.message.includes('fetch')) {
+					return 0;
+				}
+				throw new Error(`Failed to fetch unread count: ${error.message}`);
+			}
+			return count || 0;
+		} catch (error) {
+			// Handle any network or unexpected errors gracefully
+			console.error('Error getting unread count:', error);
+			return 0;
 		}
-
-		const { count, error } = await query;
-
-		if (error) throw new Error(`Failed to fetch unread count: ${error.message}`);
-		return count || 0;
 	}
 
 	async create(input: CreateNotificationDTO): Promise<Notification> {

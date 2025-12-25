@@ -3,7 +3,6 @@
 	import type { ErrorComponent } from './$types';
 
 	export let error: ErrorComponent;
-	export let params = {}; // Accept params but don't use it (may be passed by SvelteKit)
 </script>
 
 <svelte:head>

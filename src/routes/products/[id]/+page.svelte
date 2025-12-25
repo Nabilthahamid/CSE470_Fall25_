@@ -93,7 +93,7 @@
 		<!-- Product Image Section -->
 		<div>
 			<!-- Main Image -->
-			<div class="product-image-container mb-4 rounded-lg overflow-hidden aspect-square">
+			<div class="mb-4 rounded-lg overflow-hidden aspect-square border border-gray-200 bg-gray-50">
 				{#if currentImage}
 					<img
 						src={currentImage}
@@ -117,9 +117,9 @@
 						<button
 							type="button"
 							on:click={() => (selectedImageIndex = index)}
-							class="thumbnail-button w-20 h-20 rounded overflow-hidden {selectedImageIndex === index
-								? 'active border-indigo-600'
-								: 'border-gray-200'}"
+							class="w-20 h-20 rounded overflow-hidden border-2 transition-colors {selectedImageIndex === index
+								? 'border-indigo-600'
+								: 'border-gray-200 hover:border-gray-300'}"
 						>
 							<img src={image} alt="Thumbnail {index + 1}" class="w-full h-full object-cover" />
 						</button>
@@ -135,7 +135,7 @@
 			<!-- Rating Display -->
 			<div class="mb-4 flex items-center gap-2">
 				{#if data.averageRating > 0}
-					<div class="star-rating flex items-center">
+					<div class="flex items-center">
 						{#each Array(5) as _, i}
 							<svg
 								class="w-5 h-5 {i < Math.round(data.averageRating)
@@ -164,7 +164,7 @@
 
 			<!-- Variant Selection (Optional - can be customized) -->
 			<div class="mb-6">
-				<label class="block mb-2 font-semibold text-gray-900">Variant</label>
+				<div class="block mb-2 font-semibold text-gray-900">Variant</div>
 				<div class="flex gap-2">
 					<button
 						type="button"
@@ -180,28 +180,29 @@
 
 			<!-- Quantity Selector -->
 			<div class="mb-6">
-				<label class="block mb-2 font-semibold text-gray-900">Quantity</label>
+				<label for="quantity-input" class="block mb-2 font-semibold text-gray-900">Quantity</label>
 				<div class="flex items-center gap-3 w-fit">
 					<button
 						type="button"
 						on:click={decreaseQuantity}
 						disabled={quantity <= 1}
-						class="quantity-button w-10 h-10 border-2 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+						class="w-10 h-10 border-2 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-gray-100 transition-colors"
 					>
 						-
 					</button>
 					<input
+						id="quantity-input"
 						type="number"
 						bind:value={quantity}
 						min="1"
 						max={data.product.stock}
-						class="quantity-selector w-16 text-center border-2 rounded py-2 focus-ring"
+						class="w-16 text-center border-2 border-gray-300 rounded py-2 focus:outline-none focus:border-indigo-500"
 					/>
 					<button
 						type="button"
 						on:click={increaseQuantity}
 						disabled={quantity >= data.product.stock}
-						class="quantity-button w-10 h-10 border-2 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+						class="w-10 h-10 border-2 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed font-semibold hover:bg-gray-100 transition-colors"
 					>
 						+
 					</button>
@@ -216,15 +217,15 @@
 						<input type="hidden" name="quantity" bind:value={quantity} />
 						<button
 							type="submit"
-							class="btn-secondary w-full px-6 py-3 rounded font-semibold"
+							class="w-full px-6 py-3 rounded font-semibold bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors"
 						>
-							<span>Add to cart</span>
+							Add to cart
 						</button>
 					</form>
 					<button
 						type="button"
 						on:click={buyNow}
-						class="btn-primary flex-1 px-6 py-3 rounded font-semibold text-white"
+						class="flex-1 px-6 py-3 rounded font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
 					>
 						Buy it now
 					</button>
@@ -286,19 +287,19 @@
 	<!-- You may also like Section -->
 	{#if data.relatedProducts && data.relatedProducts.length > 0}
 		<div class="mb-12">
-			<h2 class="section-heading text-2xl font-bold mb-6">You may also like</h2>
+			<h2 class="text-2xl font-bold mb-6 text-gray-900">You may also like</h2>
 			<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 				{#each data.relatedProducts as relatedProduct}
 					<a
 						href="/products/{relatedProduct.id}"
-						class="related-product-card block rounded-lg overflow-hidden"
+						class="block rounded-lg overflow-hidden bg-white border border-gray-200 hover:shadow-md transition-shadow"
 					>
 						<div class="overflow-hidden">
 							{#if relatedProduct.image_url}
 								<img
 									src={relatedProduct.image_url}
 									alt={relatedProduct.name}
-									class="related-product-image w-full h-32 object-cover"
+									class="w-full h-32 object-cover"
 									on:error={(e) => {
 										e.currentTarget.style.display = 'none';
 									}}
@@ -336,9 +337,9 @@
 	{/if}
 
 	<!-- Reviews Section -->
-	<div class="reviews-section rounded-lg p-6 md:p-8">
+	<div class="bg-white rounded-lg p-6 md:p-8 border border-gray-200">
 		<div class="flex justify-between items-center mb-6">
-			<h2 class="section-heading text-2xl font-semibold m-0 text-gray-900">Reviews & Ratings</h2>
+			<h2 class="text-2xl font-semibold m-0 text-gray-900">Reviews & Ratings</h2>
 			{#if data.canReview && !data.userReview && !showReviewForm}
 				<button
 					on:click={() => {
@@ -369,7 +370,7 @@
 					<form method="POST" action="?/updateReview" use:enhance>
 						<input type="hidden" name="review_id" value={data.userReview.id} />
 						<div class="mb-4">
-							<label class="block mb-2 font-medium">Rating</label>
+							<div class="block mb-2 font-medium">Rating</div>
 							<div class="flex gap-2">
 								{#each Array(5) as _, i}
 									<button
@@ -431,7 +432,7 @@
 				{:else}
 					<form method="POST" action="?/createReview" use:enhance>
 						<div class="mb-4">
-							<label class="block mb-2 font-medium">Rating</label>
+							<div class="block mb-2 font-medium">Rating</div>
 							<div class="flex gap-2">
 								{#each Array(5) as _, i}
 									<button
@@ -499,7 +500,7 @@
 		{:else}
 			<div class="space-y-4">
 				{#each data.reviews as review (review.id)}
-					<div class="review-card p-4 rounded-lg">
+					<div class="bg-white p-4 rounded-lg border border-gray-200">
 						<div class="flex justify-between items-start mb-2">
 							<div>
 								<p class="font-semibold m-0 text-gray-900">{review.user_name || 'Anonymous'}</p>

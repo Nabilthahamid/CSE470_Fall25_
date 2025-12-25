@@ -7,7 +7,6 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params = {}; // Accept params but don't use it (may be passed by SvelteKit)
 
 	let startDate = '';
 	let endDate = '';

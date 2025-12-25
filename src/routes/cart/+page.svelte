@@ -5,7 +5,6 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params = {};
 </script>
 
 <svelte:head>
@@ -40,8 +39,8 @@
 	{:else}
 		<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 			<div class="lg:col-span-2">
-				<div class="bg-white/5 rounded-lg border border-white/10 overflow-hidden">
-					<div class="divide-y divide-white/10">
+				<div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+					<div class="divide-y divide-gray-200">
 						{#each data.cartItems as item (item.id)}
 							<div class="p-6 flex gap-4">
 								{#if item.product?.image_url}
@@ -52,26 +51,27 @@
 									/>
 								{/if}
 								<div class="flex-1">
-									<h3 class="m-0 mb-2 text-xl font-semibold">
+									<h3 class="m-0 mb-2 text-xl font-semibold text-gray-900">
 										{item.product?.name || 'Unknown Product'}
 									</h3>
-									<p class="text-gray-400 text-sm mb-4">
+									<p class="text-gray-600 text-sm mb-4">
 										{item.product?.description || 'No description'}
 									</p>
-									<p class="text-indigo-400 text-lg font-bold mb-4">
-										${item.product?.price.toFixed(2) || '0.00'}
+									<p class="text-indigo-600 text-lg font-bold mb-4">
+										Tk {item.product?.price.toFixed(2) || '0.00'}
 									</p>
 									<div class="flex items-center gap-4">
 										<form method="POST" action="?/update" use:enhance class="flex items-center gap-2">
 											<input type="hidden" name="item_id" value={item.id} />
-											<label class="text-sm">Qty:</label>
+											<label for="quantity-{item.id}" class="text-sm">Qty:</label>
 											<input
+												id="quantity-{item.id}"
 												type="number"
 												name="quantity"
 												value={item.quantity}
 												min="1"
 												max={item.product?.stock || 1}
-												class="w-20 p-2 border-2 border-white/10 rounded bg-white/5 text-base"
+												class="w-20 p-2 border-2 border-gray-300 rounded bg-white text-base"
 											/>
 											<button
 												type="submit"
@@ -92,8 +92,8 @@
 									</div>
 								</div>
 								<div class="text-right">
-									<p class="text-xl font-bold">
-										${((item.product?.price || 0) * item.quantity).toFixed(2)}
+									<p class="text-xl font-bold text-gray-900">
+										Tk {((item.product?.price || 0) * item.quantity).toFixed(2)}
 									</p>
 								</div>
 							</div>
@@ -103,16 +103,16 @@
 			</div>
 
 			<div class="lg:col-span-1">
-				<div class="bg-white/5 p-6 rounded-lg border border-white/10 sticky top-8">
-					<h2 class="mb-4 text-xl font-semibold">Order Summary</h2>
-					<div class="mb-4 pb-4 border-b border-white/10">
-						<div class="flex justify-between mb-2">
+				<div class="bg-white p-6 rounded-lg border border-gray-200 sticky top-8">
+					<h2 class="mb-4 text-xl font-semibold text-gray-900">Order Summary</h2>
+					<div class="mb-4 pb-4 border-b border-gray-200">
+						<div class="flex justify-between mb-2 text-gray-700">
 							<span>Subtotal:</span>
-							<span>${data.total.toFixed(2)}</span>
+							<span>Tk {data.total.toFixed(2)}</span>
 						</div>
-						<div class="flex justify-between">
+						<div class="flex justify-between text-gray-900">
 							<span>Total:</span>
-							<span class="text-xl font-bold text-indigo-400">${data.total.toFixed(2)}</span>
+							<span class="text-xl font-bold text-indigo-600">Tk {data.total.toFixed(2)}</span>
 						</div>
 					</div>
 					<a
@@ -123,7 +123,7 @@
 					</a>
 					<a
 						href="/"
-						class="block w-full text-center mt-3 text-indigo-400 no-underline hover:underline"
+						class="block w-full text-center mt-3 text-indigo-600 no-underline hover:underline"
 					>
 						Continue Shopping
 					</a>
