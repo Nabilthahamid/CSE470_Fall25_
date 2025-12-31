@@ -5,19 +5,38 @@
 
 	export let data: PageData;
 	export let form: ActionData;
+	export const params = {};
 
-	let email = form?.customer_email || data.user?.email || '';
+	// Auto-fill from user profile if available
+	let email = form?.customer_email || data.userProfile?.customer_email || data.user?.email || '';
 	let firstName = '';
 	let lastName = '';
-	let country = 'Bangladesh';
-	let address = '';
-	let city = '';
-	let postalCode = '';
-	let phone = '';
+	let country = data.userProfile?.customer_country || 'Bangladesh';
+	let address = data.userProfile?.customer_address || '';
+	let city = data.userProfile?.customer_city || '';
+	let postalCode = data.userProfile?.customer_postal_code || '';
+	let phone = data.userProfile?.customer_phone || '';
 	let emailNewsletter = false;
 	let saveInfo = false;
 	let shippingMethod = 'inside_dhaka';
 	let paymentMethod = 'cod';
+
+	// Parse full name into first and last name if available from profile
+	function initializeFromProfile() {
+		if (data.userProfile?.customer_name) {
+			const nameParts = data.userProfile.customer_name.trim().split(' ');
+			if (nameParts.length > 1) {
+				lastName = nameParts.pop() || '';
+				firstName = nameParts.join(' ');
+			} else {
+				lastName = nameParts[0] || '';
+				firstName = '';
+			}
+		}
+	}
+
+	// Initialize on mount
+	initializeFromProfile();
 
 	const shippingMethods = [
 		{ value: 'inside_dhaka', label: 'Inside Dhaka', price: 70 },
@@ -52,11 +71,22 @@
 				<div class="bg-white p-6 rounded-lg border border-gray-200 mb-6">
 					<div class="flex justify-between items-center mb-6">
 						<h2 class="text-xl font-semibold m-0">Contact</h2>
-						{#if !data.user}
-							<a href="/auth/login" class="text-blue-600 no-underline hover:underline text-sm">
-								Sign in
-							</a>
-						{/if}
+						<div class="flex items-center gap-4">
+							{#if data.userProfile?.customer_name && data.userProfile?.customer_address && data.userProfile?.customer_phone && data.userProfile?.customer_city}
+								<span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-semibold">
+									✓ Profile Info Loaded
+								</span>
+							{/if}
+							{#if data.user}
+								<a href="/profile" class="text-blue-600 no-underline hover:underline text-sm">
+									Edit Profile
+								</a>
+							{:else}
+								<a href="/auth/login" class="text-blue-600 no-underline hover:underline text-sm">
+									Sign in
+								</a>
+							{/if}
+						</div>
 					</div>
 
 					<div class="mb-4">

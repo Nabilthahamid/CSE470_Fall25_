@@ -5,7 +5,6 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params: { id: string }; // Accept params from dynamic route
 </script>
 
 <svelte:head>

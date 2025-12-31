@@ -4,6 +4,28 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
+	export const params = {};
+
+	let showPopup = false;
+	let popupMessage = '';
+	let popupType: 'success' | 'error' = 'success';
+	let popupTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function showPopupMessage(message: string, type: 'success' | 'error' = 'success') {
+		popupMessage = message;
+		popupType = type;
+		showPopup = true;
+		if (popupTimeout) clearTimeout(popupTimeout);
+		popupTimeout = setTimeout(() => {
+			showPopup = false;
+		}, 3000);
+	}
+
+	function closePopup() {
+		showPopup = false;
+		if (popupTimeout) clearTimeout(popupTimeout);
+	}
+
 </script>
 
 <svelte:head>
@@ -24,6 +46,41 @@
 				Browse All Products →
 			</a>
 		</div>
+
+		<!-- Popup Modal -->
+		{#if showPopup}
+			<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" on:click={closePopup} on:keydown={(e) => e.key === 'Escape' && closePopup()}>
+				<div class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" on:click|stopPropagation>
+					<div class="p-6 text-center">
+						<div class="mb-4">
+							{#if popupType === 'success'}
+								<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+									<svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+									</svg>
+								</div>
+							{:else}
+								<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
+									<svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+									</svg>
+								</div>
+							{/if}
+						</div>
+						<h3 class="text-xl font-bold mb-2 {popupType === 'success' ? 'text-green-800' : 'text-red-800'}">
+							{popupType === 'success' ? 'Success!' : 'Error!'}
+						</h3>
+						<p class="text-gray-700 mb-6">{popupMessage}</p>
+						<button
+							on:click={closePopup}
+							class="px-6 py-2 {popupType === 'success' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white rounded-lg font-semibold transition-colors"
+						>
+							OK
+						</button>
+					</div>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Messages -->
 		{#if data.success}
@@ -116,7 +173,29 @@
 									View Details
 								</a>
 								{#if product.stock > 0}
-									<form method="POST" action="/cart/add?redirect=/" use:enhance class="flex-1">
+									<form 
+										method="POST" 
+										action="/cart/add" 
+										use:enhance={({ result }) => {
+											return async () => {
+												if (result.type === 'success') {
+													try {
+														const data = await result.json();
+														if (data.success) {
+															showPopupMessage('Added to cart successfully!', 'success');
+														} else {
+															showPopupMessage(data.error || 'Failed to add to cart', 'error');
+														}
+													} catch (e) {
+														showPopupMessage('Added to cart successfully!', 'success');
+													}
+												} else if (result.type === 'failure') {
+													showPopupMessage('Failed to add to cart. Please try again.', 'error');
+												}
+											};
+										}}
+										class="flex-1"
+									>
 										<input type="hidden" name="product_id" value={product.id} />
 										<input type="hidden" name="quantity" value="1" />
 										<button

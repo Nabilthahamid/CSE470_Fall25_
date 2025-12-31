@@ -5,19 +5,25 @@ import { requireAdmin } from '$lib/utils/auth';
 import { productService } from '$lib/services/ProductService';
 import { handleError } from '$lib/utils/errors';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	requireAdmin(locals.user);
 
 	try {
-		const products = await productService.getAllProducts();
+		const searchQuery = url.searchParams.get('search') || '';
+		const products = searchQuery.trim()
+			? await productService.searchProducts(searchQuery)
+			: await productService.getAllProducts();
+		
 		return {
 			products,
+			searchQuery,
 			error: null
 		};
 	} catch (error) {
 		const { message } = handleError(error);
 		return {
 			products: [],
+			searchQuery: '',
 			error: message
 		};
 	}

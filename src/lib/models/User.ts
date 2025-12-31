@@ -5,6 +5,13 @@ export interface User {
 	name: string;
 	password_hash: string;
 	role: 'user' | 'admin';
+	// Checkout/Profile fields
+	customer_name?: string;
+	customer_address?: string;
+	customer_phone?: string;
+	customer_city?: string;
+	customer_postal_code?: string;
+	customer_country?: string;
 	created_at?: string;
 	updated_at?: string;
 }
@@ -17,6 +24,13 @@ export interface CreateUserDTO {
 export interface UpdateUserDTO {
 	email?: string;
 	name?: string;
+	// Checkout/Profile fields
+	customer_name?: string;
+	customer_address?: string;
+	customer_phone?: string;
+	customer_city?: string;
+	customer_postal_code?: string;
+	customer_country?: string;
 }
 
 export interface UserRepository {

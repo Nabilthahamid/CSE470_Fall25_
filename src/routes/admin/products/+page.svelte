@@ -1,15 +1,32 @@
 <!-- VIEW: Admin products management page -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import type { PageData, ActionData } from './$types';
 
 	export let data: PageData;
 	export let form: ActionData;
+	export const params = {};
 
 	let showCreateForm = false;
+	let searchInput = data.searchQuery || '';
 
 	function toggleCreateForm() {
 		showCreateForm = !showCreateForm;
+	}
+
+	function handleSearch() {
+		const query = searchInput.trim();
+		if (query) {
+			goto(`/admin/products?search=${encodeURIComponent(query)}`);
+		} else {
+			goto('/admin/products');
+		}
+	}
+
+	function clearSearch() {
+		searchInput = '';
+		goto('/admin/products');
 	}
 </script>
 
@@ -94,10 +111,58 @@
 	{/if}
 
 	<div class="mt-8">
-		<h2 class="mb-6 text-2xl font-semibold">All Products ({data.products.length})</h2>
+		<div class="mb-6 flex gap-4 items-end">
+			<div class="flex-1">
+				<label for="search" class="block mb-2 font-medium">Search Products</label>
+				<div class="flex gap-2">
+					<input
+						type="text"
+						id="search"
+						bind:value={searchInput}
+						placeholder="Search by name or description..."
+						class="flex-1 p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						on:keydown={(e) => {
+							if (e.key === 'Enter') {
+								handleSearch();
+							}
+						}}
+					/>
+					<button
+						type="button"
+						on:click={handleSearch}
+						class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-indigo-700"
+					>
+						Search
+					</button>
+					{#if data.searchQuery}
+						<button
+							type="button"
+							on:click={clearSearch}
+							class="bg-gray-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-gray-700"
+						>
+							Clear
+						</button>
+					{/if}
+				</div>
+			</div>
+		</div>
+
+		<h2 class="mb-6 text-2xl font-semibold">
+			{#if data.searchQuery}
+				Search Results ({data.products.length})
+			{:else}
+				All Products ({data.products.length})
+			{/if}
+		</h2>
 
 		{#if data.products.length === 0}
-			<p class="text-center p-8 text-gray-400">No products found. Create your first product!</p>
+			<p class="text-center p-8 text-gray-400">
+				{#if data.searchQuery}
+					No products found matching "{data.searchQuery}". Try a different search term.
+				{:else}
+					No products found. Create your first product!
+				{/if}
+			</p>
 		{:else}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
 				{#each data.products as product (product.id)}

@@ -7,6 +7,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
+	export const params = {};
 
 	let startDate = '';
 	let endDate = '';
@@ -15,6 +16,7 @@
 	let showFilters = false;
 
 	onMount(async () => {
+		if (typeof window === 'undefined') return; // Only run on client
 		try {
 			const allProducts = await productService.getAllProducts();
 			products = allProducts.map((p) => ({ id: p.id, name: p.name }));

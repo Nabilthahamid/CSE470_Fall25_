@@ -5,6 +5,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
+	export const params = {};
 </script>
 
 <svelte:head>
@@ -72,13 +73,11 @@
 												min="1"
 												max={item.product?.stock || 1}
 												class="w-20 p-2 border-2 border-gray-300 rounded bg-white text-base"
+												on:change={(e) => {
+													const form = e.currentTarget.form;
+													if (form) form.requestSubmit();
+												}}
 											/>
-											<button
-												type="submit"
-												class="bg-indigo-600 text-white border-none px-4 py-2 rounded cursor-pointer text-sm transition-colors hover:bg-indigo-700"
-											>
-												Update
-											</button>
 										</form>
 										<form method="POST" action="?/remove" use:enhance>
 											<input type="hidden" name="item_id" value={item.id} />

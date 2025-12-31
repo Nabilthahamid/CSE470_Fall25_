@@ -69,6 +69,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			canReview,
 			userReview,
 			relatedProducts,
+			user: locals.user || null,
 			error: null
 		};
 	} catch (err) {

@@ -5,7 +5,6 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params: { id: string };
 
 	let showReviewForm = false;
 	let rating = 5;
@@ -13,6 +12,28 @@
 	let quantity = 1;
 	let selectedImageIndex = 0;
 	let selectedVariant = 'default';
+	let showPopup = false;
+	let popupMessage = '';
+	let popupType: 'success' | 'error' = 'success';
+	let popupTimeout: ReturnType<typeof setTimeout> | null = null;
+	let editingReviewId: string | null = null;
+	let editingRating = 5;
+	let editingComment = '';
+
+	function showPopupMessage(message: string, type: 'success' | 'error' = 'success') {
+		popupMessage = message;
+		popupType = type;
+		showPopup = true;
+		if (popupTimeout) clearTimeout(popupTimeout);
+		popupTimeout = setTimeout(() => {
+			showPopup = false;
+		}, 3000);
+	}
+
+	function closePopup() {
+		showPopup = false;
+		if (popupTimeout) clearTimeout(popupTimeout);
+	}
 
 	// Create array of images (main image + thumbnails if available)
 	$: productImages = data.product.image_url ? [data.product.image_url] : [];
@@ -22,12 +43,9 @@
 		showReviewForm = false;
 		rating = 5;
 		comment = '';
-	}
-
-	// Initialize review form if user already has a review
-	$: if (data.userReview && !showReviewForm) {
-		rating = data.userReview.rating || 5;
-		comment = data.userReview.comment || '';
+		editingReviewId = null;
+		editingRating = 5;
+		editingComment = '';
 	}
 
 	function increaseQuantity() {
@@ -48,19 +66,23 @@
 			formData.append('product_id', data.product.id);
 			formData.append('quantity', quantity.toString());
 
-			const response = await fetch('/cart/add?redirect=/checkout', {
+			const response = await fetch('/cart/add', {
 				method: 'POST',
 				body: formData
 			});
 
-			if (response.redirected) {
-				window.location.href = response.url;
+			const result = await response.json();
+			if (result.success) {
+				showPopupMessage('Added to cart successfully!', 'success');
+				setTimeout(() => {
+					window.location.href = '/checkout';
+				}, 1500);
 			} else {
-				window.location.href = '/checkout';
+				showPopupMessage(result.error || 'Failed to add to cart', 'error');
 			}
 		} catch (error) {
 			console.error('Error adding to cart:', error);
-			alert('Failed to add to cart. Please try again.');
+			showPopupMessage('Failed to add to cart. Please try again.', 'error');
 		}
 	}
 </script>
@@ -70,6 +92,40 @@
 </svelte:head>
 
 <div class="max-w-7xl mx-auto p-4 md:p-8">
+	<!-- Popup Modal -->
+	{#if showPopup}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" on:click={closePopup} on:keydown={(e) => e.key === 'Escape' && closePopup()}>
+			<div class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" on:click|stopPropagation>
+				<div class="p-6 text-center">
+					<div class="mb-4">
+						{#if popupType === 'success'}
+							<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
+								<svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+								</svg>
+							</div>
+						{:else}
+							<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
+								<svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+								</svg>
+							</div>
+						{/if}
+					</div>
+					<h3 class="text-xl font-bold mb-2 {popupType === 'success' ? 'text-green-800' : 'text-red-800'}">
+						{popupType === 'success' ? 'Success!' : 'Error!'}
+					</h3>
+					<p class="text-gray-700 mb-6">{popupMessage}</p>
+					<button
+						on:click={closePopup}
+						class="px-6 py-2 {popupType === 'success' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white rounded-lg font-semibold transition-colors"
+					>
+						OK
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
 	{#if data.error}
 		<div class="bg-red-50 text-red-700 p-4 rounded-lg mb-4 border border-red-200">
 			{data.error}
@@ -212,7 +268,29 @@
 			<!-- Action Buttons -->
 			<div class="flex gap-4 mb-6">
 				{#if data.product.stock > 0}
-					<form method="POST" action="/cart/add?redirect=/products/{params.id}" use:enhance class="flex-1">
+					<form 
+						method="POST" 
+						action="/cart/add" 
+						use:enhance={({ result }) => {
+							return async () => {
+								if (result.type === 'success') {
+									try {
+										const data = await result.json();
+										if (data.success) {
+														showPopupMessage('Added to cart successfully!', 'success');
+										} else {
+														showPopupMessage(data.error || 'Failed to add to cart', 'error');
+										}
+									} catch (e) {
+														showPopupMessage('Added to cart successfully!', 'success');
+									}
+								} else if (result.type === 'failure') {
+													showPopupMessage('Failed to add to cart. Please try again.', 'error');
+								}
+							};
+						}}
+						class="flex-1"
+					>
 						<input type="hidden" name="product_id" value={data.product.id} />
 						<input type="hidden" name="quantity" bind:value={quantity} />
 						<button
@@ -315,8 +393,25 @@
 							<p class="text-lg font-bold text-indigo-600 mb-2">Tk {relatedProduct.price.toFixed(2)}</p>
 							<form
 								method="POST"
-								action="/cart/add?redirect=/products/{params.id}"
-								use:enhance
+								action="/cart/add"
+								use:enhance={({ result }) => {
+									return async () => {
+										if (result.type === 'success') {
+											try {
+												const data = await result.json();
+												if (data.success) {
+														showPopupMessage('Added to cart successfully!', 'success');
+												} else {
+														showPopupMessage(data.error || 'Failed to add to cart', 'error');
+												}
+											} catch (e) {
+														showPopupMessage('Added to cart successfully!', 'success');
+											}
+										} else if (result.type === 'failure') {
+													showPopupMessage('Failed to add to cart. Please try again.', 'error');
+										}
+									};
+								}}
 								on:submit|stopPropagation
 								class="mt-2"
 							>
@@ -360,137 +455,68 @@
 			</p>
 		{/if}
 
-		<!-- Review Form -->
-		{#if (showReviewForm || data.userReview) && data.canReview}
+		<!-- Review Form (only for new reviews) -->
+		{#if showReviewForm && data.canReview && !data.userReview}
 			<div class="mb-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
-				<h3 class="text-xl font-semibold mb-4 text-gray-900">
-					{data.userReview ? 'Edit Your Review' : 'Write a Review'}
-				</h3>
-				{#if data.userReview}
-					<form method="POST" action="?/updateReview" use:enhance>
-						<input type="hidden" name="review_id" value={data.userReview.id} />
-						<div class="mb-4">
-							<div class="block mb-2 font-medium">Rating</div>
-							<div class="flex gap-2">
-								{#each Array(5) as _, i}
-									<button
-										type="button"
-										on:click={() => {
-											rating = i + 1;
-										}}
-										class="bg-transparent border-none cursor-pointer p-0"
-									>
-										<svg
-											class="w-8 h-8 {i < rating ? 'text-yellow-400' : 'text-gray-300'}"
-											fill="currentColor"
-											viewBox="0 0 20 20"
-										>
-											<path
-												d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-											/>
-										</svg>
-									</button>
-								{/each}
-							</div>
-							<input type="hidden" name="rating" value={rating} />
-						</div>
-						<div class="mb-4">
-							<label for="comment_edit" class="block mb-2 font-medium text-gray-900">Comment</label>
-							<textarea
-								id="comment_edit"
-								name="comment"
-								value={comment || data.userReview?.comment || ''}
-								on:input={(e) => (comment = e.currentTarget.value)}
-								rows="4"
-								class="w-full p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-900 text-base focus:outline-none focus:border-indigo-500"
-								placeholder="Share your experience..."
-							></textarea>
-						</div>
-						<div class="flex gap-4">
-							<button
-								type="submit"
-								class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700"
-							>
-								Update Review
-							</button>
-							<form method="POST" action="?/deleteReview" use:enhance>
-								<input type="hidden" name="review_id" value={data.userReview.id} />
-								<button
-									type="submit"
-									class="bg-red-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer transition-colors hover:bg-red-700"
-									on:click={(e) => {
-										if (!confirm('Are you sure you want to delete your review?')) {
-											e.preventDefault();
-										}
-									}}
-								>
-									Delete Review
-								</button>
-							</form>
-						</div>
-					</form>
-				{:else}
-					<form method="POST" action="?/createReview" use:enhance>
-						<div class="mb-4">
-							<div class="block mb-2 font-medium">Rating</div>
-							<div class="flex gap-2">
-								{#each Array(5) as _, i}
-									<button
-										type="button"
-										on:click={() => {
-											rating = i + 1;
-										}}
-										class="bg-transparent border-none cursor-pointer p-0"
-									>
-										<svg
-											class="w-8 h-8 {i < rating ? 'text-yellow-400' : 'text-gray-300'}"
-											fill="currentColor"
-											viewBox="0 0 20 20"
-										>
-											<path
-												d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-											/>
-										</svg>
-									</button>
-								{/each}
-							</div>
-							<input type="hidden" name="rating" value={rating} />
-						</div>
-						<div class="mb-4">
-							<label for="comment" class="block mb-2 font-medium text-gray-900">Comment</label>
-							<textarea
-								id="comment"
-								name="comment"
-								value={comment}
-								on:input={(e) => (comment = e.currentTarget.value)}
-								rows="4"
-								class="w-full p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-900 text-base focus:outline-none focus:border-indigo-500"
-								placeholder="Share your experience..."
-							></textarea>
-						</div>
-						<div class="flex gap-4">
-							<button
-								type="submit"
-								class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700"
-							>
-								Submit Review
-							</button>
-							{#if showReviewForm}
+				<h3 class="text-xl font-semibold mb-4 text-gray-900">Write a Review</h3>
+				<form method="POST" action="?/createReview" use:enhance>
+					<div class="mb-4">
+						<div class="block mb-2 font-medium">Rating</div>
+						<div class="flex gap-2">
+							{#each Array(5) as _, i}
 								<button
 									type="button"
 									on:click={() => {
-										showReviewForm = false;
-										rating = 5;
-										comment = '';
+										rating = i + 1;
 									}}
-									class="bg-gray-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-700"
+									class="bg-transparent border-none cursor-pointer p-0"
 								>
-									Cancel
+									<svg
+										class="w-8 h-8 {i < rating ? 'text-yellow-400' : 'text-gray-300'}"
+										fill="currentColor"
+										viewBox="0 0 20 20"
+									>
+										<path
+											d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+										/>
+									</svg>
 								</button>
-							{/if}
+							{/each}
 						</div>
-					</form>
-				{/if}
+						<input type="hidden" name="rating" value={rating} />
+					</div>
+					<div class="mb-4">
+						<label for="comment" class="block mb-2 font-medium text-gray-900">Comment</label>
+						<textarea
+							id="comment"
+							name="comment"
+							value={comment}
+							on:input={(e) => (comment = e.currentTarget.value)}
+							rows="4"
+							class="w-full p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-900 text-base focus:outline-none focus:border-indigo-500"
+							placeholder="Share your experience..."
+						></textarea>
+					</div>
+					<div class="flex gap-4">
+						<button
+							type="submit"
+							class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700"
+						>
+							Submit Review
+						</button>
+						<button
+							type="button"
+							on:click={() => {
+								showReviewForm = false;
+								rating = 5;
+								comment = '';
+							}}
+							class="bg-gray-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer transition-colors hover:bg-gray-700"
+						>
+							Cancel
+						</button>
+					</div>
+				</form>
 			</div>
 		{/if}
 
@@ -501,31 +527,131 @@
 			<div class="space-y-4">
 				{#each data.reviews as review (review.id)}
 					<div class="bg-white p-4 rounded-lg border border-gray-200">
-						<div class="flex justify-between items-start mb-2">
-							<div>
-								<p class="font-semibold m-0 text-gray-900">{review.user_name || 'Anonymous'}</p>
-								<div class="flex items-center gap-2 mt-1">
-									{#each Array(5) as _, i}
-										<svg
-											class="w-4 h-4 {i < review.rating ? 'text-yellow-400' : 'text-gray-300'}"
-											fill="currentColor"
-											viewBox="0 0 20 20"
-										>
-											<path
-												d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-											/>
-										</svg>
-									{/each}
+						{#if editingReviewId === review.id}
+							<!-- Edit Form -->
+							<form method="POST" action="?/updateReview" use:enhance={({ result }) => {
+								return async () => {
+									if (result.type === 'success') {
+										editingReviewId = null;
+										editingRating = 5;
+										editingComment = '';
+									}
+								};
+							}}>
+								<input type="hidden" name="review_id" value={review.id} />
+								<div class="mb-4">
+									<div class="block mb-2 font-medium">Rating</div>
+									<div class="flex gap-2">
+										{#each Array(5) as _, i}
+											<button
+												type="button"
+												on:click={() => {
+													editingRating = i + 1;
+												}}
+												class="bg-transparent border-none cursor-pointer p-0"
+											>
+												<svg
+													class="w-6 h-6 {i < editingRating ? 'text-yellow-400' : 'text-gray-300'}"
+													fill="currentColor"
+													viewBox="0 0 20 20"
+												>
+													<path
+														d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+													/>
+												</svg>
+											</button>
+										{/each}
+									</div>
+									<input type="hidden" name="rating" value={editingRating} />
 								</div>
+								<div class="mb-4">
+									<label for="comment_edit_{review.id}" class="block mb-2 font-medium text-gray-900">Comment</label>
+									<textarea
+										id="comment_edit_{review.id}"
+										name="comment"
+										bind:value={editingComment}
+										rows="4"
+										class="w-full p-3 border-2 border-gray-300 rounded-lg bg-white text-gray-900 text-base focus:outline-none focus:border-indigo-500"
+										placeholder="Share your experience..."
+									></textarea>
+								</div>
+								<div class="flex gap-4">
+									<button
+										type="submit"
+										class="bg-indigo-600 text-white border-none px-4 py-2 rounded-lg cursor-pointer text-sm transition-colors hover:bg-indigo-700"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										on:click={() => {
+											editingReviewId = null;
+											editingRating = 5;
+											editingComment = '';
+										}}
+										class="bg-gray-600 text-white border-none px-4 py-2 rounded-lg cursor-pointer text-sm transition-colors hover:bg-gray-700"
+									>
+										Cancel
+									</button>
+								</div>
+							</form>
+						{:else}
+							<!-- Review Display -->
+							<div class="flex justify-between items-start mb-2">
+								<div>
+									<p class="font-semibold m-0 text-gray-900">{review.user_name || 'Anonymous'}</p>
+									<div class="flex items-center gap-2 mt-1">
+										{#each Array(5) as _, i}
+											<svg
+												class="w-4 h-4 {i < review.rating ? 'text-yellow-400' : 'text-gray-300'}"
+												fill="currentColor"
+												viewBox="0 0 20 20"
+											>
+												<path
+													d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+												/>
+											</svg>
+										{/each}
+									</div>
+								</div>
+								{#if review.created_at}
+									<span class="text-gray-600 text-sm">
+										{new Date(review.created_at).toLocaleDateString()}
+									</span>
+								{/if}
 							</div>
-							{#if review.created_at}
-								<span class="text-gray-600 text-sm">
-									{new Date(review.created_at).toLocaleDateString()}
-								</span>
+							{#if review.comment}
+								<p class="text-gray-800 mt-2 m-0">{review.comment}</p>
 							{/if}
-						</div>
-						{#if review.comment}
-							<p class="text-gray-800 mt-2 m-0">{review.comment}</p>
+							{#if data.user && review.user_id === data.user.id}
+								<div class="flex gap-2 mt-4">
+									<button
+										type="button"
+										on:click={() => {
+											editingReviewId = review.id;
+											editingRating = review.rating;
+											editingComment = review.comment || '';
+										}}
+										class="bg-indigo-600 text-white border-none px-4 py-2 rounded-lg cursor-pointer text-sm transition-colors hover:bg-indigo-700"
+									>
+										Update
+									</button>
+									<form method="POST" action="?/deleteReview" use:enhance class="inline">
+										<input type="hidden" name="review_id" value={review.id} />
+										<button
+											type="submit"
+											class="bg-red-600 text-white border-none px-4 py-2 rounded-lg cursor-pointer text-sm transition-colors hover:bg-red-700"
+											on:click={(e) => {
+												if (!confirm('Are you sure you want to delete your review?')) {
+													e.preventDefault();
+												}
+											}}
+										>
+											Delete
+										</button>
+									</form>
+								</div>
+							{/if}
 						{/if}
 					</div>
 				{/each}

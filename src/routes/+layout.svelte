@@ -6,14 +6,16 @@
 	import type { LayoutData } from './$types';
 
 	export let data: LayoutData;
+	export const params = {};
 	
 	// Check if we're on an admin page
 	$: isAdminPage = $page.url.pathname.startsWith('/admin');
+	$: homeLink = isAdminPage ? '/admin' : '/';
 </script>
 
 <nav class="bg-gray-900 py-4 border-b border-gray-800">
 	<div class="max-w-7xl mx-auto px-8 flex justify-between items-center gap-4">
-		<a href="/" class="text-2xl font-bold text-white no-underline">MVC App</a>
+		<a href={homeLink} class="text-2xl font-bold text-white no-underline">MVC App</a>
 
 		<div class="flex gap-6 items-center">
 			{#if isAdminPage}

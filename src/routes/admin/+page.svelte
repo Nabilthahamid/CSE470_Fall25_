@@ -4,6 +4,7 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
+	export const params = {};
 </script>
 
 <svelte:head>
@@ -107,7 +108,7 @@
 					href="/users"
 					class="inline-block px-6 py-3 bg-indigo-600 text-white no-underline rounded-lg transition-colors hover:bg-indigo-700 text-center"
 				>
-					Manage Users
+					View Users
 				</a>
 				<a
 					href="/profile"

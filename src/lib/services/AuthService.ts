@@ -161,13 +161,13 @@ export class AuthService {
 		}
 
 		// Verify user still exists in database
-		const { data: user } = await supabase
+		const { data: user, error } = await supabase
 			.from('users')
 			.select('id, email, name, role')
 			.eq('id', decoded.userId)
-			.single();
+			.maybeSingle();
 
-		if (!user) {
+		if (error || !user) {
 			return null;
 		}
 

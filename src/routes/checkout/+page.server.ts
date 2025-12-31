@@ -16,10 +16,32 @@ export const load: PageServerLoad = async ({ locals }) => {
 			throw redirect(302, '/cart');
 		}
 
+		// Get user profile data if logged in
+		let userProfile = null;
+		if (userId) {
+			try {
+				const { userService } = await import('$lib/services/UserService');
+				const user = await userService.getUserById(userId);
+				userProfile = {
+					customer_name: user.customer_name || '',
+					customer_email: user.email || '',
+					customer_address: user.customer_address || '',
+					customer_phone: user.customer_phone || '',
+					customer_city: user.customer_city || '',
+					customer_postal_code: user.customer_postal_code || '',
+					customer_country: user.customer_country || 'Bangladesh'
+				};
+			} catch (e) {
+				// If user not found, continue without profile data
+				console.error('Error loading user profile:', e);
+			}
+		}
+
 		return {
 			cartItems,
 			total,
 			user: locals.user,
+			userProfile,
 			error: null
 		};
 	} catch (error) {
@@ -80,6 +102,25 @@ export const actions: Actions = {
 				},
 				userId
 			);
+
+			// Save profile information if user checked "save_info" and is logged in
+			const saveInfo = formData.get('save_info')?.toString() === 'true';
+			if (saveInfo && locals.user?.id) {
+				try {
+					const { userService } = await import('$lib/services/UserService');
+					await userService.updateUser(locals.user.id, {
+						customer_name: customer_name || undefined,
+						customer_address: customer_address || undefined,
+						customer_phone: customer_phone || undefined,
+						customer_city: customer_city || undefined,
+						customer_postal_code: customer_postal_code || undefined,
+						customer_country: customer_country || undefined
+					});
+				} catch (profileError) {
+					console.error('Failed to save profile information:', profileError);
+					// Don't fail the order if profile save fails
+				}
+			}
 
 			// Send invoice email
 			try {
