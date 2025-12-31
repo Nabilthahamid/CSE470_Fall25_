@@ -3,7 +3,14 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
+	import {
+		addToComparison,
+		removeFromComparison,
+		isInComparison,
+		getComparisonCount
+	} from '$lib/utils/comparison';
 
 	export let data: PageData;
 	export const params = {};
@@ -13,6 +20,40 @@
 	let popupMessage = '';
 	let popupType: 'success' | 'error' = 'success';
 	let popupTimeout: ReturnType<typeof setTimeout> | null = null;
+	let comparisonStates: Record<string, boolean> = {};
+	let comparisonCount = 0;
+
+	onMount(() => {
+		updateComparisonStates();
+		updateComparisonCount();
+	});
+
+	function updateComparisonStates() {
+		data.products.forEach((product) => {
+			comparisonStates[product.id] = isInComparison(product.id);
+		});
+	}
+
+	function updateComparisonCount() {
+		comparisonCount = getComparisonCount();
+	}
+
+	function handleCompareToggle(productId: string) {
+		if (comparisonStates[productId]) {
+			removeFromComparison(productId);
+			comparisonStates[productId] = false;
+			showPopupMessage('Removed from comparison', 'success');
+		} else {
+			const result = addToComparison(productId);
+			if (result.success) {
+				comparisonStates[productId] = true;
+				showPopupMessage(result.message, 'success');
+			} else {
+				showPopupMessage(result.message, 'error');
+			}
+		}
+		updateComparisonCount();
+	}
 
 	function showPopupMessage(message: string, type: 'success' | 'error' = 'success') {
 		popupMessage = message;
@@ -174,14 +215,14 @@
 		{:else}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
 				{#each data.products as product (product.id)}
-					<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+					<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
 						<!-- Product Image -->
-						<div class="h-56 relative bg-gray-100">
+						<div class="h-64 relative bg-gray-100 overflow-hidden">
 							{#if product.image_url}
 								<img
 									src={product.image_url}
 									alt={product.name}
-									class="w-full h-full object-cover"
+									class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
 									on:error={(e) => {
 										e.currentTarget.style.display = 'none';
 									}}
@@ -193,45 +234,63 @@
 							{/if}
 							
 							<!-- Stock Badge -->
-							{#if product.stock > 0}
-								<div class="absolute top-2 right-2 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
-									<span>✓</span>
-									<span>In Stock</span>
-								</div>
-							{:else}
-								<div class="absolute top-2 right-2 bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
-									<span>✕</span>
-									<span>Out of Stock</span>
-								</div>
-							{/if}
+							<div class="absolute top-3 right-3">
+								{#if product.stock > 0}
+									<span class="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
+										<span>✓</span>
+										<span>In Stock</span>
+									</span>
+								{:else}
+									<span class="inline-flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
+										<span>✕</span>
+										<span>Out of Stock</span>
+									</span>
+								{/if}
+							</div>
 						</div>
 
 						<!-- Product Info -->
-						<div class="p-5">
-							<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 min-h-[3rem]">
+						<div class="p-5 flex flex-col flex-1">
+							<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14">
 								{product.name}
 							</h3>
-							<p class="text-sm mb-4 min-h-[2.5rem] text-gray-600 line-clamp-2">
-								{product.description}
+							<p class="text-sm mb-3 text-gray-600 line-clamp-2 h-10">
+								{product.description || 'No description available'}
 							</p>
 							
 							<!-- Price and Stock -->
-							<div class="mb-4">
-								<p class="text-3xl font-bold mb-2 text-gray-900">
+							<div class="mb-4 flex-shrink-0">
+								<p class="text-2xl font-bold mb-1 text-gray-900">
 									Tk {product.price.toFixed(2)}
 								</p>
 								{#if product.stock > 0}
-									<p class="text-xs text-gray-500">
+									<p class="text-xs text-gray-500 font-medium">
 										{product.stock} {product.stock === 1 ? 'item' : 'items'} available
 									</p>
 								{/if}
 							</div>
 
+							<!-- Compare Button -->
+							<div class="mb-3">
+								<button
+									type="button"
+									on:click={() => handleCompareToggle(product.id)}
+									class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors {comparisonStates[product.id]
+										? 'bg-indigo-600 text-white hover:bg-indigo-700'
+										: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+								>
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+									</svg>
+									{comparisonStates[product.id] ? 'Remove from Compare' : 'Add to Compare'}
+								</button>
+							</div>
+
 							<!-- Action Buttons -->
-							<div class="flex gap-2">
+							<div class="flex gap-2 mt-auto">
 								<a
 									href="/products/{product.id}"
-									class="flex-1 text-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
+									class="flex-1 flex items-center justify-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
 								>
 									View Details
 								</a>
@@ -263,7 +322,7 @@
 										<input type="hidden" name="quantity" value="1" />
 										<button
 											type="submit"
-											class="w-full bg-indigo-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-indigo-700 transition-colors"
+											class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
 										>
 											Add to Cart
 										</button>

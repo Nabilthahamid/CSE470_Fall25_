@@ -8,3 +8,4 @@ export * from './NotificationService';
 export * from './CartService';
 export * from './OrderService';
 export * from './EmailService';
+export * from './PCBuildService';

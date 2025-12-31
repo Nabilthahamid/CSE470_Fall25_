@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
 import { productService } from '$lib/services/ProductService';
+import { pcBuildService } from '$lib/services/PCBuildService';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -10,7 +11,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	try {
 		const product = await productService.getProductById(params.id);
-		return { product };
+		
+		// Load component categories (handle gracefully if table doesn't exist)
+		let categories = [];
+		try {
+			categories = await pcBuildService.getAllCategories();
+		} catch (error) {
+			console.error('Error loading component categories:', error);
+			// Continue without categories
+		}
+		
+		return { product, categories };
 	} catch (error) {
 		const { message } = handleError(error);
 		throw redirect(302, '/admin/products?error=' + encodeURIComponent(message));
@@ -28,6 +39,9 @@ export const actions: Actions = {
 		const image_url = formData.get('image_url')?.toString();
 		const image_file = formData.get('image_file') as File | null;
 		const delete_image = formData.get('delete_image')?.toString() === 'true';
+		const component_category_id = formData.get('component_category_id')?.toString() || null;
+		const brand = formData.get('brand')?.toString() || null;
+		const specifications = formData.get('specifications')?.toString() || null;
 
 		const updateData: any = {};
 		if (name) updateData.name = name;
@@ -35,6 +49,9 @@ export const actions: Actions = {
 		if (price) updateData.price = parseFloat(price);
 		if (cost_price) updateData.cost_price = parseFloat(cost_price);
 		if (stock) updateData.stock = parseInt(stock);
+		if (component_category_id !== null) updateData.component_category_id = component_category_id || null;
+		if (brand !== null) updateData.brand = brand || null;
+		if (specifications !== null) updateData.specifications = specifications || null;
 
 		// Handle image: file upload takes priority, then URL, then deletion
 		if (image_file && image_file.size > 0) {

@@ -69,6 +69,28 @@
 				</div>
 
 				<div class="mb-6">
+					<label for="component_category_id" class="block mb-2 font-medium">Component Category (optional)</label>
+					<select id="component_category_id" name="component_category_id" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500">
+						<option value="">None (Regular Product)</option>
+						{#each data.categories as category}
+							<option value={category.id}>{category.display_name}</option>
+						{/each}
+					</select>
+					<small class="block mt-1 text-gray-400 text-sm">Select a category if this is a PC component</small>
+				</div>
+
+				<div class="mb-6">
+					<label for="brand" class="block mb-2 font-medium">Brand (optional)</label>
+					<input type="text" id="brand" name="brand" placeholder="e.g., Intel, AMD, Samsung" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
+				</div>
+
+				<div class="mb-6">
+					<label for="specifications" class="block mb-2 font-medium">Specifications (optional)</label>
+					<textarea id="specifications" name="specifications" rows="4" placeholder="Enter product specifications (e.g., CPU: Intel i7, RAM: 16GB, Storage: 512GB SSD)" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"></textarea>
+					<small class="block mt-1 text-gray-400 text-sm">Add detailed specifications for this product</small>
+				</div>
+
+				<div class="mb-6">
 					<label for="image_file" class="block mb-2 font-medium">Product Image (optional)</label>
 					<input 
 						type="file" 

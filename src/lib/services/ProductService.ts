@@ -55,7 +55,10 @@ class ProductRepositoryImpl implements ProductRepository {
 	async create(input: CreateProductDTO): Promise<Product> {
 		const insertData = {
 			...input,
-			cost_price: input.cost_price ?? 0
+			cost_price: input.cost_price ?? 0,
+			component_category_id: input.component_category_id || null,
+			brand: input.brand || null,
+			specifications: input.specifications || null
 		};
 		const { data, error } = await supabase.from('products').insert(insertData).select().single();
 

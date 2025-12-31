@@ -1,7 +1,14 @@
 <!-- VIEW: Home page with products -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
+	import {
+		addToComparison,
+		removeFromComparison,
+		isInComparison,
+		getComparisonCount
+	} from '$lib/utils/comparison';
 
 	export let data: PageData;
 	export const params = {};
@@ -10,6 +17,40 @@
 	let popupMessage = '';
 	let popupType: 'success' | 'error' = 'success';
 	let popupTimeout: ReturnType<typeof setTimeout> | null = null;
+	let comparisonStates: Record<string, boolean> = {};
+	let comparisonCount = 0;
+
+	onMount(() => {
+		updateComparisonStates();
+		updateComparisonCount();
+	});
+
+	function updateComparisonStates() {
+		data.products.forEach((product) => {
+			comparisonStates[product.id] = isInComparison(product.id);
+		});
+	}
+
+	function updateComparisonCount() {
+		comparisonCount = getComparisonCount();
+	}
+
+	function handleCompareToggle(productId: string) {
+		if (comparisonStates[productId]) {
+			removeFromComparison(productId);
+			comparisonStates[productId] = false;
+			showPopupMessage('Removed from comparison', 'success');
+		} else {
+			const result = addToComparison(productId);
+			if (result.success) {
+				comparisonStates[productId] = true;
+				showPopupMessage(result.message, 'success');
+			} else {
+				showPopupMessage(result.message, 'error');
+			}
+		}
+		updateComparisonCount();
+	}
 
 	function showPopupMessage(message: string, type: 'success' | 'error' = 'success') {
 		popupMessage = message;
@@ -47,10 +88,22 @@
 			</a>
 		</div>
 
-		<!-- Popup Modal -->
-		{#if showPopup}
-			<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" on:click={closePopup} on:keydown={(e) => e.key === 'Escape' && closePopup()}>
-				<div class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" on:click|stopPropagation>
+	<!-- Popup Modal -->
+	{#if showPopup}
+		<div 
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="popup-title"
+			on:click={closePopup} 
+			on:keydown={(e) => e.key === 'Escape' && closePopup()}
+		>
+			<div 
+				class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" 
+				role="document"
+				on:click|stopPropagation
+				on:keydown|stopPropagation
+			>
 					<div class="p-6 text-center">
 						<div class="mb-4">
 							{#if popupType === 'success'}
@@ -67,9 +120,9 @@
 								</div>
 							{/if}
 						</div>
-						<h3 class="text-xl font-bold mb-2 {popupType === 'success' ? 'text-green-800' : 'text-red-800'}">
-							{popupType === 'success' ? 'Success!' : 'Error!'}
-						</h3>
+					<h3 id="popup-title" class="text-xl font-bold mb-2 {popupType === 'success' ? 'text-green-800' : 'text-red-800'}">
+						{popupType === 'success' ? 'Success!' : 'Error!'}
+					</h3>
 						<p class="text-gray-700 mb-6">{popupMessage}</p>
 						<button
 							on:click={closePopup}
@@ -101,7 +154,7 @@
 			</div>
 		{/if}
 
-		<!-- Products Grid -->
+		<!-- Products by Category -->
 		{#if data.products.length === 0}
 			<div class="text-center p-12 bg-white rounded-lg">
 				<div class="text-6xl mb-4">📦</div>
@@ -109,115 +162,279 @@
 				<p class="text-gray-600">Check back soon for new products!</p>
 			</div>
 		{:else}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-				{#each data.products as product (product.id)}
-					<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-						<!-- Product Image -->
-						<div class="h-56 relative bg-gray-100">
-							{#if product.image_url}
-								<img
-									src={product.image_url}
-									alt={product.name}
-									class="w-full h-full object-cover"
-									on:error={(e) => {
-										e.currentTarget.style.display = 'none';
-									}}
-								/>
-							{:else}
-								<div class="w-full h-full bg-gray-200 flex items-center justify-center">
-									<span class="text-gray-400 text-sm">No image</span>
-								</div>
-							{/if}
-							
-							<!-- Stock Badge -->
-							{#if product.stock > 0}
-								<div class="absolute top-2 right-2 bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-semibold">
-									<span>✓</span>
-									<span>In Stock</span>
-								</div>
-							{:else}
-								<div class="absolute top-2 right-2 bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-semibold">
-									<span>✕</span>
-									<span>Out of Stock</span>
-								</div>
-							{/if}
-						</div>
+			<!-- Products by Category -->
+			{#each data.categories as category}
+				{@const categoryProducts = data.productsByCategory[category.id] || []}
+				{#if categoryProducts.length > 0}
+					<div class="mb-12">
+						<h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-6">{category.display_name}</h2>
+						<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+							{#each categoryProducts as product (product.id)}
+								<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
+									<!-- Product Image -->
+									<div class="h-64 relative bg-gray-100 overflow-hidden">
+										{#if product.image_url}
+											<img
+												src={product.image_url}
+												alt={product.name}
+												class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+												on:error={(e) => {
+													e.currentTarget.style.display = 'none';
+												}}
+											/>
+										{:else}
+											<div class="w-full h-full bg-gray-200 flex items-center justify-center">
+												<span class="text-gray-400 text-sm">No image</span>
+											</div>
+										{/if}
+										
+										<!-- Stock Badge -->
+										<div class="absolute top-3 right-3">
+											{#if product.stock > 0}
+												<span class="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
+													<span>✓</span>
+													<span>In Stock</span>
+												</span>
+											{:else}
+												<span class="inline-flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
+													<span>✕</span>
+													<span>Out of Stock</span>
+												</span>
+											{/if}
+										</div>
+									</div>
 
-						<!-- Product Info -->
-						<div class="p-5">
-							<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 min-h-[3rem]">
-								{product.name}
-							</h3>
-							<p class="text-sm mb-4 min-h-[2.5rem] text-gray-600 line-clamp-2">
-								{product.description}
-							</p>
-							
-							<!-- Price and Stock -->
-							<div class="mb-4">
-								<p class="text-3xl font-bold mb-2 text-gray-900">
-									Tk {product.price.toFixed(2)}
-								</p>
-								{#if product.stock > 0}
-									<p class="text-xs text-gray-500">
-										{product.stock} {product.stock === 1 ? 'item' : 'items'} available
-									</p>
-								{/if}
-							</div>
+									<!-- Product Info -->
+									<div class="p-5 flex flex-col flex-1">
+										<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14">
+											{product.name}
+										</h3>
+										{#if product.brand}
+											<p class="text-xs text-indigo-600 font-semibold mb-1">{product.brand}</p>
+										{/if}
+										<p class="text-sm mb-3 text-gray-600 line-clamp-2 h-10">
+											{product.description || 'No description available'}
+										</p>
+										
+										<!-- Price and Stock -->
+										<div class="mb-4 flex-shrink-0">
+											<p class="text-2xl font-bold mb-1 text-gray-900">
+												Tk {product.price.toFixed(2)}
+											</p>
+											{#if product.stock > 0}
+												<p class="text-xs text-gray-500 font-medium">
+													{product.stock} {product.stock === 1 ? 'item' : 'items'} available
+												</p>
+											{/if}
+										</div>
 
-							<!-- Action Buttons -->
-							<div class="flex gap-2">
-								<a
-									href="/products/{product.id}"
-									class="flex-1 text-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
-								>
-									View Details
-								</a>
-								{#if product.stock > 0}
-									<form 
-										method="POST" 
-										action="/cart/add" 
-										use:enhance={({ result }) => {
-											return async () => {
-												if (result.type === 'success') {
-													try {
-														const data = await result.json();
-														if (data.success) {
-															showPopupMessage('Added to cart successfully!', 'success');
-														} else {
-															showPopupMessage(data.error || 'Failed to add to cart', 'error');
-														}
-													} catch (e) {
-														showPopupMessage('Added to cart successfully!', 'success');
-													}
-												} else if (result.type === 'failure') {
-													showPopupMessage('Failed to add to cart. Please try again.', 'error');
-												}
-											};
-										}}
-										class="flex-1"
-									>
-										<input type="hidden" name="product_id" value={product.id} />
-										<input type="hidden" name="quantity" value="1" />
-										<button
-											type="submit"
-											class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
-										>
-											Add to Cart
-										</button>
-									</form>
-								{:else}
-									<button
-										disabled
-										class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-semibold"
-									>
-										Out of Stock
-									</button>
-								{/if}
-							</div>
+										<!-- Compare Button -->
+										<div class="mb-3">
+											<button
+												type="button"
+												on:click={() => handleCompareToggle(product.id)}
+												class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors {comparisonStates[product.id]
+													? 'bg-indigo-600 text-white hover:bg-indigo-700'
+													: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+											>
+												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+												</svg>
+												{comparisonStates[product.id] ? 'Remove from Compare' : 'Add to Compare'}
+											</button>
+										</div>
+
+										<!-- Action Buttons -->
+										<div class="flex gap-2 mt-auto">
+											<a
+												href="/products/{product.id}"
+												class="flex-1 flex items-center justify-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
+											>
+												View Details
+											</a>
+											{#if product.stock > 0}
+												<form 
+													method="POST" 
+													action="/cart/add" 
+													use:enhance={({ result }) => {
+														return async () => {
+															if (result.type === 'success') {
+																try {
+																	const data = await result.json();
+																	if (data.success) {
+																		showPopupMessage('Added to cart successfully!', 'success');
+																	} else {
+																		showPopupMessage(data.error || 'Failed to add to cart', 'error');
+																	}
+																} catch (e) {
+																	showPopupMessage('Added to cart successfully!', 'success');
+																}
+															} else if (result.type === 'failure') {
+																showPopupMessage('Failed to add to cart. Please try again.', 'error');
+															}
+														};
+													}}
+													class="flex-1"
+												>
+													<input type="hidden" name="product_id" value={product.id} />
+													<input type="hidden" name="quantity" value="1" />
+													<button
+														type="submit"
+														class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
+													>
+														Add to Cart
+													</button>
+												</form>
+											{:else}
+												<button
+													disabled
+													class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-semibold"
+												>
+													Out of Stock
+												</button>
+											{/if}
+										</div>
+									</div>
+								</div>
+							{/each}
 						</div>
 					</div>
-				{/each}
-			</div>
+				{/if}
+			{/each}
+
+			<!-- Regular Products (No Category) -->
+			{#if data.regularProducts.length > 0}
+				<div class="mb-12">
+					<h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Other Products</h2>
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+						{#each data.regularProducts as product (product.id)}
+							<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
+								<!-- Product Image -->
+								<div class="h-64 relative bg-gray-100 overflow-hidden">
+									{#if product.image_url}
+										<img
+											src={product.image_url}
+											alt={product.name}
+											class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+											on:error={(e) => {
+												e.currentTarget.style.display = 'none';
+											}}
+										/>
+									{:else}
+										<div class="w-full h-full bg-gray-200 flex items-center justify-center">
+											<span class="text-gray-400 text-sm">No image</span>
+										</div>
+									{/if}
+									
+									<!-- Stock Badge -->
+									<div class="absolute top-3 right-3">
+										{#if product.stock > 0}
+											<span class="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
+												<span>✓</span>
+												<span>In Stock</span>
+											</span>
+										{:else}
+											<span class="inline-flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
+												<span>✕</span>
+												<span>Out of Stock</span>
+											</span>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Product Info -->
+								<div class="p-5 flex flex-col flex-1">
+									<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14">
+										{product.name}
+									</h3>
+									<p class="text-sm mb-3 text-gray-600 line-clamp-2 h-10">
+										{product.description || 'No description available'}
+									</p>
+									
+									<!-- Price and Stock -->
+									<div class="mb-4 flex-shrink-0">
+										<p class="text-2xl font-bold mb-1 text-gray-900">
+											Tk {product.price.toFixed(2)}
+										</p>
+										{#if product.stock > 0}
+											<p class="text-xs text-gray-500 font-medium">
+												{product.stock} {product.stock === 1 ? 'item' : 'items'} available
+											</p>
+										{/if}
+									</div>
+
+									<!-- Compare Button -->
+									<div class="mb-3">
+										<button
+											type="button"
+											on:click={() => handleCompareToggle(product.id)}
+											class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors {comparisonStates[product.id]
+												? 'bg-indigo-600 text-white hover:bg-indigo-700'
+												: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+										>
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+											</svg>
+											{comparisonStates[product.id] ? 'Remove from Compare' : 'Add to Compare'}
+										</button>
+									</div>
+
+									<!-- Action Buttons -->
+									<div class="flex gap-2 mt-auto">
+										<a
+											href="/products/{product.id}"
+											class="flex-1 flex items-center justify-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
+										>
+											View Details
+										</a>
+										{#if product.stock > 0}
+											<form 
+												method="POST" 
+												action="/cart/add" 
+												use:enhance={({ result }) => {
+													return async () => {
+														if (result.type === 'success') {
+															try {
+																const data = await result.json();
+																if (data.success) {
+																	showPopupMessage('Added to cart successfully!', 'success');
+																} else {
+																	showPopupMessage(data.error || 'Failed to add to cart', 'error');
+																}
+															} catch (e) {
+																showPopupMessage('Added to cart successfully!', 'success');
+															}
+														} else if (result.type === 'failure') {
+															showPopupMessage('Failed to add to cart. Please try again.', 'error');
+														}
+													};
+												}}
+												class="flex-1"
+											>
+												<input type="hidden" name="product_id" value={product.id} />
+												<input type="hidden" name="quantity" value="1" />
+												<button
+													type="submit"
+													class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
+												>
+													Add to Cart
+												</button>
+											</form>
+										{:else}
+											<button
+												disabled
+												class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-semibold"
+											>
+												Out of Stock
+											</button>
+										{/if}
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>

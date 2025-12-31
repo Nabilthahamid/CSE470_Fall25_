@@ -4,4 +4,5 @@ export * from './auth';
 export * from './password';
 export * from './session';
 export * from './storage';
+export * from './comparison';
 

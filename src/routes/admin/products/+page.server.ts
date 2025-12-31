@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
 import { productService } from '$lib/services/ProductService';
+import { pcBuildService } from '$lib/services/PCBuildService';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -14,8 +15,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			? await productService.searchProducts(searchQuery)
 			: await productService.getAllProducts();
 		
+		// Load component categories (handle gracefully if table doesn't exist)
+		let categories = [];
+		try {
+			categories = await pcBuildService.getAllCategories();
+		} catch (error) {
+			console.error('Error loading component categories:', error);
+			// Continue without categories
+		}
+		
 		return {
 			products,
+			categories,
 			searchQuery,
 			error: null
 		};
@@ -23,6 +34,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const { message } = handleError(error);
 		return {
 			products: [],
+			categories: [],
 			searchQuery: '',
 			error: message
 		};
@@ -39,6 +51,9 @@ export const actions: Actions = {
 		const stock = parseInt(formData.get('stock')?.toString() || '0');
 		const image_url = formData.get('image_url')?.toString() || null;
 		const image_file = formData.get('image_file') as File | null;
+		const component_category_id = formData.get('component_category_id')?.toString() || null;
+		const brand = formData.get('brand')?.toString() || null;
+		const specifications = formData.get('specifications')?.toString() || null;
 
 		let finalImageUrl = image_url || null;
 
@@ -61,7 +76,17 @@ export const actions: Actions = {
 		}
 
 		try {
-			await productService.createProduct({ name, description, price, cost_price, stock, image_url: finalImageUrl });
+			await productService.createProduct({ 
+				name, 
+				description, 
+				price, 
+				cost_price, 
+				stock, 
+				image_url: finalImageUrl,
+				component_category_id: component_category_id || null,
+				brand: brand || null,
+				specifications: specifications || null
+			});
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

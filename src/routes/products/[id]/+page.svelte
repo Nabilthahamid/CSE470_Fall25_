@@ -1,7 +1,13 @@
 <!-- VIEW: Product detail page -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
+	import {
+		addToComparison,
+		removeFromComparison,
+		isInComparison
+	} from '$lib/utils/comparison';
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -16,6 +22,27 @@
 	let popupMessage = '';
 	let popupType: 'success' | 'error' = 'success';
 	let popupTimeout: ReturnType<typeof setTimeout> | null = null;
+	let isInCompare = false;
+
+	onMount(() => {
+		isInCompare = isInComparison(data.product.id);
+	});
+
+	function handleCompareToggle() {
+		if (isInCompare) {
+			removeFromComparison(data.product.id);
+			isInCompare = false;
+			showPopupMessage('Removed from comparison', 'success');
+		} else {
+			const result = addToComparison(data.product.id);
+			if (result.success) {
+				isInCompare = true;
+				showPopupMessage(result.message, 'success');
+			} else {
+				showPopupMessage(result.message, 'error');
+			}
+		}
+	}
 	let editingReviewId: string | null = null;
 	let editingRating = 5;
 	let editingComment = '';
@@ -263,6 +290,22 @@
 						+
 					</button>
 				</div>
+			</div>
+
+			<!-- Compare Button -->
+			<div class="mb-4">
+				<button
+					type="button"
+					on:click={handleCompareToggle}
+					class="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-colors {isInCompare
+						? 'bg-indigo-600 text-white hover:bg-indigo-700'
+						: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				>
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+					</svg>
+					{isInCompare ? 'Remove from Compare' : 'Add to Compare'}
+				</button>
 			</div>
 
 			<!-- Action Buttons -->

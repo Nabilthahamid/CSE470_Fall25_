@@ -7,8 +7,13 @@ export interface Product {
 	cost_price: number;
 	stock: number;
 	image_url?: string | null;
+	component_category_id?: string | null;
+	brand?: string | null;
+	specifications?: string | null; // JSON string or text
 	created_at?: string;
 	updated_at?: string;
+	// Joined data
+	component_category_name?: string;
 }
 
 export interface CreateProductDTO {
@@ -18,6 +23,9 @@ export interface CreateProductDTO {
 	cost_price?: number;
 	stock: number;
 	image_url?: string | null;
+	component_category_id?: string | null;
+	brand?: string | null;
+	specifications?: string | null;
 }
 
 export interface UpdateProductDTO {
@@ -27,6 +35,9 @@ export interface UpdateProductDTO {
 	cost_price?: number;
 	stock?: number;
 	image_url?: string | null;
+	component_category_id?: string | null;
+	brand?: string | null;
+	specifications?: string | null;
 }
 
 export interface ProductRepository {
