@@ -5,7 +5,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	// Auto-fill from user profile if available
 	let email = form?.customer_email || data.userProfile?.customer_email || data.user?.email || '';
@@ -43,9 +43,6 @@
 		{ value: 'gazipur_narayanganj_savar', label: 'Gazipur / Narayanganj / Savar', price: 80 },
 		{ value: 'outside_dhaka', label: 'Outside Dhaka', price: 100 }
 	];
-
-	$: shippingCost = shippingMethods.find((m) => m.value === shippingMethod)?.price || 0;
-	$: totalAmount = data.total + shippingCost;
 
 	$: shippingCost = shippingMethods.find((m) => m.value === shippingMethod)?.price || 0;
 	$: totalAmount = data.total + shippingCost;

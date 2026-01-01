@@ -1,10 +1,22 @@
 // SERVICE: AI business logic and data access layer
 import type { Product } from '$lib/models/Product';
 import type { Sale } from '$lib/models/Sale';
+import type { Order } from '$lib/models/Order';
 import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '$env/dynamic/private';
 import { productService } from './ProductService';
 import { saleService } from './SaleService';
+import {
+	enhancedAIService,
+	type SalesPredictionEnhanced,
+	type StockRecommendationEnhanced,
+	type CustomerInsightsEnhanced,
+	type OrderRiskScore,
+	type ProductPerformanceAnalysis,
+	type CLV,
+	type ChurnPrediction
+} from './EnhancedAIService';
 
 export interface ComparisonInsight {
 	bestValue: {
@@ -50,21 +62,21 @@ export class AIService {
 
 		// Analyze products for best value (price/performance)
 		const bestValue = this.findBestValue(products);
-		
+
 		// Analyze for gaming suitability
 		const bestForGaming = this.findBestForGaming(products);
-		
+
 		// Analyze for work/productivity
 		const bestForWork = this.findBestForWork(products);
-		
+
 		// Find best performance
 		const bestPerformance = this.findBestPerformance(products);
 
 		// Generate summary
 		const summary = this.generateSummary(products, bestValue, bestForGaming, bestForWork);
-		
+
 		// Generate recommendation
-		const recommendation = this.generateRecommendation(products, bestValue, bestForGaming, bestForWork);
+		const recommendation = this.generateRecommendation(products);
 
 		return {
 			bestValue,
@@ -81,12 +93,12 @@ export class AIService {
 	 */
 	private findBestValue(products: Product[]): { productId: string; reason: string } {
 		// Calculate value score (lower price with good specs = better value)
-		const scored = products.map(product => {
+		const scored = products.map((product) => {
 			// Simple value calculation: consider price and specifications
 			const priceScore = 1000 / (product.price || 1); // Lower price = higher score
 			const specScore = this.extractSpecScore(product);
-			const valueScore = (specScore * 0.7) + (priceScore * 0.3);
-			
+			const valueScore = specScore * 0.7 + priceScore * 0.3;
+
 			return {
 				productId: product.id,
 				product,
@@ -94,7 +106,7 @@ export class AIService {
 			};
 		});
 
-		const best = scored.reduce((prev, current) => 
+		const best = scored.reduce((prev, current) =>
 			current.valueScore > prev.valueScore ? current : prev
 		);
 
@@ -108,20 +120,24 @@ export class AIService {
 	/**
 	 * Find best product for gaming
 	 */
-	private findBestForGaming(products: Product[]): { productId: string; reason: string } | undefined {
+	private findBestForGaming(
+		products: Product[]
+	): { productId: string; reason: string } | undefined {
 		// Look for gaming-related keywords in name, description, or specs
 		const gamingKeywords = ['gaming', 'gpu', 'graphics', 'rgb', 'performance', 'fps', 'rtx', 'gtx'];
-		
-		const scored = products.map(product => {
-			const text = `${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
+
+		const scored = products.map((product) => {
+			const text =
+				`${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
 			const gamingScore = gamingKeywords.reduce((score, keyword) => {
 				return score + (text.includes(keyword) ? 1 : 0);
 			}, 0);
-			
+
 			// Also consider if it's a GPU or has high performance specs
-			const isGPU = text.includes('graphics') || text.includes('gpu') || text.includes('video card');
+			const isGPU =
+				text.includes('graphics') || text.includes('gpu') || text.includes('video card');
 			const hasHighPerf = text.includes('high performance') || text.includes('powerful');
-			
+
 			return {
 				productId: product.id,
 				product,
@@ -129,7 +145,7 @@ export class AIService {
 			};
 		});
 
-		const best = scored.reduce((prev, current) => 
+		const best = scored.reduce((prev, current) =>
 			current.gamingScore > prev.gamingScore ? current : prev
 		);
 
@@ -148,18 +164,29 @@ export class AIService {
 	 */
 	private findBestForWork(products: Product[]): { productId: string; reason: string } | undefined {
 		// Look for work/productivity keywords
-		const workKeywords = ['office', 'productivity', 'business', 'professional', 'workstation', 'efficient', 'reliable'];
-		
-		const scored = products.map(product => {
-			const text = `${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
+		const workKeywords = [
+			'office',
+			'productivity',
+			'business',
+			'professional',
+			'workstation',
+			'efficient',
+			'reliable'
+		];
+
+		const scored = products.map((product) => {
+			const text =
+				`${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
 			const workScore = workKeywords.reduce((score, keyword) => {
 				return score + (text.includes(keyword) ? 1 : 0);
 			}, 0);
-			
+
 			// Consider reliability and efficiency
-			const isReliable = text.includes('reliable') || text.includes('durable') || text.includes('quality');
-			const isEfficient = text.includes('efficient') || text.includes('energy') || text.includes('low power');
-			
+			const isReliable =
+				text.includes('reliable') || text.includes('durable') || text.includes('quality');
+			const isEfficient =
+				text.includes('efficient') || text.includes('energy') || text.includes('low power');
+
 			return {
 				productId: product.id,
 				product,
@@ -167,7 +194,7 @@ export class AIService {
 			};
 		});
 
-		const best = scored.reduce((prev, current) => 
+		const best = scored.reduce((prev, current) =>
 			current.workScore > prev.workScore ? current : prev
 		);
 
@@ -184,29 +211,39 @@ export class AIService {
 	/**
 	 * Find best performance product
 	 */
-	private findBestPerformance(products: Product[]): { productId: string; reason: string } | undefined {
+	private findBestPerformance(
+		products: Product[]
+	): { productId: string; reason: string } | undefined {
 		// Consider price as indicator of performance (usually higher price = better performance)
 		// Also look for performance keywords
-		const performanceKeywords = ['high performance', 'powerful', 'fast', 'speed', 'premium', 'flagship'];
-		
-		const scored = products.map(product => {
-			const text = `${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
+		const performanceKeywords = [
+			'high performance',
+			'powerful',
+			'fast',
+			'speed',
+			'premium',
+			'flagship'
+		];
+
+		const scored = products.map((product) => {
+			const text =
+				`${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
 			const perfScore = performanceKeywords.reduce((score, keyword) => {
 				return score + (text.includes(keyword) ? 1 : 0);
 			}, 0);
-			
+
 			// Price can indicate performance level (but not always)
 			const priceScore = product.price / 10000; // Normalize price
 			const specScore = this.extractSpecScore(product);
-			
+
 			return {
 				productId: product.id,
 				product,
-				performanceScore: (perfScore * 2) + (specScore * 0.5) + (priceScore * 0.3)
+				performanceScore: perfScore * 2 + specScore * 0.5 + priceScore * 0.3
 			};
 		});
 
-		const best = scored.reduce((prev, current) => 
+		const best = scored.reduce((prev, current) =>
 			current.performanceScore > prev.performanceScore ? current : prev
 		);
 
@@ -221,31 +258,31 @@ export class AIService {
 	 */
 	private extractSpecScore(product: Product): number {
 		const text = `${product.specifications || ''} ${product.description || ''}`.toLowerCase();
-		
+
 		// Look for numeric indicators of performance
 		let score = 0;
-		
+
 		// CPU indicators
 		if (text.includes('i9') || text.includes('ryzen 9')) score += 10;
 		else if (text.includes('i7') || text.includes('ryzen 7')) score += 7;
 		else if (text.includes('i5') || text.includes('ryzen 5')) score += 5;
 		else if (text.includes('i3') || text.includes('ryzen 3')) score += 3;
-		
+
 		// RAM indicators
 		const ramMatch = text.match(/(\d+)\s*gb\s*(?:ram|memory)/i);
 		if (ramMatch) {
 			const ramGB = parseInt(ramMatch[1]);
 			score += Math.min(ramGB / 4, 5); // Max 5 points for RAM
 		}
-		
+
 		// Storage indicators
 		if (text.includes('ssd') || text.includes('nvme')) score += 3;
 		if (text.includes('1tb') || text.includes('2tb')) score += 2;
-		
+
 		// GPU indicators
 		if (text.includes('rtx 40') || text.includes('rtx 30')) score += 8;
 		else if (text.includes('rtx') || text.includes('gtx')) score += 5;
-		
+
 		return score;
 	}
 
@@ -258,46 +295,50 @@ export class AIService {
 		bestForGaming?: { productId: string; reason: string },
 		bestForWork?: { productId: string; reason: string }
 	): string {
-		const bestValueProduct = products.find(p => p.id === bestValue.productId);
+		const bestValueProduct = products.find((p) => p.id === bestValue.productId);
 		const insights: string[] = [];
-		
+
 		if (bestValueProduct) {
-			insights.push(`Best Value: ${bestValueProduct.name} offers the best price-to-performance ratio.`);
+			insights.push(
+				`Best Value: ${bestValueProduct.name} offers the best price-to-performance ratio.`
+			);
 		}
-		
+
 		if (bestForGaming) {
-			const gamingProduct = products.find(p => p.id === bestForGaming.productId);
+			const gamingProduct = products.find((p) => p.id === bestForGaming.productId);
 			if (gamingProduct) {
-				insights.push(`Best for Gaming: ${gamingProduct.name} is optimized for gaming performance.`);
+				insights.push(
+					`Best for Gaming: ${gamingProduct.name} is optimized for gaming performance.`
+				);
 			}
 		}
-		
+
 		if (bestForWork) {
-			const workProduct = products.find(p => p.id === bestForWork.productId);
+			const workProduct = products.find((p) => p.id === bestForWork.productId);
 			if (workProduct) {
-				insights.push(`Best for Work: ${workProduct.name} excels in productivity and professional tasks.`);
+				insights.push(
+					`Best for Work: ${workProduct.name} excels in productivity and professional tasks.`
+				);
 			}
 		}
-		
-		return insights.join(' ') || `Comparing ${products.length} products. Each has unique strengths based on your needs.`;
+
+		return (
+			insights.join(' ') ||
+			`Comparing ${products.length} products. Each has unique strengths based on your needs.`
+		);
 	}
 
 	/**
 	 * Generate recommendation
 	 */
-	private generateRecommendation(
-		products: Product[],
-		bestValue: { productId: string; reason: string },
-		bestForGaming?: { productId: string; reason: string },
-		bestForWork?: { productId: string; reason: string }
-	): string {
+	private generateRecommendation(products: Product[]): string {
 		const priceRange = {
-			min: Math.min(...products.map(p => p.price)),
-			max: Math.max(...products.map(p => p.price))
+			min: Math.min(...products.map((p) => p.price)),
+			max: Math.max(...products.map((p) => p.price))
 		};
-		
+
 		const priceDiff = ((priceRange.max - priceRange.min) / priceRange.min) * 100;
-		
+
 		if (priceDiff > 50) {
 			return `There's a significant price difference (${priceDiff.toFixed(0)}%) between these products. Consider your budget and specific needs. The best value option provides excellent features at a competitive price.`;
 		} else if (priceDiff > 20) {
@@ -314,7 +355,7 @@ export class AIService {
 	async analyzeComparisonWithAI(products: Product[]): Promise<ComparisonInsight> {
 		// Check if OpenAI is available
 		const openaiApiKey = process.env.OPENAI_API_KEY;
-		
+
 		if (!openaiApiKey) {
 			// Fallback to rule-based analysis
 			return this.analyzeComparison(products);
@@ -326,7 +367,7 @@ export class AIService {
 			});
 
 			// Prepare product data for AI analysis
-			const productData = products.map(p => ({
+			const productData = products.map((p) => ({
 				name: p.name,
 				price: p.price,
 				description: p.description,
@@ -339,7 +380,9 @@ export class AIService {
 			const prompt = `You are an expert tech product analyst. Analyze these ${products.length} products and provide detailed comparison insights.
 
 Products to compare:
-${productData.map((p, i) => `
+${productData
+	.map(
+		(p, i) => `
 Product ${i + 1}:
 - Name: ${p.name}
 - Price: ${p.price} Taka (Bangladeshi currency)
@@ -347,7 +390,9 @@ Product ${i + 1}:
 - Description: ${p.description}
 - Specifications: ${p.specifications || 'Not provided'}
 - Stock: ${p.stock} units
-`).join('\n')}
+`
+	)
+	.join('\n')}
 
 Please provide a JSON response with the following structure:
 {
@@ -383,7 +428,8 @@ Important:
 				messages: [
 					{
 						role: 'system',
-						content: 'You are an expert tech product analyst specializing in computer hardware and electronics. Provide detailed, accurate, and helpful product comparison insights.'
+						content:
+							'You are an expert tech product analyst specializing in computer hardware and electronics. Provide detailed, accurate, and helpful product comparison insights.'
 					},
 					{
 						role: 'user',
@@ -395,7 +441,7 @@ Important:
 			});
 
 			const aiResponse = response.choices[0]?.message?.content;
-			
+
 			if (!aiResponse) {
 				throw new Error('No response from AI');
 			}
@@ -425,7 +471,8 @@ Important:
 					reason: aiAnalysis.bestValue?.reason || 'Best value based on price and features'
 				},
 				summary: aiAnalysis.summary || 'AI analysis of product comparison',
-				recommendation: aiAnalysis.recommendation || 'Consider your specific needs and budget when choosing'
+				recommendation:
+					aiAnalysis.recommendation || 'Consider your specific needs and budget when choosing'
 			};
 
 			// Add optional insights
@@ -451,7 +498,6 @@ Important:
 			}
 
 			return insights;
-
 		} catch (error) {
 			console.error('AI analysis failed, using rule-based fallback:', error);
 			// Fallback to rule-based analysis if AI fails
@@ -525,16 +571,20 @@ Important guidelines:
 			});
 
 			const aiResponse = response.choices[0]?.message?.content;
-			return aiResponse || 'I apologize, but I couldn\'t generate a response. Please try again.';
+			return aiResponse || "I apologize, but I couldn't generate a response. Please try again.";
 		} catch (error: any) {
 			console.error('Chatbot error:', error);
-			
+
 			// Check for quota/rate limit errors and fallback gracefully
-			if (error?.status === 429 || error?.code === 'insufficient_quota' || error?.code === 'rate_limit_exceeded') {
+			if (
+				error?.status === 429 ||
+				error?.code === 'insufficient_quota' ||
+				error?.code === 'rate_limit_exceeded'
+			) {
 				console.warn('OpenAI API quota exceeded, using rule-based fallback');
 				return this.handleChatMessageRuleBased(message, userId);
 			}
-			
+
 			// For other errors, also fallback to rule-based
 			return this.handleChatMessageRuleBased(message, userId);
 		}
@@ -549,7 +599,7 @@ Important guidelines:
 		try {
 			// Get recent products for context
 			const products = await productService.getAllProducts();
-			const recentProducts = products.slice(0, 10).map(p => ({
+			const recentProducts = products.slice(0, 10).map((p) => ({
 				name: p.name,
 				price: p.price,
 				description: p.description?.substring(0, 100),
@@ -563,7 +613,7 @@ Important guidelines:
 				try {
 					const sales = await saleService.getAll({ userId });
 					if (sales.length > 0) {
-						const recentOrders = sales.slice(0, 5).map(s => ({
+						const recentOrders = sales.slice(0, 5).map((s) => ({
 							id: s.id,
 							product_name: (s as any).product_name || 'Unknown',
 							quantity: s.quantity,
@@ -594,7 +644,11 @@ Important guidelines:
 		const lowerMessage = message.toLowerCase();
 
 		// Order status inquiries
-		if (lowerMessage.includes('order') || lowerMessage.includes('status') || lowerMessage.includes('track')) {
+		if (
+			lowerMessage.includes('order') ||
+			lowerMessage.includes('status') ||
+			lowerMessage.includes('track')
+		) {
 			if (userId) {
 				try {
 					const sales = await saleService.getAll({ userId });
@@ -602,9 +656,9 @@ Important guidelines:
 						const recentOrder = sales[0];
 						return `Your most recent order (ID: ${recentOrder.id}) was placed on ${new Date(recentOrder.created_at).toLocaleDateString()}. Total: Tk ${recentOrder.total.toFixed(2)}. For detailed tracking, please check your profile or contact our support team.`;
 					}
-					return 'You don\'t have any orders yet. Browse our products and make your first purchase!';
+					return "You don't have any orders yet. Browse our products and make your first purchase!";
 				} catch (error) {
-					return 'I couldn\'t retrieve your order information. Please contact our support team for assistance.';
+					return "I couldn't retrieve your order information. Please contact our support team for assistance.";
 				}
 			}
 			return 'Please log in to check your order status. You can view all your orders in your profile.';
@@ -616,7 +670,7 @@ Important guidelines:
 			try {
 				// Try searching with extracted keywords
 				let searchResults: Product[] = [];
-				
+
 				if (productKeywords.length > 0) {
 					// Search with each keyword and combine results
 					for (const keyword of productKeywords) {
@@ -624,8 +678,8 @@ Important guidelines:
 						searchResults = [...searchResults, ...results];
 					}
 					// Remove duplicates
-					searchResults = searchResults.filter((product, index, self) =>
-						index === self.findIndex(p => p.id === product.id)
+					searchResults = searchResults.filter(
+						(product, index, self) => index === self.findIndex((p) => p.id === product.id)
 					);
 				} else {
 					// If no keywords extracted, try searching the whole message
@@ -635,10 +689,12 @@ Important guidelines:
 				if (searchResults.length > 0) {
 					// Limit to top 5 results
 					const topProducts = searchResults.slice(0, 5);
-					const productList = topProducts.map(p => {
-						const stockStatus = p.stock > 0 ? '✓ In Stock' : '✗ Out of Stock';
-						return `• **${p.name}**\n  Price: Tk ${p.price.toFixed(2)} | ${stockStatus}\n  View: /products/${p.id}`;
-					}).join('\n\n');
+					const productList = topProducts
+						.map((p) => {
+							const stockStatus = p.stock > 0 ? '✓ In Stock' : '✗ Out of Stock';
+							return `• **${p.name}**\n  Price: Tk ${p.price.toFixed(2)} | ${stockStatus}\n  View: /products/${p.id}`;
+						})
+						.join('\n\n');
 
 					return `I found ${searchResults.length} product${searchResults.length > 1 ? 's' : ''} matching your search:\n\n${productList}\n\nClick on any product link above to view details, or browse all products at /products`;
 				} else {
@@ -647,16 +703,16 @@ Important guidelines:
 					if (allProducts.length > 0) {
 						// Find products with similar keywords in description
 						const similarProducts = allProducts
-							.filter(p => {
+							.filter((p) => {
 								const productText = `${p.name} ${p.description} ${p.brand || ''}`.toLowerCase();
-								return productKeywords.some(keyword => productText.includes(keyword));
+								return productKeywords.some((keyword) => productText.includes(keyword));
 							})
 							.slice(0, 3);
 
 						if (similarProducts.length > 0) {
-							const similarList = similarProducts.map(p => 
-								`• **${p.name}** - Tk ${p.price.toFixed(2)} | View: /products/${p.id}`
-							).join('\n');
+							const similarList = similarProducts
+								.map((p) => `• **${p.name}** - Tk ${p.price.toFixed(2)} | View: /products/${p.id}`)
+								.join('\n');
 
 							return `I couldn't find exact matches, but here are some similar products you might like:\n\n${similarList}\n\nYou can also browse all products at /products or search with different keywords.`;
 						}
@@ -670,16 +726,20 @@ Important guidelines:
 		}
 
 		// Product recommendations
-		if (lowerMessage.includes('recommend') || lowerMessage.includes('suggest') || lowerMessage.includes('best')) {
+		if (
+			lowerMessage.includes('recommend') ||
+			lowerMessage.includes('suggest') ||
+			lowerMessage.includes('best')
+		) {
 			try {
 				const products = await productService.getAllProducts();
 				if (products.length > 0) {
 					// Get products with stock
-					const inStockProducts = products.filter(p => p.stock > 0);
+					const inStockProducts = products.filter((p) => p.stock > 0);
 					const featured = (inStockProducts.length > 0 ? inStockProducts : products).slice(0, 3);
-					const productList = featured.map(p => 
-						`• **${p.name}** - Tk ${p.price.toFixed(2)} | View: /products/${p.id}`
-					).join('\n');
+					const productList = featured
+						.map((p) => `• **${p.name}** - Tk ${p.price.toFixed(2)} | View: /products/${p.id}`)
+						.join('\n');
 					return `Here are some popular products:\n\n${productList}\n\nWould you like more details about any of these? You can also browse all products on our products page.`;
 				}
 			} catch (error) {
@@ -688,8 +748,12 @@ Important guidelines:
 		}
 
 		// Greetings
-		if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-			return 'Hello! I\'m here to help you with product questions, order status, and recommendations. How can I assist you today?';
+		if (
+			lowerMessage.includes('hello') ||
+			lowerMessage.includes('hi') ||
+			lowerMessage.includes('hey')
+		) {
+			return "Hello! I'm here to help you with product questions, order status, and recommendations. How can I assist you today?";
 		}
 
 		// Help
@@ -702,9 +766,9 @@ Important guidelines:
 			const searchResults = await productService.searchProducts(message);
 			if (searchResults.length > 0) {
 				const topProducts = searchResults.slice(0, 3);
-				const productList = topProducts.map(p => 
-					`• **${p.name}** - Tk ${p.price.toFixed(2)} | View: /products/${p.id}`
-				).join('\n');
+				const productList = topProducts
+					.map((p) => `• **${p.name}** - Tk ${p.price.toFixed(2)} | View: /products/${p.id}`)
+					.join('\n');
 				return `I found some products that might interest you:\n\n${productList}\n\nWould you like to see more? Browse all products at /products`;
 			}
 		} catch (error) {
@@ -720,27 +784,27 @@ Important guidelines:
 	private extractProductKeywords(message: string): string[] {
 		// Common product keywords with typo corrections
 		const productMap: Record<string, string[]> = {
-			'monitor': ['monitor', 'moniter', 'display', 'screen'],
-			'laptop': ['laptop', 'notebook', 'computer'],
-			'desktop': ['desktop', 'pc', 'computer'],
-			'keyboard': ['keyboard', 'keybord'],
-			'mouse': ['mouse', 'mice'],
-			'headphone': ['headphone', 'headphones', 'headset'],
-			'speaker': ['speaker', 'speakers'],
-			'webcam': ['webcam', 'camera'],
-			'microphone': ['microphone', 'mic'],
-			'printer': ['printer', 'print'],
-			'scanner': ['scanner', 'scan'],
-			'router': ['router', 'wifi'],
-			'ram': ['ram', 'memory'],
-			'storage': ['storage', 'ssd', 'hard drive', 'hdd'],
-			'graphics': ['graphics', 'gpu', 'video card'],
-			'processor': ['processor', 'cpu'],
-			'motherboard': ['motherboard', 'mobo'],
+			monitor: ['monitor', 'moniter', 'display', 'screen'],
+			laptop: ['laptop', 'notebook', 'computer'],
+			desktop: ['desktop', 'pc', 'computer'],
+			keyboard: ['keyboard', 'keybord'],
+			mouse: ['mouse', 'mice'],
+			headphone: ['headphone', 'headphones', 'headset'],
+			speaker: ['speaker', 'speakers'],
+			webcam: ['webcam', 'camera'],
+			microphone: ['microphone', 'mic'],
+			printer: ['printer', 'print'],
+			scanner: ['scanner', 'scan'],
+			router: ['router', 'wifi'],
+			ram: ['ram', 'memory'],
+			storage: ['storage', 'ssd', 'hard drive', 'hdd'],
+			graphics: ['graphics', 'gpu', 'video card'],
+			processor: ['processor', 'cpu'],
+			motherboard: ['motherboard', 'mobo'],
 			'power supply': ['power supply', 'psu'],
-			'case': ['case', 'chassis'],
-			'cooling': ['cooling', 'fan', 'cooler'],
-			'gaming': ['gaming', 'game']
+			case: ['case', 'chassis'],
+			cooling: ['cooling', 'fan', 'cooler'],
+			gaming: ['gaming', 'game']
 		};
 
 		const keywords: string[] = [];
@@ -748,21 +812,63 @@ Important guidelines:
 
 		// Check for each product type
 		for (const [canonical, variants] of Object.entries(productMap)) {
-			if (variants.some(variant => lowerMessage.includes(variant))) {
+			if (variants.some((variant) => lowerMessage.includes(variant))) {
 				keywords.push(canonical);
 			}
 		}
 
 		// Also extract any words that might be product names (3+ characters, not common words)
-		const commonWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use'];
-		const words = lowerMessage.split(/\s+/).filter(word => 
-			word.length >= 3 && 
-			!commonWords.includes(word) &&
-			!keywords.some(k => word.includes(k) || k.includes(word))
-		);
-		
+		const commonWords = [
+			'the',
+			'and',
+			'for',
+			'are',
+			'but',
+			'not',
+			'you',
+			'all',
+			'can',
+			'her',
+			'was',
+			'one',
+			'our',
+			'out',
+			'day',
+			'get',
+			'has',
+			'him',
+			'his',
+			'how',
+			'its',
+			'may',
+			'new',
+			'now',
+			'old',
+			'see',
+			'two',
+			'way',
+			'who',
+			'boy',
+			'did',
+			'its',
+			'let',
+			'put',
+			'say',
+			'she',
+			'too',
+			'use'
+		];
+		const words = lowerMessage
+			.split(/\s+/)
+			.filter(
+				(word) =>
+					word.length >= 3 &&
+					!commonWords.includes(word) &&
+					!keywords.some((k) => word.includes(k) || k.includes(word))
+			);
+
 		// Add unique words that might be product-related
-		words.forEach(word => {
+		words.forEach((word) => {
 			if (!keywords.includes(word) && word.length >= 3) {
 				keywords.push(word);
 			}
@@ -776,10 +882,22 @@ Important guidelines:
 	 */
 	private isProductQuery(message: string): boolean {
 		const productIndicators = [
-			'need', 'want', 'looking for', 'search', 'find', 'show', 'buy', 'purchase',
-			'product', 'item', 'thing', 'recommend', 'suggest', 'best'
+			'need',
+			'want',
+			'looking for',
+			'search',
+			'find',
+			'show',
+			'buy',
+			'purchase',
+			'product',
+			'item',
+			'thing',
+			'recommend',
+			'suggest',
+			'best'
 		];
-		return productIndicators.some(indicator => message.includes(indicator));
+		return productIndicators.some((indicator) => message.includes(indicator));
 	}
 
 	/**
@@ -803,21 +921,26 @@ Important guidelines:
 		}
 
 		// Calculate average sales per day
-		const salesByDate = sales.reduce((acc, sale) => {
-			const date = sale.created_at ? new Date(sale.created_at).toDateString() : 'unknown';
-			if (!acc[date]) acc[date] = { count: 0, revenue: 0 };
-			acc[date].count += sale.quantity;
-			acc[date].revenue += sale.total_amount;
-			return acc;
-		}, {} as Record<string, { count: number; revenue: number }>);
+		const salesByDate = sales.reduce(
+			(acc, sale) => {
+				const date = sale.created_at ? new Date(sale.created_at).toDateString() : 'unknown';
+				if (!acc[date]) acc[date] = { count: 0, revenue: 0 };
+				acc[date].count += sale.quantity;
+				acc[date].revenue += sale.total_amount;
+				return acc;
+			},
+			{} as Record<string, { count: number; revenue: number }>
+		);
 
 		const dates = Object.keys(salesByDate);
-		const avgDailySales = dates.length > 0 
-			? dates.reduce((sum, date) => sum + salesByDate[date].count, 0) / dates.length 
-			: 0;
-		const avgDailyRevenue = dates.length > 0
-			? dates.reduce((sum, date) => sum + salesByDate[date].revenue, 0) / dates.length
-			: 0;
+		const avgDailySales =
+			dates.length > 0
+				? dates.reduce((sum, date) => sum + salesByDate[date].count, 0) / dates.length
+				: 0;
+		const avgDailyRevenue =
+			dates.length > 0
+				? dates.reduce((sum, date) => sum + salesByDate[date].revenue, 0) / dates.length
+				: 0;
 
 		// Predict for next 30 days
 		const predictedSales = Math.round(avgDailySales * 30);
@@ -826,12 +949,14 @@ Important guidelines:
 		// Determine trend
 		const recentSales = sales.slice(-10);
 		const olderSales = sales.slice(-20, -10);
-		const recentAvg = recentSales.length > 0 
-			? recentSales.reduce((sum, s) => sum + s.quantity, 0) / recentSales.length 
-			: 0;
-		const olderAvg = olderSales.length > 0
-			? olderSales.reduce((sum, s) => sum + s.quantity, 0) / olderSales.length
-			: 0;
+		const recentAvg =
+			recentSales.length > 0
+				? recentSales.reduce((sum, s) => sum + s.quantity, 0) / recentSales.length
+				: 0;
+		const olderAvg =
+			olderSales.length > 0
+				? olderSales.reduce((sum, s) => sum + s.quantity, 0) / olderSales.length
+				: 0;
 
 		let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
 		if (recentAvg > olderAvg * 1.1) trend = 'increasing';
@@ -860,14 +985,19 @@ Important guidelines:
 	/**
 	 * AI Stock Recommendations - Suggest products that need restocking
 	 */
-	async getStockRecommendations(products: Product[], sales: Sale[]): Promise<Array<{
-		productId: string;
-		productName: string;
-		currentStock: number;
-		recommendedStock: number;
-		urgency: 'high' | 'medium' | 'low';
-		reason: string;
-	}>> {
+	async getStockRecommendations(
+		products: Product[],
+		sales: Sale[]
+	): Promise<
+		Array<{
+			productId: string;
+			productName: string;
+			currentStock: number;
+			recommendedStock: number;
+			urgency: 'high' | 'medium' | 'low';
+			reason: string;
+		}>
+	> {
 		const recommendations: Array<{
 			productId: string;
 			productName: string;
@@ -879,7 +1009,7 @@ Important guidelines:
 
 		for (const product of products) {
 			// Calculate average sales per month for this product
-			const productSales = sales.filter(s => s.product_id === product.id);
+			const productSales = sales.filter((s) => s.product_id === product.id);
 			if (productSales.length === 0) continue;
 
 			const totalSold = productSales.reduce((sum, s) => sum + s.quantity, 0);
@@ -927,7 +1057,12 @@ Important guidelines:
 	 * AI Customer Insights - Analyze customer behavior
 	 */
 	async getCustomerInsights(sales: Sale[]): Promise<{
-		topCustomers: Array<{ userId: string; userName: string; totalSpent: number; orderCount: number }>;
+		topCustomers: Array<{
+			userId: string;
+			userName: string;
+			totalSpent: number;
+			orderCount: number;
+		}>;
 		averageOrderValue: number;
 		customerRetentionRate: string;
 		insights: string[];
@@ -942,41 +1077,46 @@ Important guidelines:
 		}
 
 		// Group by user
-		const customerData = sales.reduce((acc, sale) => {
-			const userId = sale.user_id || 'guest';
-			if (!acc[userId]) {
-				acc[userId] = {
-					userId,
-					userName: sale.user_name || 'Guest',
-					totalSpent: 0,
-					orderCount: 0
-				};
-			}
-			acc[userId].totalSpent += sale.total_amount;
-			acc[userId].orderCount += 1;
-			return acc;
-		}, {} as Record<string, { userId: string; userName: string; totalSpent: number; orderCount: number }>);
+		const customerData = sales.reduce(
+			(acc, sale) => {
+				const userId = sale.user_id || 'guest';
+				if (!acc[userId]) {
+					acc[userId] = {
+						userId,
+						userName: sale.user_name || 'Guest',
+						totalSpent: 0,
+						orderCount: 0
+					};
+				}
+				acc[userId].totalSpent += sale.total_amount;
+				acc[userId].orderCount += 1;
+				return acc;
+			},
+			{} as Record<
+				string,
+				{ userId: string; userName: string; totalSpent: number; orderCount: number }
+			>
+		);
 
 		const customers = Object.values(customerData);
-		const topCustomers = customers
-			.sort((a, b) => b.totalSpent - a.totalSpent)
-			.slice(0, 5);
+		const topCustomers = customers.sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
 
 		const totalRevenue = sales.reduce((sum, s) => sum + s.total_amount, 0);
 		const averageOrderValue = totalRevenue / sales.length;
 
 		// Calculate retention (users with multiple orders)
-		const repeatCustomers = customers.filter(c => c.orderCount > 1).length;
-		const customerRetentionRate = customers.length > 0
-			? ((repeatCustomers / customers.length) * 100).toFixed(1)
-			: '0';
+		const repeatCustomers = customers.filter((c) => c.orderCount > 1).length;
+		const customerRetentionRate =
+			customers.length > 0 ? ((repeatCustomers / customers.length) * 100).toFixed(1) : '0';
 
 		const insights: string[] = [];
 		insights.push(`Total customers: ${customers.length}`);
 		insights.push(`Repeat customers: ${repeatCustomers} (${customerRetentionRate}%)`);
 		insights.push(`Average order value: Tk ${averageOrderValue.toFixed(2)}`);
 		if (topCustomers.length > 0) {
-			insights.push(`Top customer: ${topCustomers[0].userName} (Tk ${topCustomers[0].totalSpent.toFixed(2)})`);
+			insights.push(
+				`Top customer: ${topCustomers[0].userName} (Tk ${topCustomers[0].totalSpent.toFixed(2)})`
+			);
 		}
 
 		return {
@@ -1006,23 +1146,28 @@ Important guidelines:
 		}
 
 		// Group sales by date
-		const salesByDate = sales.reduce((acc, sale) => {
-			if (!sale.created_at) return acc;
-			const date = new Date(sale.created_at).toDateString();
-			if (!acc[date]) acc[date] = { revenue: 0, count: 0 };
-			acc[date].revenue += sale.total_amount;
-			acc[date].count += sale.quantity;
-			return acc;
-		}, {} as Record<string, { revenue: number; count: number }>);
+		const salesByDate = sales.reduce(
+			(acc, sale) => {
+				if (!sale.created_at) return acc;
+				const date = new Date(sale.created_at).toDateString();
+				if (!acc[date]) acc[date] = { revenue: 0, count: 0 };
+				acc[date].revenue += sale.total_amount;
+				acc[date].count += sale.quantity;
+				return acc;
+			},
+			{} as Record<string, { revenue: number; count: number }>
+		);
 
 		const dates = Object.keys(salesByDate).sort();
-		const revenues = dates.map(date => salesByDate[date].revenue);
+		const revenues = dates.map((date) => salesByDate[date].revenue);
 
 		// Calculate trend
 		const firstHalf = revenues.slice(0, Math.floor(revenues.length / 2));
 		const secondHalf = revenues.slice(Math.floor(revenues.length / 2));
-		const firstAvg = firstHalf.length > 0 ? firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length : 0;
-		const secondAvg = secondHalf.length > 0 ? secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length : 0;
+		const firstAvg =
+			firstHalf.length > 0 ? firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length : 0;
+		const secondAvg =
+			secondHalf.length > 0 ? secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length : 0;
 
 		let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
 		const change = ((secondAvg - firstAvg) / (firstAvg || 1)) * 100;
@@ -1033,11 +1178,17 @@ Important guidelines:
 
 		// Detect anomalies (spikes/drops)
 		const mean = revenues.reduce((a, b) => a + b, 0) / revenues.length;
-		const variance = revenues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / revenues.length;
+		const variance =
+			revenues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / revenues.length;
 		const stdDev = Math.sqrt(variance);
-		const threshold = mean + (2 * stdDev); // 2 standard deviations
+		const threshold = mean + 2 * stdDev; // 2 standard deviations
 
-		const anomalies: Array<{ date: string; type: 'spike' | 'drop'; value: number; reason: string }> = [];
+		const anomalies: Array<{
+			date: string;
+			type: 'spike' | 'drop';
+			value: number;
+			reason: string;
+		}> = [];
 		dates.forEach((date, index) => {
 			const revenue = revenues[index];
 			if (revenue > threshold) {
@@ -1047,7 +1198,7 @@ Important guidelines:
 					value: revenue,
 					reason: `Unusual sales spike detected (${((revenue / mean - 1) * 100).toFixed(1)}% above average)`
 				});
-			} else if (revenue < mean - (2 * stdDev) && revenue > 0) {
+			} else if (revenue < mean - 2 * stdDev && revenue > 0) {
 				anomalies.push({
 					date,
 					type: 'drop',
@@ -1075,15 +1226,20 @@ Important guidelines:
 	/**
 	 * AI Inventory Predictions - Predict demand and suggest reorder points
 	 */
-	async predictInventory(products: Product[], sales: Sale[]): Promise<Array<{
-		productId: string;
-		productName: string;
-		currentStock: number;
-		predictedDemand: number;
-		daysUntilStockout: number;
-		reorderPoint: number;
-		suggestedOrderQuantity: number;
-	}>> {
+	async predictInventory(
+		products: Product[],
+		sales: Sale[]
+	): Promise<
+		Array<{
+			productId: string;
+			productName: string;
+			currentStock: number;
+			predictedDemand: number;
+			daysUntilStockout: number;
+			reorderPoint: number;
+			suggestedOrderQuantity: number;
+		}>
+	> {
 		const predictions: Array<{
 			productId: string;
 			productName: string;
@@ -1095,8 +1251,8 @@ Important guidelines:
 		}> = [];
 
 		for (const product of products) {
-			const productSales = sales.filter(s => s.product_id === product.id);
-			
+			const productSales = sales.filter((s) => s.product_id === product.id);
+
 			if (productSales.length === 0) {
 				// No sales history - use default prediction
 				predictions.push({
@@ -1118,9 +1274,8 @@ Important guidelines:
 			const monthlyDemand = avgDailyDemand * 30;
 
 			// Predict days until stockout
-			const daysUntilStockout = product.stock > 0 && avgDailyDemand > 0
-				? Math.floor(product.stock / avgDailyDemand)
-				: 0;
+			const daysUntilStockout =
+				product.stock > 0 && avgDailyDemand > 0 ? Math.floor(product.stock / avgDailyDemand) : 0;
 
 			// Reorder point = 1.2x monthly demand (safety buffer)
 			const reorderPoint = Math.ceil(monthlyDemand * 1.2);
@@ -1143,15 +1298,20 @@ Important guidelines:
 	/**
 	 * AI Price Optimization - Suggest optimal prices
 	 */
-	async optimizePrices(products: Product[], sales: Sale[]): Promise<Array<{
-		productId: string;
-		productName: string;
-		currentPrice: number;
-		suggestedPrice: number;
-		priceChange: number;
-		reason: string;
-		expectedImpact: string;
-	}>> {
+	async optimizePrices(
+		products: Product[],
+		sales: Sale[]
+	): Promise<
+		Array<{
+			productId: string;
+			productName: string;
+			currentPrice: number;
+			suggestedPrice: number;
+			priceChange: number;
+			reason: string;
+			expectedImpact: string;
+		}>
+	> {
 		const optimizations: Array<{
 			productId: string;
 			productName: string;
@@ -1163,14 +1323,13 @@ Important guidelines:
 		}> = [];
 
 		for (const product of products) {
-			const productSales = sales.filter(s => s.product_id === product.id);
+			const productSales = sales.filter((s) => s.product_id === product.id);
 			const salesCount = productSales.length;
-			
+
 			// Calculate price elasticity based on sales
 			// If product has low sales and high stock, suggest price reduction
 			// If product has high sales and low stock, suggest price increase
-			
-			const stockRatio = product.stock / Math.max(1, salesCount * 2); // Normalize
+
 			const salesVelocity = salesCount / 30; // Sales per day (rough estimate)
 
 			let suggestedPrice = product.price;
@@ -1258,20 +1417,21 @@ Important guidelines:
 			reason: string;
 		}> = [];
 
-		const requiredCategories = categories.filter(c => c.is_required);
+		const requiredCategories = categories.filter((c) => c.is_required);
 		const budgetPerCategory = requirements.budget / requiredCategories.length;
 		let remainingBudget = requirements.budget;
 
 		for (const category of requiredCategories) {
 			const categoryProducts = availableProducts.filter(
-				p => (p as any).component_category_id === category.id && p.stock > 0
+				(p) => (p as any).component_category_id === category.id && p.stock > 0
 			);
 
 			if (categoryProducts.length === 0) continue;
 
 			// Score products based on use case
-			const scored = categoryProducts.map(product => {
-				const productText = `${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
+			const scored = categoryProducts.map((product) => {
+				const productText =
+					`${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
 				let score = 0;
 
 				// Budget fit score
@@ -1280,21 +1440,33 @@ Important guidelines:
 
 				// Use case matching
 				if (requirements.useCase === 'gaming') {
-					if (productText.includes('gaming') || productText.includes('gpu') || productText.includes('graphics')) {
+					if (
+						productText.includes('gaming') ||
+						productText.includes('gpu') ||
+						productText.includes('graphics')
+					) {
 						score += 0.3;
 					}
 					if (productText.includes('rgb') || productText.includes('performance')) {
 						score += 0.2;
 					}
 				} else if (requirements.useCase === 'work' || requirements.useCase === 'productivity') {
-					if (productText.includes('professional') || productText.includes('business') || productText.includes('office')) {
+					if (
+						productText.includes('professional') ||
+						productText.includes('business') ||
+						productText.includes('office')
+					) {
 						score += 0.3;
 					}
 					if (productText.includes('reliable') || productText.includes('efficient')) {
 						score += 0.2;
 					}
 				} else if (requirements.useCase === 'content-creation') {
-					if (productText.includes('video') || productText.includes('editing') || productText.includes('rendering')) {
+					if (
+						productText.includes('video') ||
+						productText.includes('editing') ||
+						productText.includes('rendering')
+					) {
 						score += 0.3;
 					}
 					if (productText.includes('high performance') || productText.includes('workstation')) {
@@ -1326,7 +1498,7 @@ Important guidelines:
 				remainingBudget -= best.product.price;
 			} else if (scored.length > 0) {
 				// Find cheapest option that fits
-				const affordable = scored.filter(s => s.product.price <= remainingBudget);
+				const affordable = scored.filter((s) => s.product.price <= remainingBudget);
 				if (affordable.length > 0) {
 					const cheapest = affordable.sort((a, b) => a.product.price - b.product.price)[0];
 					suggestions.push({
@@ -1386,16 +1558,19 @@ Important guidelines:
 		}> = [];
 
 		for (const component of currentBuild) {
-			const category = categories.find(c => c.id === component.categoryId);
+			const category = categories.find((c) => c.id === component.categoryId);
 			if (!category) continue;
 
 			const categoryProducts = availableProducts.filter(
-				p => (p as any).component_category_id === component.categoryId && p.stock > 0 && p.id !== component.productId
+				(p) =>
+					(p as any).component_category_id === component.categoryId &&
+					p.stock > 0 &&
+					p.id !== component.productId
 			);
 
 			if (categoryProducts.length === 0) continue;
 
-			const currentProduct = availableProducts.find(p => p.id === component.productId);
+			const currentProduct = availableProducts.find((p) => p.id === component.productId);
 			if (!currentProduct) continue;
 
 			let bestAlternative: Product | null = null;
@@ -1404,9 +1579,9 @@ Important guidelines:
 			if (optimizationGoal === 'value') {
 				// Find better value (similar performance, lower price)
 				const alternatives = categoryProducts
-					.filter(p => p.price < currentProduct.price)
+					.filter((p) => p.price < currentProduct.price)
 					.sort((a, b) => b.price - a.price); // Higher price but still cheaper
-				
+
 				if (alternatives.length > 0) {
 					bestAlternative = alternatives[0];
 					reason = `Better value option with similar performance`;
@@ -1414,18 +1589,17 @@ Important guidelines:
 			} else if (optimizationGoal === 'performance') {
 				// Find better performance at similar price
 				const alternatives = categoryProducts
-					.filter(p => Math.abs(p.price - currentProduct.price) / currentProduct.price < 0.2) // Within 20% price
+					.filter((p) => Math.abs(p.price - currentProduct.price) / currentProduct.price < 0.2) // Within 20% price
 					.sort((a, b) => b.price - a.price); // Higher price = likely better performance
-				
+
 				if (alternatives.length > 0) {
 					bestAlternative = alternatives[0];
 					reason = `Better performance at similar price point`;
 				}
 			} else if (optimizationGoal === 'budget') {
 				// Find cheapest option
-				const alternatives = categoryProducts
-					.sort((a, b) => a.price - b.price);
-				
+				const alternatives = categoryProducts.sort((a, b) => a.price - b.price);
+
 				if (alternatives.length > 0 && alternatives[0].price < currentProduct.price) {
 					bestAlternative = alternatives[0];
 					reason = `More budget-friendly option`;
@@ -1462,31 +1636,33 @@ Important guidelines:
 		budget: number,
 		availableProducts: Product[],
 		categories: Array<{ id: string; name: string; is_required: boolean }>
-	): Promise<Array<{
-		name: string;
-		description: string;
-		components: Array<{
-			categoryId: string;
-			productId: string;
-			productName: string;
-			price: number;
-		}>;
-		totalPrice: number;
-	}>> {
+	): Promise<
+		Array<{
+			name: string;
+			description: string;
+			components: Array<{
+				categoryId: string;
+				productId: string;
+				productName: string;
+				price: number;
+			}>;
+			totalPrice: number;
+		}>
+	> {
 		type BuildComponent = {
 			categoryId: string;
 			productId: string;
 			productName: string;
 			price: number;
 		};
-		
+
 		type PrebuiltBuild = {
 			name: string;
 			description: string;
 			components: BuildComponent[];
 			totalPrice: number;
 		};
-		
+
 		const builds: PrebuiltBuild[] = [];
 
 		// Generate 3 builds: Budget, Mid-range, High-end
@@ -1508,7 +1684,7 @@ Important guidelines:
 				builds.push({
 					name: `${tier.name} ${useCase.charAt(0).toUpperCase() + useCase.slice(1)} Build`,
 					description: `${tier.description} - ${suggestion.explanation}`,
-					components: suggestion.suggestions.map(s => ({
+					components: suggestion.suggestions.map((s) => ({
 						categoryId: s.categoryId,
 						productId: s.productId,
 						productName: s.productName,
@@ -1537,20 +1713,49 @@ Important guidelines:
 
 		// Rule-based sentiment analysis
 		const lowerComment = comment.toLowerCase();
-		
+
 		// Positive keywords
-		const positiveKeywords = ['great', 'excellent', 'amazing', 'love', 'perfect', 'good', 'wonderful', 'fantastic', 'awesome', 'best', 'recommend', 'satisfied', 'happy', 'pleased'];
+		const positiveKeywords = [
+			'great',
+			'excellent',
+			'amazing',
+			'love',
+			'perfect',
+			'good',
+			'wonderful',
+			'fantastic',
+			'awesome',
+			'best',
+			'recommend',
+			'satisfied',
+			'happy',
+			'pleased'
+		];
 		// Negative keywords
-		const negativeKeywords = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'disappointed', 'waste', 'poor', 'broken', 'defective', 'faulty', 'useless', 'regret'];
-		
+		const negativeKeywords = [
+			'bad',
+			'terrible',
+			'awful',
+			'horrible',
+			'worst',
+			'disappointed',
+			'waste',
+			'poor',
+			'broken',
+			'defective',
+			'faulty',
+			'useless',
+			'regret'
+		];
+
 		let positiveScore = 0;
 		let negativeScore = 0;
 
-		positiveKeywords.forEach(keyword => {
+		positiveKeywords.forEach((keyword) => {
 			if (lowerComment.includes(keyword)) positiveScore++;
 		});
 
-		negativeKeywords.forEach(keyword => {
+		negativeKeywords.forEach((keyword) => {
 			if (lowerComment.includes(keyword)) negativeScore++;
 		});
 
@@ -1560,10 +1765,10 @@ Important guidelines:
 
 		if (rating >= 4 && positiveScore > negativeScore) {
 			sentiment = 'positive';
-			confidence = 0.7 + (positiveScore * 0.1);
+			confidence = 0.7 + positiveScore * 0.1;
 		} else if (rating <= 2 && negativeScore > positiveScore) {
 			sentiment = 'negative';
-			confidence = 0.7 + (negativeScore * 0.1);
+			confidence = 0.7 + negativeScore * 0.1;
 		} else if (rating === 3 || (positiveScore === 0 && negativeScore === 0)) {
 			sentiment = 'neutral';
 			confidence = 0.6;
@@ -1577,20 +1782,20 @@ Important guidelines:
 		// Extract key features mentioned
 		const featureKeywords: Record<string, string[]> = {
 			'Battery Life': ['battery', 'charge', 'power', 'endurance', 'lasts'],
-			'Performance': ['fast', 'speed', 'performance', 'quick', 'smooth', 'responsive'],
-			'Display': ['screen', 'display', 'resolution', 'quality', 'bright', 'clear'],
-			'Design': ['design', 'looks', 'appearance', 'beautiful', 'stylish', 'build quality'],
-			'Price': ['price', 'value', 'affordable', 'expensive', 'worth', 'cost'],
-			'Processor': ['processor', 'cpu', 'intel', 'amd', 'ryzen', 'core'],
-			'Storage': ['storage', 'memory', 'ram', 'ssd', 'hard drive', 'space'],
-			'Graphics': ['graphics', 'gpu', 'video', 'gaming', 'graphics card'],
-			'Camera': ['camera', 'photo', 'picture', 'image', 'quality'],
-			'Connectivity': ['wifi', 'bluetooth', 'usb', 'ports', 'connection']
+			Performance: ['fast', 'speed', 'performance', 'quick', 'smooth', 'responsive'],
+			Display: ['screen', 'display', 'resolution', 'quality', 'bright', 'clear'],
+			Design: ['design', 'looks', 'appearance', 'beautiful', 'stylish', 'build quality'],
+			Price: ['price', 'value', 'affordable', 'expensive', 'worth', 'cost'],
+			Processor: ['processor', 'cpu', 'intel', 'amd', 'ryzen', 'core'],
+			Storage: ['storage', 'memory', 'ram', 'ssd', 'hard drive', 'space'],
+			Graphics: ['graphics', 'gpu', 'video', 'gaming', 'graphics card'],
+			Camera: ['camera', 'photo', 'picture', 'image', 'quality'],
+			Connectivity: ['wifi', 'bluetooth', 'usb', 'ports', 'connection']
 		};
 
 		const keyFeatures: string[] = [];
 		for (const [feature, keywords] of Object.entries(featureKeywords)) {
-			if (keywords.some(keyword => lowerComment.includes(keyword))) {
+			if (keywords.some((keyword) => lowerComment.includes(keyword))) {
 				keyFeatures.push(feature);
 			}
 		}
@@ -1628,7 +1833,9 @@ Important guidelines:
 	/**
 	 * AI Review Summary - Generate "What customers love" summary
 	 */
-	async generateReviewSummary(reviews: Array<{ rating: number; comment?: string | null }>): Promise<{
+	async generateReviewSummary(
+		reviews: Array<{ rating: number; comment?: string | null }>
+	): Promise<{
 		summary: string;
 		positiveAspects: string[];
 		negativeAspects: string[];
@@ -1647,18 +1854,21 @@ Important guidelines:
 
 		// Analyze all reviews
 		const sentiments = await Promise.all(
-			reviews.map(review => this.analyzeReviewSentiment(review))
+			reviews.map((review) => this.analyzeReviewSentiment(review))
 		);
 
 		// Calculate average sentiment
-		const sentimentScores = sentiments.map(s => s.sentiment === 'positive' ? 1 : s.sentiment === 'negative' ? -1 : 0);
+		const sentimentScores = sentiments.map((s) =>
+			s.sentiment === 'positive' ? 1 : s.sentiment === 'negative' ? -1 : 0
+		);
 		const avgScore = sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length;
-		const averageSentiment: 'positive' | 'negative' | 'neutral' = avgScore > 0.2 ? 'positive' : avgScore < -0.2 ? 'negative' : 'neutral';
+		const averageSentiment: 'positive' | 'negative' | 'neutral' =
+			avgScore > 0.2 ? 'positive' : avgScore < -0.2 ? 'negative' : 'neutral';
 
 		// Collect all key features
 		const allFeatures: Record<string, { count: number; positive: number; negative: number }> = {};
 		sentiments.forEach((sentiment, index) => {
-			sentiment.keyFeatures.forEach(feature => {
+			sentiment.keyFeatures.forEach((feature) => {
 				if (!allFeatures[feature]) {
 					allFeatures[feature] = { count: 0, positive: 0, negative: 0 };
 				}
@@ -1673,7 +1883,12 @@ Important guidelines:
 			.map(([theme, data]) => ({
 				theme,
 				mentions: data.count,
-				sentiment: data.positive > data.negative ? 'positive' as const : data.negative > data.positive ? 'negative' as const : 'neutral' as const
+				sentiment:
+					data.positive > data.negative
+						? ('positive' as const)
+						: data.negative > data.positive
+							? ('negative' as const)
+							: ('neutral' as const)
 			}))
 			.sort((a, b) => b.mentions - a.mentions)
 			.slice(0, 5);
@@ -1682,7 +1897,7 @@ Important guidelines:
 		const positiveAspects: string[] = [];
 		const negativeAspects: string[] = [];
 
-		keyThemes.forEach(theme => {
+		keyThemes.forEach((theme) => {
 			if (theme.sentiment === 'positive') {
 				positiveAspects.push(theme.theme);
 			} else if (theme.sentiment === 'negative') {
@@ -1693,11 +1908,11 @@ Important guidelines:
 		// Generate summary
 		const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 		let summary = `Based on ${reviews.length} review${reviews.length !== 1 ? 's' : ''}, customers ${averageSentiment === 'positive' ? 'love' : averageSentiment === 'negative' ? 'have concerns about' : 'have mixed feelings about'} this product. `;
-		
+
 		if (positiveAspects.length > 0) {
 			summary += `Most praised aspects include: ${positiveAspects.slice(0, 3).join(', ')}. `;
 		}
-		
+
 		if (negativeAspects.length > 0) {
 			summary += `Areas mentioned for improvement: ${negativeAspects.slice(0, 2).join(', ')}. `;
 		}
@@ -1716,7 +1931,11 @@ Important guidelines:
 	/**
 	 * AI Review Moderation - Detect spam/fake/inappropriate content
 	 */
-	async moderateReview(review: { rating: number; comment?: string | null; user_id?: string }): Promise<{
+	async moderateReview(review: {
+		rating: number;
+		comment?: string | null;
+		user_id?: string;
+	}): Promise<{
 		isSpam: boolean;
 		isFake: boolean;
 		isInappropriate: boolean;
@@ -1740,7 +1959,7 @@ Important guidelines:
 			/(click|visit|call|contact)[\s\w]*now/i
 		];
 
-		if (spamPatterns.some(pattern => pattern.test(comment))) {
+		if (spamPatterns.some((pattern) => pattern.test(comment))) {
 			isSpam = true;
 			flags.push('Contains promotional/spam content');
 		}
@@ -1764,8 +1983,10 @@ Important guidelines:
 
 		// Inappropriate content detection
 		const inappropriateKeywords = ['hate', 'stupid', 'idiot', 'crap', 'suck', 'trash', 'garbage'];
-		const hasInappropriate = inappropriateKeywords.some(keyword => lowerComment.includes(keyword));
-		
+		const hasInappropriate = inappropriateKeywords.some((keyword) =>
+			lowerComment.includes(keyword)
+		);
+
 		if (hasInappropriate && review.rating <= 2) {
 			// Low rating with inappropriate language might be legitimate frustration
 			// But we still flag it for review
@@ -1790,7 +2011,7 @@ Important guidelines:
 			recommendation = 'review';
 		}
 
-		const confidence = flags.length > 0 ? Math.min(0.7 + (flags.length * 0.1), 0.95) : 0.5;
+		const confidence = flags.length > 0 ? Math.min(0.7 + flags.length * 0.1, 0.95) : 0.5;
 
 		return {
 			isSpam,
@@ -1805,8 +2026,15 @@ Important guidelines:
 	/**
 	 * AI Cart Recommendations - Suggest complementary products based on cart contents
 	 */
-	async recommendCartProducts(cartItems: Array<{ product_id: string; product?: any }>, allProducts: any[]): Promise<{
-		recommendations: Array<{ product: any; reason: string; category: 'complementary' | 'complete_build' }>;
+	async recommendCartProducts(
+		cartItems: Array<{ product_id: string; product?: any }>,
+		allProducts: any[]
+	): Promise<{
+		recommendations: Array<{
+			product: any;
+			reason: string;
+			category: 'complementary' | 'complete_build';
+		}>;
 		summary: string;
 	}> {
 		if (cartItems.length === 0) {
@@ -1816,10 +2044,8 @@ Important guidelines:
 			};
 		}
 
-		const cartProductIds = cartItems.map(item => item.product_id);
-		const cartProducts = cartItems
-			.map(item => item.product)
-			.filter(Boolean) as any[];
+		const cartProductIds = cartItems.map((item) => item.product_id);
+		const cartProducts = cartItems.map((item) => item.product).filter(Boolean) as any[];
 
 		if (cartProducts.length === 0) {
 			return {
@@ -1833,7 +2059,7 @@ Important guidelines:
 		const productBrands = new Set<string>();
 		const productTypes: string[] = [];
 
-		cartProducts.forEach(product => {
+		cartProducts.forEach((product) => {
 			if (product.component_category_id) {
 				productCategories.add(product.component_category_id);
 			}
@@ -1843,31 +2069,51 @@ Important guidelines:
 			// Extract product type from name/description
 			const nameLower = (product.name || '').toLowerCase();
 			const descLower = (product.description || '').toLowerCase();
-			
+
 			if (nameLower.includes('laptop') || descLower.includes('laptop')) productTypes.push('laptop');
-			if (nameLower.includes('desktop') || descLower.includes('desktop')) productTypes.push('desktop');
-			if (nameLower.includes('keyboard') || descLower.includes('keyboard')) productTypes.push('keyboard');
+			if (nameLower.includes('desktop') || descLower.includes('desktop'))
+				productTypes.push('desktop');
+			if (nameLower.includes('keyboard') || descLower.includes('keyboard'))
+				productTypes.push('keyboard');
 			if (nameLower.includes('mouse') || descLower.includes('mouse')) productTypes.push('mouse');
-			if (nameLower.includes('monitor') || descLower.includes('monitor')) productTypes.push('monitor');
-			if (nameLower.includes('headphone') || descLower.includes('headphone')) productTypes.push('headphone');
-			if (nameLower.includes('speaker') || descLower.includes('speaker')) productTypes.push('speaker');
+			if (nameLower.includes('monitor') || descLower.includes('monitor'))
+				productTypes.push('monitor');
+			if (nameLower.includes('headphone') || descLower.includes('headphone'))
+				productTypes.push('headphone');
+			if (nameLower.includes('speaker') || descLower.includes('speaker'))
+				productTypes.push('speaker');
 			if (nameLower.includes('cable') || descLower.includes('cable')) productTypes.push('cable');
-			if (nameLower.includes('charger') || descLower.includes('charger')) productTypes.push('charger');
+			if (nameLower.includes('charger') || descLower.includes('charger'))
+				productTypes.push('charger');
 			if (nameLower.includes('bag') || descLower.includes('bag')) productTypes.push('bag');
 		});
 
 		// Get PC component categories (for "Complete your build")
 		const pcComponentCategories = [
-			'CPU', 'Motherboard', 'RAM', 'Storage', 'GPU', 'PSU', 'Case', 'Cooling',
-			'CPU Cooler', 'Graphics Card', 'Power Supply', 'Computer Case'
+			'CPU',
+			'Motherboard',
+			'RAM',
+			'Storage',
+			'GPU',
+			'PSU',
+			'Case',
+			'Cooling',
+			'CPU Cooler',
+			'Graphics Card',
+			'Power Supply',
+			'Computer Case'
 		];
 
 		// Filter out products already in cart
-		const availableProducts = allProducts.filter(p => 
-			!cartProductIds.includes(p.id) && p.stock > 0
+		const availableProducts = allProducts.filter(
+			(p) => !cartProductIds.includes(p.id) && p.stock > 0
 		);
 
-		const recommendations: Array<{ product: any; reason: string; category: 'complementary' | 'complete_build' }> = [];
+		const recommendations: Array<{
+			product: any;
+			reason: string;
+			category: 'complementary' | 'complete_build';
+		}> = [];
 		const recommendedIds = new Set<string>();
 
 		// 1. "Complete your build" recommendations (for PC components)
@@ -1875,39 +2121,57 @@ Important guidelines:
 		if (hasPCComponents) {
 			// Check what PC components are missing
 			const cartCategories = Array.from(productCategories);
-			
+
 			// Fetch component categories to match names
 			let categoryMap: Record<string, string> = {};
 			try {
 				const { pcBuildService } = await import('./PCBuildService');
 				const categories = await pcBuildService.getAllCategories();
-				categories.forEach(cat => {
+				categories.forEach((cat) => {
 					categoryMap[cat.id] = cat.name;
 				});
 			} catch (error) {
 				console.error('Error fetching categories:', error);
 			}
-			
+
 			// Suggest missing essential PC components
-			const essentialCategoryKeywords = ['cpu', 'processor', 'motherboard', 'ram', 'memory', 'storage', 'ssd', 'hdd', 'gpu', 'graphics', 'psu', 'power supply', 'cooler', 'case'];
-			
+			const essentialCategoryKeywords = [
+				'cpu',
+				'processor',
+				'motherboard',
+				'ram',
+				'memory',
+				'storage',
+				'ssd',
+				'hdd',
+				'gpu',
+				'graphics',
+				'psu',
+				'power supply',
+				'cooler',
+				'case'
+			];
+
 			for (const product of availableProducts) {
 				if (recommendedIds.has(product.id)) continue;
 				if (recommendations.length >= 8) break;
-				
+
 				// Check if product has a component category
 				if (!product.component_category_id) continue;
-				
+
 				const categoryId = product.component_category_id;
 				const categoryName = categoryMap[categoryId] || 'Component';
 				const productName = (product.name || '').toLowerCase();
 				const productDesc = (product.description || '').toLowerCase();
-				
+
 				// Check if this is an essential PC component not in cart
-				const isEssential = essentialCategoryKeywords.some(keyword => 
-					productName.includes(keyword) || productDesc.includes(keyword) || categoryName.toLowerCase().includes(keyword)
+				const isEssential = essentialCategoryKeywords.some(
+					(keyword) =>
+						productName.includes(keyword) ||
+						productDesc.includes(keyword) ||
+						categoryName.toLowerCase().includes(keyword)
 				);
-				
+
 				if (isEssential && !cartCategories.includes(categoryId)) {
 					recommendations.push({
 						product,
@@ -1922,17 +2186,26 @@ Important guidelines:
 		// 2. Complementary product recommendations
 		// For laptops/desktops: suggest accessories
 		if (productTypes.includes('laptop') || productTypes.includes('desktop')) {
-			const accessoryKeywords = ['mouse', 'keyboard', 'monitor', 'headphone', 'speaker', 'bag', 'cable', 'charger'];
-			
+			const accessoryKeywords = [
+				'mouse',
+				'keyboard',
+				'monitor',
+				'headphone',
+				'speaker',
+				'bag',
+				'cable',
+				'charger'
+			];
+
 			for (const product of availableProducts) {
 				if (recommendedIds.has(product.id)) continue;
 				if (recommendations.length >= 8) break;
 
 				const nameLower = (product.name || '').toLowerCase();
 				const descLower = (product.description || '').toLowerCase();
-				
-				const isAccessory = accessoryKeywords.some(keyword => 
-					nameLower.includes(keyword) || descLower.includes(keyword)
+
+				const isAccessory = accessoryKeywords.some(
+					(keyword) => nameLower.includes(keyword) || descLower.includes(keyword)
 				);
 
 				if (isAccessory) {
@@ -2003,11 +2276,9 @@ Important guidelines:
 		// If no recommendations yet, add fallback recommendations (popular products)
 		if (recommendations.length === 0 && availableProducts.length > 0) {
 			// Get some random popular products (products with stock)
-			const fallbackProducts = availableProducts
-				.filter(p => p.stock > 0)
-				.slice(0, 4);
-			
-			fallbackProducts.forEach(product => {
+			const fallbackProducts = availableProducts.filter((p) => p.stock > 0).slice(0, 4);
+
+			fallbackProducts.forEach((product) => {
 				if (!recommendedIds.has(product.id)) {
 					recommendations.push({
 						product,
@@ -2024,9 +2295,13 @@ Important guidelines:
 		if (recommendations.length === 0) {
 			summary = 'No recommendations available at the moment.';
 		} else {
-			const completeBuildCount = recommendations.filter(r => r.category === 'complete_build').length;
-			const complementaryCount = recommendations.filter(r => r.category === 'complementary').length;
-			
+			const completeBuildCount = recommendations.filter(
+				(r) => r.category === 'complete_build'
+			).length;
+			const complementaryCount = recommendations.filter(
+				(r) => r.category === 'complementary'
+			).length;
+
 			if (completeBuildCount > 0 && complementaryCount > 0) {
 				summary = `Based on your cart, we've found ${completeBuildCount} item(s) to complete your build and ${complementaryCount} complementary product(s).`;
 			} else if (completeBuildCount > 0) {
@@ -2046,6 +2321,7 @@ Important guidelines:
 	/**
 	 * AI Product Description Generator
 	 * Generates SEO-optimized product descriptions from product information
+	 * Uses Google Gemini as primary, OpenAI as fallback
 	 */
 	async generateProductDescription(product: {
 		name: string;
@@ -2058,19 +2334,27 @@ Important guidelines:
 		keywords: string[];
 		variations?: string[];
 	}> {
+		const geminiApiKey = env.GEMINI_API_KEY;
 		const openaiApiKey = env.OPENAI_API_KEY;
 
-		if (!openaiApiKey) {
-			// Fallback to rule-based description generation
-			return this.generateProductDescriptionRuleBased(product);
+		// Try Gemini first (free tier)
+		if (geminiApiKey) {
+			try {
+				return await this.generateProductDescriptionWithGemini(product);
+			} catch (error: any) {
+				console.warn('Gemini API error, trying OpenAI fallback:', error);
+				// Continue to OpenAI fallback
+			}
 		}
 
-		try {
-			const openai = new OpenAI({
-				apiKey: openaiApiKey
-			});
+		// Fallback to OpenAI
+		if (openaiApiKey) {
+			try {
+				const openai = new OpenAI({
+					apiKey: openaiApiKey
+				});
 
-			const prompt = `You are an expert e-commerce product description writer. Generate a compelling, SEO-optimized product description for the following product.
+				const prompt = `You are an expert e-commerce product description writer. Generate a compelling, SEO-optimized product description for the following product.
 
 Product Information:
 - Name: ${product.name}
@@ -2099,46 +2383,417 @@ Return a JSON object with this structure:
 
 Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 
-			const response = await openai.chat.completions.create({
-				model: 'gpt-3.5-turbo',
-				messages: [
-					{
-						role: 'system',
-						content: 'You are an expert e-commerce copywriter specializing in tech products. Generate compelling, SEO-optimized product descriptions that help customers make informed purchasing decisions.'
-					},
-					{
-						role: 'user',
-						content: prompt
-					}
-				],
-				temperature: 0.7,
-				max_tokens: 1000,
-				response_format: { type: 'json_object' }
-			});
+				const response = await openai.chat.completions.create({
+					model: 'gpt-3.5-turbo',
+					messages: [
+						{
+							role: 'system',
+							content:
+								'You are an expert e-commerce copywriter specializing in tech products. Generate compelling, SEO-optimized product descriptions that help customers make informed purchasing decisions.'
+						},
+						{
+							role: 'user',
+							content: prompt
+						}
+					],
+					temperature: 0.7,
+					max_tokens: 1000,
+					response_format: { type: 'json_object' }
+				});
 
-			const aiResponse = response.choices[0]?.message?.content;
-			
-			if (!aiResponse) {
-				throw new Error('No response from AI');
-			}
+				const aiResponse = response.choices[0]?.message?.content;
 
-			const parsed = JSON.parse(aiResponse);
-			
-			return {
-				description: parsed.description || '',
-				keywords: parsed.keywords || [],
-				variations: parsed.variations || []
-			};
-		} catch (error: any) {
-			// Handle quota/rate limit errors gracefully
-			if (error?.status === 429 || error?.code === 'insufficient_quota' || error?.code === 'rate_limit_exceeded') {
-				console.warn('OpenAI API quota exceeded or rate limited. Using rule-based description generation.');
-			} else {
-				console.error('Error generating product description with AI:', error);
+				if (!aiResponse) {
+					throw new Error('No response from AI');
+				}
+
+				const parsed = JSON.parse(aiResponse);
+
+				return {
+					description: parsed.description || '',
+					keywords: parsed.keywords || [],
+					variations: parsed.variations || []
+				};
+			} catch (error: any) {
+				// Handle quota/rate limit errors gracefully
+				if (
+					error?.status === 429 ||
+					error?.code === 'insufficient_quota' ||
+					error?.code === 'rate_limit_exceeded'
+				) {
+					console.warn(
+						'OpenAI API quota exceeded or rate limited. Using rule-based description generation.'
+					);
+				} else {
+					console.error('Error generating product description with AI:', error);
+				}
+				// Fallback to rule-based generation
+				return this.generateProductDescriptionRuleBased(product);
 			}
-			// Fallback to rule-based generation
-			return this.generateProductDescriptionRuleBased(product);
 		}
+
+		// Final fallback to rule-based
+		return this.generateProductDescriptionRuleBased(product);
+	}
+
+	/**
+	 * Generate product description using Google Gemini
+	 */
+	private async generateProductDescriptionWithGemini(product: {
+		name: string;
+		brand?: string | null;
+		specifications?: string | null;
+		price?: number;
+		component_category_name?: string | null;
+	}): Promise<{
+		description: string;
+		keywords: string[];
+		variations?: string[];
+	}> {
+		const geminiApiKey = env.GEMINI_API_KEY;
+		if (!geminiApiKey) {
+			throw new Error('Gemini API key not configured');
+		}
+
+		const genAI = new GoogleGenerativeAI(geminiApiKey);
+		const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+		const prompt = `You are an expert e-commerce product description writer. Generate a compelling, SEO-optimized product description for the following product.
+
+Product Information:
+- Name: ${product.name}
+${product.brand ? `- Brand: ${product.brand}` : ''}
+${product.component_category_name ? `- Category: ${product.component_category_name}` : ''}
+${product.specifications ? `- Specifications: ${product.specifications}` : ''}
+${product.price ? `- Price: ${product.price} Taka (Bangladeshi currency)` : ''}
+
+Requirements:
+1. Write a professional, engaging product description (150-300 words)
+2. Include key features and benefits
+3. Use SEO-friendly language
+4. Highlight unique selling points
+5. Make it compelling for potential buyers
+6. Include relevant technical details if specifications are provided
+
+Return a JSON object with this structure:
+{
+  "description": "The full product description text",
+  "keywords": ["keyword1", "keyword2", "keyword3"],
+  "variations": [
+    "Alternative description variation 1 (shorter, 50-100 words)",
+    "Alternative description variation 2 (longer, 200-300 words)"
+  ]
+}
+
+Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
+
+		const result = await model.generateContent(prompt);
+		const response = await result.response;
+		const text = response.text();
+
+		// Parse JSON response (remove markdown code blocks if present)
+		let jsonText = text.trim();
+		if (jsonText.startsWith('```json')) {
+			jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+		} else if (jsonText.startsWith('```')) {
+			jsonText = jsonText.replace(/```\n?/g, '');
+		}
+
+		const parsed = JSON.parse(jsonText);
+
+		return {
+			description: parsed.description || '',
+			keywords: parsed.keywords || [],
+			variations: parsed.variations || []
+		};
+	}
+
+	/**
+	 * Generate sales report summary using Gemini
+	 */
+	async generateSalesReportSummary(salesData: {
+		totalRevenue: number;
+		totalOrders: number;
+		period: string;
+		topProducts: Array<{ name: string; quantity: number; revenue: number }>;
+		trends: string;
+	}): Promise<string> {
+		const geminiApiKey = env.GEMINI_API_KEY;
+		if (!geminiApiKey) {
+			return this.generateSalesReportSummaryRuleBased(salesData);
+		}
+
+		try {
+			const genAI = new GoogleGenerativeAI(geminiApiKey);
+			const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+			const prompt = `Generate a professional executive summary for a sales report.
+
+Sales Data:
+- Period: ${salesData.period}
+- Total Revenue: ${salesData.totalRevenue.toFixed(2)} Taka
+- Total Orders: ${salesData.totalOrders}
+- Trends: ${salesData.trends}
+- Top Products:
+${salesData.topProducts.map((p, i) => `${i + 1}. ${p.name} - ${p.quantity} units sold, ${p.revenue.toFixed(2)} Taka revenue`).join('\n')}
+
+Requirements:
+1. Write a concise executive summary (100-200 words)
+2. Highlight key achievements and insights
+3. Mention top-performing products
+4. Include actionable recommendations
+5. Use professional business language
+6. Focus on what matters most to management
+
+Return only the summary text, no additional formatting.`;
+
+			const result = await model.generateContent(prompt);
+			const response = await result.response;
+			return response.text().trim();
+		} catch (error) {
+			console.error('Error generating sales report summary with Gemini:', error);
+			return this.generateSalesReportSummaryRuleBased(salesData);
+		}
+	}
+
+	/**
+	 * Rule-based sales report summary (fallback)
+	 */
+	private generateSalesReportSummaryRuleBased(salesData: {
+		totalRevenue: number;
+		totalOrders: number;
+		period: string;
+		topProducts: Array<{ name: string; quantity: number; revenue: number }>;
+		trends: string;
+	}): string {
+		return `Sales Report Summary for ${salesData.period}
+
+Total Revenue: ${salesData.totalRevenue.toFixed(2)} Taka
+Total Orders: ${salesData.totalOrders}
+
+${salesData.trends}
+
+Top Performing Products:
+${salesData.topProducts
+	.slice(0, 5)
+	.map((p, i) => `${i + 1}. ${p.name} - ${p.quantity} units, ${p.revenue.toFixed(2)} Taka`)
+	.join('\n')}
+
+Recommendations:
+- Continue promoting top-performing products
+- Monitor trends and adjust inventory accordingly
+- Focus on customer retention strategies`;
+	}
+
+	/**
+	 * Analyze customer behavior using Gemini
+	 */
+	async analyzeCustomerBehavior(customerData: {
+		totalOrders: number;
+		totalSpent: number;
+		averageOrderValue: number;
+		lastOrderDate: string | null;
+		orderFrequency: number;
+		preferredCategories: string[];
+	}): Promise<{
+		insights: string;
+		recommendations: string[];
+		segment: string;
+	}> {
+		const geminiApiKey = env.GEMINI_API_KEY;
+		if (!geminiApiKey) {
+			return this.analyzeCustomerBehaviorRuleBased(customerData);
+		}
+
+		try {
+			const genAI = new GoogleGenerativeAI(geminiApiKey);
+			const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+			const prompt = `Analyze customer behavior and provide insights.
+
+Customer Data:
+- Total Orders: ${customerData.totalOrders}
+- Total Spent: ${customerData.totalSpent.toFixed(2)} Taka
+- Average Order Value: ${customerData.averageOrderValue.toFixed(2)} Taka
+- Last Order: ${customerData.lastOrderDate || 'N/A'}
+- Order Frequency: ${customerData.orderFrequency} orders per month
+- Preferred Categories: ${customerData.preferredCategories.join(', ') || 'N/A'}
+
+Requirements:
+1. Provide behavioral insights (2-3 sentences)
+2. Suggest 3-5 actionable recommendations
+3. Determine customer segment (Champion, Loyal, At Risk, New, Lost)
+4. Return as JSON:
+{
+  "insights": "Customer behavior insights...",
+  "recommendations": ["recommendation1", "recommendation2", ...],
+  "segment": "Champion|Loyal|At Risk|New|Lost"
+}
+
+Return ONLY valid JSON.`;
+
+			const result = await model.generateContent(prompt);
+			const response = await result.response;
+			let text = response.text().trim();
+
+			// Clean JSON response
+			if (text.startsWith('```json')) {
+				text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+			} else if (text.startsWith('```')) {
+				text = text.replace(/```\n?/g, '');
+			}
+
+			const parsed = JSON.parse(text);
+			return {
+				insights: parsed.insights || '',
+				recommendations: parsed.recommendations || [],
+				segment: parsed.segment || 'Unknown'
+			};
+		} catch (error) {
+			console.error('Error analyzing customer behavior with Gemini:', error);
+			return this.analyzeCustomerBehaviorRuleBased(customerData);
+		}
+	}
+
+	/**
+	 * Rule-based customer behavior analysis (fallback)
+	 */
+	private analyzeCustomerBehaviorRuleBased(customerData: {
+		totalOrders: number;
+		totalSpent: number;
+		averageOrderValue: number;
+		lastOrderDate: string | null;
+		orderFrequency: number;
+		preferredCategories: string[];
+	}): {
+		insights: string;
+		recommendations: string[];
+		segment: string;
+	} {
+		const daysSinceLastOrder = customerData.lastOrderDate
+			? Math.floor(
+					(Date.now() - new Date(customerData.lastOrderDate).getTime()) / (1000 * 60 * 60 * 24)
+				)
+			: 999;
+
+		let segment = 'New';
+		if (
+			customerData.totalOrders >= 5 &&
+			customerData.totalSpent > 50000 &&
+			daysSinceLastOrder <= 30
+		) {
+			segment = 'Champion';
+		} else if (customerData.totalOrders >= 3 && daysSinceLastOrder <= 60) {
+			segment = 'Loyal';
+		} else if (daysSinceLastOrder > 90) {
+			segment = 'Lost';
+		} else if (daysSinceLastOrder > 60) {
+			segment = 'At Risk';
+		}
+
+		const insights = `Customer has made ${customerData.totalOrders} orders with total value of ${customerData.totalSpent.toFixed(2)} Taka. ${daysSinceLastOrder > 90 ? 'No recent activity detected.' : `Last order was ${daysSinceLastOrder} days ago.`}`;
+
+		const recommendations: string[] = [];
+		if (segment === 'At Risk') {
+			recommendations.push('Send re-engagement email with special offer');
+			recommendations.push('Offer personalized product recommendations');
+		} else if (segment === 'Champion') {
+			recommendations.push('Offer VIP loyalty program benefits');
+			recommendations.push('Request product reviews');
+		} else if (segment === 'Loyal') {
+			recommendations.push('Send regular product updates');
+			recommendations.push('Offer complementary products');
+		}
+
+		return { insights, recommendations, segment };
+	}
+
+	/**
+	 * Generate marketing content suggestions using Gemini
+	 */
+	async generateMarketingContent(product: {
+		name: string;
+		price: number;
+		category?: string;
+		stock: number;
+	}): Promise<{
+		emailSubject: string;
+		emailBody: string;
+		socialMediaPost: string;
+		adCopy: string;
+	}> {
+		const geminiApiKey = env.GEMINI_API_KEY;
+		if (!geminiApiKey) {
+			return this.generateMarketingContentRuleBased(product);
+		}
+
+		try {
+			const genAI = new GoogleGenerativeAI(geminiApiKey);
+			const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+			const prompt = `Generate marketing content for a product.
+
+Product Information:
+- Name: ${product.name}
+- Price: ${product.price} Taka
+- Category: ${product.category || 'General'}
+- Stock: ${product.stock} units available
+
+Requirements:
+Generate marketing content in JSON format:
+{
+  "emailSubject": "Compelling email subject line (max 60 characters)",
+  "emailBody": "Email body text (100-150 words) promoting the product",
+  "socialMediaPost": "Social media post (100-150 characters) with hashtags",
+  "adCopy": "Short ad copy for advertisements (50-80 words)"
+}
+
+Return ONLY valid JSON.`;
+
+			const result = await model.generateContent(prompt);
+			const response = await result.response;
+			let text = response.text().trim();
+
+			// Clean JSON response
+			if (text.startsWith('```json')) {
+				text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+			} else if (text.startsWith('```')) {
+				text = text.replace(/```\n?/g, '');
+			}
+
+			const parsed = JSON.parse(text);
+			return {
+				emailSubject: parsed.emailSubject || `Check out ${product.name}!`,
+				emailBody: parsed.emailBody || `Discover ${product.name} at just ${product.price} Taka!`,
+				socialMediaPost: parsed.socialMediaPost || `${product.name} - Now available! #TinyTech`,
+				adCopy: parsed.adCopy || `Get ${product.name} today!`
+			};
+		} catch (error) {
+			console.error('Error generating marketing content with Gemini:', error);
+			return this.generateMarketingContentRuleBased(product);
+		}
+	}
+
+	/**
+	 * Rule-based marketing content generation (fallback)
+	 */
+	private generateMarketingContentRuleBased(product: {
+		name: string;
+		price: number;
+		category?: string;
+		stock: number;
+	}): {
+		emailSubject: string;
+		emailBody: string;
+		socialMediaPost: string;
+		adCopy: string;
+	} {
+		return {
+			emailSubject: `Special Offer: ${product.name}`,
+			emailBody: `Don't miss out on ${product.name}! Available now at ${product.price} Taka. ${product.stock > 0 ? 'Limited stock available!' : 'Order now!'} Visit TinyTech to learn more.`,
+			socialMediaPost: `🔥 ${product.name} - Now at ${product.price} Taka! Limited stock. Shop now! #TinyTech #TechDeals`,
+			adCopy: `${product.name} - Premium quality at ${product.price} Taka. Shop now at TinyTech!`
+		};
 	}
 
 	/**
@@ -2160,7 +2815,7 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 
 		// Start with product name
 		parts.push(`Introducing the ${product.name}`);
-		
+
 		if (product.brand) {
 			parts.push(`from ${product.brand}`);
 			keywords.push(product.brand.toLowerCase());
@@ -2168,7 +2823,9 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 
 		// Add category information
 		if (product.component_category_name) {
-			parts.push(`- a premium ${product.component_category_name.toLowerCase()} designed for exceptional performance.`);
+			parts.push(
+				`- a premium ${product.component_category_name.toLowerCase()} designed for exceptional performance.`
+			);
 			keywords.push(product.component_category_name.toLowerCase());
 		} else {
 			parts.push(`- a high-quality product designed for exceptional performance.`);
@@ -2177,7 +2834,7 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 		// Parse specifications if available
 		if (product.specifications) {
 			parts.push(`\n\nKey Features:\n${product.specifications}`);
-			
+
 			// Extract keywords from specifications
 			const specWords = product.specifications.toLowerCase().match(/\b\w{4,}\b/g) || [];
 			keywords.push(...specWords.slice(0, 5));
@@ -2185,16 +2842,23 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 
 		// Add price information if available
 		if (product.price) {
-			parts.push(`\n\nAvailable at an attractive price of Tk ${product.price.toFixed(2)}, this product offers excellent value for money.`);
+			parts.push(
+				`\n\nAvailable at an attractive price of Tk ${product.price.toFixed(2)}, this product offers excellent value for money.`
+			);
 		}
 
 		// Add closing
-		parts.push(`\n\nPerfect for both professionals and enthusiasts, this product combines quality, performance, and reliability. Order now and experience the difference!`);
+		parts.push(
+			`\n\nPerfect for both professionals and enthusiasts, this product combines quality, performance, and reliability. Order now and experience the difference!`
+		);
 
 		const description = parts.join(' ');
-		
+
 		// Generate keywords from product name
-		const nameWords = product.name.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+		const nameWords = product.name
+			.toLowerCase()
+			.split(/\s+/)
+			.filter((w) => w.length > 3);
 		keywords.push(...nameWords.slice(0, 5));
 
 		// Remove duplicates and limit
@@ -2202,7 +2866,7 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 
 		// Generate variations
 		const shortVariation = `${product.name}${product.brand ? ` by ${product.brand}` : ''}. ${product.specifications ? product.specifications.split('\n').slice(0, 2).join('. ') : 'High-quality product with excellent features.'} Available now!`;
-		
+
 		const longVariation = description;
 
 		return {
@@ -2211,8 +2875,687 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 			variations: [shortVariation, longVariation]
 		};
 	}
+
+	/**
+	 * Enhanced Sales Predictions with statistical forecasting
+	 */
+	async predictSalesEnhanced(sales: Sale[]): Promise<SalesPredictionEnhanced> {
+		if (sales.length === 0) {
+			return {
+				predictedSales: 0,
+				predictedRevenue: 0,
+				trend: 'stable',
+				confidence: 0.3,
+				scenarios: { optimistic: 0, realistic: 0, pessimistic: 0 },
+				factors: ['Insufficient data'],
+				timeHorizons: {
+					'7days': { sales: 0, revenue: 0 },
+					'14days': { sales: 0, revenue: 0 },
+					'30days': { sales: 0, revenue: 0 },
+					'90days': { sales: 0, revenue: 0 }
+				}
+			};
+		}
+
+		// Group sales by date
+		const salesByDate = sales.reduce(
+			(acc, sale) => {
+				if (!sale.created_at) return acc;
+				const date = new Date(sale.created_at).toDateString();
+				if (!acc[date]) acc[date] = { count: 0, revenue: 0 };
+				acc[date].count += sale.quantity;
+				acc[date].revenue += sale.total_amount;
+				return acc;
+			},
+			{} as Record<string, { count: number; revenue: number }>
+		);
+
+		const dates = Object.keys(salesByDate).sort();
+		const dailySales = dates.map((date) => salesByDate[date].count);
+		const dailyRevenues = dates.map((date) => salesByDate[date].revenue);
+
+		// Calculate moving averages
+		const ma7Sales = enhancedAIService.calculateSimpleMovingAverage(dailySales, 7);
+		const ma14Sales = enhancedAIService.calculateSimpleMovingAverage(dailySales, 14);
+
+		// Get latest valid moving average as baseline
+		const lastMA7 = ma7Sales[ma7Sales.length - 1];
+		const lastMA14 = ma14Sales[ma14Sales.length - 1];
+		const baselineSales = !isNaN(lastMA7)
+			? lastMA7
+			: !isNaN(lastMA14)
+				? lastMA14
+				: dailySales.slice(-7).reduce((a, b) => a + b, 0) / 7;
+		const baselineRevenue = dailyRevenues.slice(-7).reduce((a, b) => a + b, 0) / 7;
+
+		// Detect trend
+		const trend = enhancedAIService.detectTrend(dailySales);
+
+		// Calculate predictions for different time horizons
+		const predictions = {
+			'7days': { sales: Math.round(baselineSales * 7), revenue: baselineRevenue * 7 },
+			'14days': { sales: Math.round(baselineSales * 14), revenue: baselineRevenue * 14 },
+			'30days': { sales: Math.round(baselineSales * 30), revenue: baselineRevenue * 30 },
+			'90days': { sales: Math.round(baselineSales * 90), revenue: baselineRevenue * 90 }
+		};
+
+		// Apply trend adjustment
+		const trendMultiplier = trend === 'increasing' ? 1.1 : trend === 'decreasing' ? 0.9 : 1.0;
+		predictions['30days'].sales = Math.round(predictions['30days'].sales * trendMultiplier);
+		predictions['30days'].revenue = predictions['30days'].revenue * trendMultiplier;
+
+		// Calculate scenarios
+		const scenarios = {
+			optimistic: Math.round(predictions['30days'].sales * 1.2),
+			realistic: predictions['30days'].sales,
+			pessimistic: Math.round(predictions['30days'].sales * 0.8)
+		};
+
+		// Calculate confidence based on data quality
+		const confidence = Math.min(
+			0.95,
+			Math.max(0.3, 0.5 + (sales.length / 100) * 0.3 + (dates.length >= 30 ? 0.15 : 0))
+		);
+
+		// Generate factors
+		const factors: string[] = [];
+		if (trend === 'increasing') factors.push('Sales trend is increasing');
+		else if (trend === 'decreasing') factors.push('Sales trend is decreasing');
+		factors.push(`Based on ${sales.length} sales records`);
+		factors.push(`Average daily sales: ${baselineSales.toFixed(1)} units`);
+
+		return {
+			predictedSales: predictions['30days'].sales,
+			predictedRevenue: predictions['30days'].revenue,
+			trend,
+			confidence,
+			scenarios,
+			factors,
+			timeHorizons: {
+				'7days': predictions['7days'],
+				'14days': predictions['14days'],
+				'30days': predictions['30days'],
+				'90days': predictions['90days']
+			}
+		};
+	}
+
+	/**
+	 * Enhanced Stock Recommendations with EOQ and reorder points
+	 */
+	async getStockRecommendationsEnhanced(
+		products: Product[],
+		sales: Sale[]
+	): Promise<StockRecommendationEnhanced[]> {
+		const recommendations: StockRecommendationEnhanced[] = [];
+		const DEFAULT_LEAD_TIME = 7; // days
+		const DEFAULT_ORDERING_COST = 500; // Tk
+		const DEFAULT_HOLDING_COST = 10; // Tk per unit per year
+
+		for (const product of products) {
+			const productSales = sales.filter((s) => s.product_id === product.id);
+
+			if (productSales.length === 0) {
+				// No sales history - skip or use defaults
+				if (product.stock < 10) {
+					recommendations.push({
+						productId: product.id,
+						productName: product.name,
+						currentStock: product.stock,
+						recommendedOrder: 20,
+						urgency: product.stock === 0 ? 'high' : 'medium',
+						reason: 'No sales history - recommended initial stock',
+						estimatedStockoutDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+						priorityScore: product.stock === 0 ? 0.9 : 0.5,
+						salesVelocity: 0,
+						leadTime: DEFAULT_LEAD_TIME,
+						reorderPoint: 10,
+						safetyStock: 5,
+						eoq: 20
+					});
+				}
+				continue;
+			}
+
+			// Calculate sales velocity (units per day)
+			const totalSold = productSales.reduce((sum, s) => sum + s.quantity, 0);
+			const firstSaleDate = new Date(
+				Math.min(...productSales.map((s) => new Date(s.created_at || Date.now()).getTime()))
+			);
+			const daysOfData = Math.max(
+				1,
+				Math.floor((Date.now() - firstSaleDate.getTime()) / (1000 * 60 * 60 * 24))
+			);
+			const salesVelocity = totalSold / daysOfData;
+			const annualDemand = salesVelocity * 365;
+
+			// Calculate safety stock
+			const salesArray = productSales.map((s) => s.quantity);
+			const avgSales = salesArray.reduce((a, b) => a + b, 0) / salesArray.length;
+			const variance =
+				salesArray.reduce((sum, val) => sum + Math.pow(val - avgSales, 2), 0) / salesArray.length;
+			const stdDev = Math.sqrt(variance);
+			const safetyStock = enhancedAIService.calculateSafetyStock(
+				salesVelocity,
+				stdDev,
+				DEFAULT_LEAD_TIME
+			);
+
+			// Calculate reorder point
+			const reorderPoint = enhancedAIService.calculateReorderPoint(
+				salesVelocity,
+				DEFAULT_LEAD_TIME,
+				safetyStock
+			);
+
+			// Calculate EOQ
+			const eoq = enhancedAIService.calculateEOQ(
+				annualDemand,
+				DEFAULT_ORDERING_COST,
+				DEFAULT_HOLDING_COST
+			);
+
+			// Estimate stockout date
+			let estimatedStockoutDate: string;
+			if (product.stock === 0) {
+				estimatedStockoutDate = new Date().toISOString();
+			} else if (salesVelocity > 0) {
+				const daysUntilStockout = Math.floor(product.stock / salesVelocity);
+				estimatedStockoutDate = new Date(
+					Date.now() + daysUntilStockout * 24 * 60 * 60 * 1000
+				).toISOString();
+			} else {
+				estimatedStockoutDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+			}
+
+			// Determine urgency and priority
+			let urgency: 'high' | 'medium' | 'low' = 'low';
+			let priorityScore = 0;
+			const stockRatio = product.stock / reorderPoint;
+
+			if (product.stock === 0 || stockRatio < 0.2) {
+				urgency = 'high';
+				priorityScore = 0.95;
+			} else if (stockRatio < 0.5) {
+				urgency = 'high';
+				priorityScore = 0.8;
+			} else if (stockRatio < 0.8) {
+				urgency = 'medium';
+				priorityScore = 0.6;
+			} else {
+				urgency = 'low';
+				priorityScore = 0.3;
+			}
+
+			// Only recommend if stock is below reorder point
+			if (product.stock < reorderPoint) {
+				const recommendedOrder = Math.max(eoq, reorderPoint - product.stock + safetyStock);
+
+				let reason = '';
+				if (product.stock === 0) {
+					reason = `Out of stock. Sales velocity: ${salesVelocity.toFixed(2)} units/day. Lead time: ${DEFAULT_LEAD_TIME} days.`;
+				} else {
+					reason = `Stock (${product.stock}) below reorder point (${reorderPoint}). Sales velocity: ${salesVelocity.toFixed(2)} units/day. Estimated stockout: ${new Date(estimatedStockoutDate).toLocaleDateString()}.`;
+				}
+
+				recommendations.push({
+					productId: product.id,
+					productName: product.name,
+					currentStock: product.stock,
+					recommendedOrder: Math.ceil(recommendedOrder),
+					urgency,
+					reason,
+					estimatedStockoutDate,
+					priorityScore,
+					salesVelocity,
+					leadTime: DEFAULT_LEAD_TIME,
+					reorderPoint,
+					safetyStock,
+					eoq: Math.ceil(eoq)
+				});
+			}
+		}
+
+		return recommendations.sort((a, b) => b.priorityScore - a.priorityScore);
+	}
+
+	/**
+	 * Enhanced Customer Insights with RFM Analysis
+	 */
+	async getCustomerInsightsEnhanced(sales: Sale[]): Promise<CustomerInsightsEnhanced> {
+		if (sales.length === 0) {
+			return {
+				totalCustomers: 0,
+				averageOrderValue: 0,
+				customerLifetimeValue: 0,
+				topCustomers: [],
+				churnRiskCustomers: [],
+				segments: {
+					champions: 0,
+					loyal: 0,
+					atRisk: 0,
+					new: 0,
+					lost: 0
+				},
+				recommendations: []
+			};
+		}
+
+		// Group sales by user
+		const customerData = sales.reduce(
+			(acc, sale) => {
+				const userId = sale.user_id || 'guest';
+				if (!acc[userId]) {
+					acc[userId] = {
+						userId,
+						userName: sale.user_name || 'Guest',
+						totalSpent: 0,
+						orderCount: 0,
+						lastOrderDate: null as string | null,
+						orderDates: [] as string[]
+					};
+				}
+				acc[userId].totalSpent += sale.total_amount;
+				acc[userId].orderCount += 1;
+				if (sale.created_at) {
+					acc[userId].orderDates.push(sale.created_at);
+					if (!acc[userId].lastOrderDate || sale.created_at > acc[userId].lastOrderDate) {
+						acc[userId].lastOrderDate = sale.created_at;
+					}
+				}
+				return acc;
+			},
+			{} as Record<
+				string,
+				{
+					userId: string;
+					userName: string;
+					totalSpent: number;
+					orderCount: number;
+					lastOrderDate: string | null;
+					orderDates: string[];
+				}
+			>
+		);
+
+		const customers = Object.values(customerData);
+
+		// Perform RFM Analysis
+		const rfmSegments = enhancedAIService.performRFMAnalysis(
+			customers.map((c) => ({
+				userId: c.userId,
+				userName: c.userName,
+				lastOrderDate: c.lastOrderDate,
+				orderCount: c.orderCount,
+				totalSpent: c.totalSpent
+			}))
+		);
+
+		// Calculate segment counts
+		const segments = {
+			champions: rfmSegments.filter((s) => s.segment === 'Champion').length,
+			loyal: rfmSegments.filter((s) => s.segment === 'Loyal').length,
+			atRisk: rfmSegments.filter((s) => s.segment === 'At Risk').length,
+			new: rfmSegments.filter((s) => s.segment === 'New').length,
+			lost: rfmSegments.filter((s) => s.segment === 'Lost').length
+		};
+
+		// Calculate average order value
+		const totalRevenue = sales.reduce((sum, s) => sum + s.total_amount, 0);
+		const averageOrderValue = totalRevenue / sales.length;
+
+		// Calculate Customer Lifetime Value (simplified)
+		const avgPurchaseFrequency =
+			customers.length > 0
+				? customers.reduce((sum, c) => sum + c.orderCount, 0) / customers.length
+				: 0;
+		const avgCustomerLifespan = 12; // months (estimate)
+		const customerLifetimeValue = enhancedAIService.calculateCLV(
+			averageOrderValue,
+			avgPurchaseFrequency,
+			avgCustomerLifespan
+		);
+
+		// Get top customers
+		const topCustomers = customers
+			.sort((a, b) => b.totalSpent - a.totalSpent)
+			.slice(0, 5)
+			.map((c) => ({
+				userId: c.userId,
+				userName: c.userName,
+				totalSpent: c.totalSpent,
+				orderCount: c.orderCount
+			}));
+
+		// Get churn risk customers
+		const churnRiskCustomers = rfmSegments
+			.filter((s) => s.segment === 'At Risk' || s.segment === 'Lost')
+			.slice(0, 10)
+			.map((segment) => {
+				const customer = customers.find((c) => c.userId === segment.userId);
+				const daysSinceLastOrder = segment.recency;
+				const riskFactors: string[] = [];
+				if (daysSinceLastOrder > 90) riskFactors.push('No order in 90+ days');
+				if (segment.frequency < 2) riskFactors.push('Low purchase frequency');
+				if (segment.recency > 60 && segment.frequency >= 2)
+					riskFactors.push('Declining engagement');
+
+				const churnProbability = segment.segment === 'Lost' ? 0.9 : 0.7;
+
+				return {
+					userId: segment.userId,
+					userName: segment.userName,
+					churnProbability,
+					riskFactors
+				};
+			});
+
+		// Generate recommendations
+		const recommendations: string[] = [];
+		if (segments.atRisk > 0) {
+			recommendations.push(`Focus retention campaigns on ${segments.atRisk} at-risk customers`);
+		}
+		if (segments.champions > 0) {
+			recommendations.push(`Reward ${segments.champions} champion customers with VIP benefits`);
+		}
+		if (segments.loyal > 0) {
+			recommendations.push(`Upsell opportunities with ${segments.loyal} loyal customers`);
+		}
+		if (segments.lost > 0) {
+			recommendations.push(`Re-engage ${segments.lost} lost customers with special offers`);
+		}
+
+		return {
+			totalCustomers: customers.length,
+			averageOrderValue,
+			customerLifetimeValue,
+			topCustomers,
+			churnRiskCustomers,
+			segments,
+			recommendations
+		};
+	}
+
+	/**
+	 * Score order risk
+	 */
+	async scoreOrderRisk(order: Order): Promise<OrderRiskScore> {
+		const factors: string[] = [];
+		let riskScore = 0;
+
+		// High value orders
+		if (order.total_amount > 50000) {
+			riskScore += 0.2;
+			factors.push('High order value');
+		}
+
+		// New customer (first order) - need to check order history
+		// For now, assume new if no user_id or if we can't verify history
+		if (!order.user_id) {
+			riskScore += 0.15;
+			factors.push('Guest checkout');
+		}
+
+		// Unusual shipping address patterns
+		if (order.customer_address && order.customer_address.length < 10) {
+			riskScore += 0.1;
+			factors.push('Incomplete address');
+		}
+
+		// Payment method
+		if (order.payment_method === 'cash_on_delivery' && order.total_amount > 30000) {
+			riskScore += 0.15;
+			factors.push('High-value COD order');
+		}
+
+		// Determine risk level
+		let riskLevel: 'high' | 'medium' | 'low' = 'low';
+		if (riskScore >= 0.5) riskLevel = 'high';
+		else if (riskScore >= 0.3) riskLevel = 'medium';
+
+		// Generate recommendations
+		const recommendations: string[] = [];
+		if (riskLevel === 'high') {
+			recommendations.push('Verify customer identity');
+			recommendations.push('Consider additional payment verification');
+		} else if (riskLevel === 'medium') {
+			recommendations.push('Monitor order closely');
+		}
+
+		return {
+			orderId: order.id,
+			riskScore: Math.min(riskScore, 1),
+			riskLevel,
+			factors,
+			recommendations
+		};
+	}
+
+	/**
+	 * Analyze product performance
+	 */
+	async analyzeProductPerformance(
+		productId: string,
+		product: Product,
+		sales: Sale[],
+		reviews: Array<{ rating: number }>
+	): Promise<ProductPerformanceAnalysis> {
+		const productSales = sales.filter((s) => s.product_id === productId);
+
+		// Calculate sales velocity
+		const totalSold = productSales.reduce((sum, s) => sum + s.quantity, 0);
+		const firstSaleDate =
+			productSales.length > 0
+				? new Date(
+						Math.min(...productSales.map((s) => new Date(s.created_at || Date.now()).getTime()))
+					)
+				: new Date();
+		const daysOfData = Math.max(
+			1,
+			Math.floor((Date.now() - firstSaleDate.getTime()) / (1000 * 60 * 60 * 24))
+		);
+		const salesVelocity = totalSold / daysOfData;
+
+		// Calculate revenue contribution
+		const productRevenue = productSales.reduce((sum, s) => sum + s.total_amount, 0);
+		const totalRevenue = sales.reduce((sum, s) => sum + s.total_amount, 0);
+		const revenueContribution = totalRevenue > 0 ? (productRevenue / totalRevenue) * 100 : 0;
+
+		// Calculate profit margin
+		const totalCost = productSales.reduce((sum, s) => sum + (s.cost_price || 0) * s.quantity, 0);
+		const profitMargin =
+			productRevenue > 0 ? ((productRevenue - totalCost) / productRevenue) * 100 : 0;
+
+		// Calculate customer satisfaction from reviews
+		const customerSatisfaction =
+			reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+
+		// Estimate return rate (would need returns data - using placeholder)
+		const returnRate = 0; // TODO: Calculate from returns data if available
+
+		// Calculate stock turnover (annual sales / average inventory)
+		const annualSales = salesVelocity * 365;
+		const averageInventory = product.stock; // Simplified
+		const stockTurnover = averageInventory > 0 ? annualSales / averageInventory : 0;
+
+		// Generate recommendations
+		const recommendations: string[] = [];
+		if (salesVelocity > 5 && product.stock < 20) {
+			recommendations.push('Consider increasing stock - high demand product');
+		}
+		if (profitMargin < 10) {
+			recommendations.push('Review pricing - low profit margin');
+		}
+		if (customerSatisfaction < 3 && reviews.length > 5) {
+			recommendations.push('Address customer concerns - low satisfaction scores');
+		}
+		if (stockTurnover < 2) {
+			recommendations.push('Consider promotions to increase stock turnover');
+		}
+
+		return {
+			productId,
+			productName: product.name,
+			salesVelocity,
+			revenueContribution,
+			profitMargin,
+			customerSatisfaction,
+			returnRate,
+			stockTurnover,
+			recommendations
+		};
+	}
+
+	/**
+	 * Calculate Customer Lifetime Value for a specific customer
+	 */
+	async calculateCustomerLifetimeValue(userId: string, sales: Sale[]): Promise<CLV> {
+		const customerSales = sales.filter((s) => s.user_id === userId);
+
+		if (customerSales.length === 0) {
+			return {
+				currentValue: 0,
+				predictedValue: 0,
+				purchaseFrequency: 0,
+				averageOrderValue: 0,
+				customerLifespan: 0,
+				segment: 'low'
+			};
+		}
+
+		// Calculate metrics
+		const totalSpent = customerSales.reduce((sum, s) => sum + s.total_amount, 0);
+		const averageOrderValue = totalSpent / customerSales.length;
+
+		// Calculate purchase frequency (orders per month)
+		const firstSaleDate = new Date(
+			Math.min(...customerSales.map((s) => new Date(s.created_at || Date.now()).getTime()))
+		);
+		const monthsAsCustomer = Math.max(
+			1,
+			(Date.now() - firstSaleDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
+		);
+		const purchaseFrequency = customerSales.length / monthsAsCustomer;
+
+		// Estimate customer lifespan (current age + predicted future)
+		const customerLifespan =
+			monthsAsCustomer + (purchaseFrequency > 0 ? 12 / purchaseFrequency : 6);
+
+		// Calculate CLV
+		const currentValue = totalSpent;
+		const predictedValue = enhancedAIService.calculateCLV(
+			averageOrderValue,
+			purchaseFrequency,
+			customerLifespan
+		);
+
+		// Determine segment
+		let segment: 'high' | 'medium' | 'low' = 'low';
+		if (predictedValue > 50000) segment = 'high';
+		else if (predictedValue > 20000) segment = 'medium';
+
+		return {
+			currentValue,
+			predictedValue,
+			purchaseFrequency,
+			averageOrderValue,
+			customerLifespan,
+			segment
+		};
+	}
+
+	/**
+	 * Predict churn for all customers
+	 */
+	async predictChurn(sales: Sale[]): Promise<ChurnPrediction[]> {
+		// Group sales by user
+		const customerData = sales.reduce(
+			(acc, sale) => {
+				const userId = sale.user_id || 'guest';
+				if (!acc[userId]) {
+					acc[userId] = {
+						userId,
+						userName: sale.user_name || 'Guest',
+						orderCount: 0,
+						lastOrderDate: null as string | null,
+						totalSpent: 0
+					};
+				}
+				acc[userId].orderCount += 1;
+				acc[userId].totalSpent += sale.total_amount;
+				if (sale.created_at) {
+					if (!acc[userId].lastOrderDate || sale.created_at > acc[userId].lastOrderDate) {
+						acc[userId].lastOrderDate = sale.created_at;
+					}
+				}
+				return acc;
+			},
+			{} as Record<
+				string,
+				{
+					userId: string;
+					userName: string;
+					orderCount: number;
+					lastOrderDate: string | null;
+					totalSpent: number;
+				}
+			>
+		);
+
+		const customers = Object.values(customerData);
+		const now = Date.now();
+
+		const predictions: ChurnPrediction[] = customers
+			.map((customer) => {
+				const daysSinceLastOrder = customer.lastOrderDate
+					? Math.floor((now - new Date(customer.lastOrderDate).getTime()) / (1000 * 60 * 60 * 24))
+					: 999;
+
+				// Calculate churn probability
+				let churnProbability = 0;
+				const riskFactors: string[] = [];
+
+				if (daysSinceLastOrder > 180) {
+					churnProbability = 0.9;
+					riskFactors.push('No order in 180+ days');
+				} else if (daysSinceLastOrder > 90) {
+					churnProbability = 0.7;
+					riskFactors.push('No order in 90+ days');
+				} else if (daysSinceLastOrder > 60) {
+					churnProbability = 0.5;
+					riskFactors.push('No order in 60+ days');
+				}
+
+				if (customer.orderCount === 1 && daysSinceLastOrder > 30) {
+					churnProbability += 0.2;
+					riskFactors.push('Single purchase customer');
+				}
+
+				// Generate recommended actions
+				const recommendedActions: string[] = [];
+				if (churnProbability > 0.7) {
+					recommendedActions.push('Send re-engagement email with special offer');
+					recommendedActions.push('Offer personalized product recommendations');
+				} else if (churnProbability > 0.5) {
+					recommendedActions.push('Send follow-up email');
+					recommendedActions.push('Offer discount on next purchase');
+				}
+
+				return {
+					userId: customer.userId,
+					userName: customer.userName,
+					churnProbability: Math.min(churnProbability, 1),
+					riskFactors,
+					recommendedActions,
+					daysSinceLastOrder
+				};
+			})
+			.filter((p) => p.churnProbability > 0.4) // Only return at-risk customers
+			.sort((a, b) => b.churnProbability - a.churnProbability);
+
+		return predictions;
+	}
 }
 
 // Export singleton instance
 export const aiService = new AIService();
-

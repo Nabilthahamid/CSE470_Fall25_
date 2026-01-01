@@ -11,6 +11,8 @@
 		isInComparison
 	} from '$lib/utils/comparison';
 
+	export let params: Record<string, string> = {};
+
 	let products: Product[] = [];
 	let loading = true;
 	let error: string | null = null;

@@ -13,7 +13,7 @@
 	} from '$lib/utils/comparison';
 
 	export let data: PageData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let searchInput = data.searchQuery || '';
 	let showPopup = false;
@@ -27,6 +27,32 @@
 		updateComparisonStates();
 		updateComparisonCount();
 	});
+
+	// Calculate discount percentage (can be based on cost_price or a fixed discount)
+	function calculateDiscount(product: any): { discountPercent: number; originalPrice: number; discountedPrice: number } {
+		// If cost_price exists and is less than price, calculate discount
+		// Otherwise, apply a random discount between 5-15% for demo purposes
+		const originalPrice = product.price;
+		let discountPercent = 0;
+		
+		if (product.cost_price && product.cost_price < originalPrice) {
+			// Calculate discount based on cost_price (assuming markup)
+			discountPercent = Math.round(((originalPrice - product.cost_price * 1.1) / originalPrice) * 100);
+			discountPercent = Math.max(5, Math.min(15, discountPercent)); // Clamp between 5-15%
+		} else {
+			// Use product ID to generate consistent discount (5-15%)
+			const hash = product.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+			discountPercent = 5 + (hash % 11); // 5-15%
+		}
+		
+		const discountedPrice = originalPrice * (1 - discountPercent / 100);
+		
+		return {
+			discountPercent,
+			originalPrice,
+			discountedPrice: Math.round(discountedPrice * 100) / 100
+		};
+	}
 
 	function updateComparisonStates() {
 		data.products.forEach((product) => {
@@ -252,14 +278,15 @@
 		{:else}
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
 				{#each data.products as product (product.id)}
+					{@const discount = calculateDiscount(product)}
 					<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
 						<!-- Product Image -->
-						<div class="h-64 relative bg-gray-100 overflow-hidden">
+						<div class="h-64 relative bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
 							{#if product.image_url}
 								<img
 									src={product.image_url}
 									alt={product.name}
-									class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+									class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
 									on:error={(e) => {
 										e.currentTarget.style.display = 'none';
 									}}
@@ -270,16 +297,25 @@
 								</div>
 							{/if}
 							
-							<!-- Stock Badge -->
-							<div class="absolute top-3 right-3">
+							<!-- Discount Badge (Bottom Left) -->
+							{#if discount.discountPercent > 0}
+								<div class="absolute bottom-3 left-3 z-10">
+									<span class="inline-flex items-center justify-center bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
+										{discount.discountPercent}% OFF
+									</span>
+								</div>
+							{/if}
+							
+							<!-- Stock Badge (Top Right) -->
+							<div class="absolute top-3 right-3 z-10">
 								{#if product.stock > 0}
-									<span class="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-										<span>✓</span>
+									<span class="inline-flex items-center gap-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+										<span class="text-sm">✓</span>
 										<span>In Stock</span>
 									</span>
 								{:else}
-									<span class="inline-flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-										<span>✕</span>
+									<span class="inline-flex items-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+										<span class="text-sm">✕</span>
 										<span>Out of Stock</span>
 									</span>
 								{/if}
@@ -287,19 +323,30 @@
 						</div>
 
 						<!-- Product Info -->
-						<div class="p-5 flex flex-col flex-1">
-							<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14">
+						<div class="p-6 flex flex-col flex-1 bg-gradient-to-b from-white to-gray-50">
+							<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14 group-hover:text-indigo-600 transition-colors">
 								{product.name}
 							</h3>
-							<p class="text-sm mb-3 text-gray-600 line-clamp-2 h-10">
-								{product.description || 'No description available'}
-							</p>
+							{#if product.brand}
+								<p class="text-xs text-indigo-600 font-bold mb-2 uppercase tracking-wide">{product.brand}</p>
+							{/if}
 							
-							<!-- Price and Stock -->
-							<div class="mb-4 flex-shrink-0">
-								<p class="text-2xl font-bold mb-1 text-gray-900">
-									Tk {product.price.toFixed(2)}
-								</p>
+							<!-- Price Display -->
+							<div class="mb-4 flex-shrink-0 pb-4 border-b border-gray-200">
+								{#if discount.discountPercent > 0}
+									<div class="flex items-baseline gap-2 mb-1">
+										<p class="text-2xl font-extrabold text-gray-900">
+											Tk {discount.discountedPrice.toFixed(2)}
+										</p>
+										<p class="text-lg font-semibold text-gray-400 line-through">
+											Tk {discount.originalPrice.toFixed(2)}
+										</p>
+									</div>
+								{:else}
+									<p class="text-2xl font-extrabold text-gray-900 mb-1">
+										Tk {product.price.toFixed(2)}
+									</p>
+								{/if}
 								{#if product.stock > 0}
 									<p class="text-xs text-gray-500 font-medium">
 										{product.stock} {product.stock === 1 ? 'item' : 'items'} available
@@ -307,30 +354,8 @@
 								{/if}
 							</div>
 
-							<!-- Compare Button -->
-							<div class="mb-3">
-								<button
-									type="button"
-									on:click={() => handleCompareToggle(product.id)}
-									class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors {comparisonStates[product.id]
-										? 'bg-indigo-600 text-white hover:bg-indigo-700'
-										: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
-								>
-									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-									</svg>
-									{comparisonStates[product.id] ? 'Remove from Compare' : 'Add to Compare'}
-								</button>
-							</div>
-
 							<!-- Action Buttons -->
-							<div class="flex gap-2 mt-auto">
-								<a
-									href="/products/{product.id}"
-									class="flex-1 flex items-center justify-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
-								>
-									View Details
-								</a>
+							<div class="flex flex-col gap-3 mt-auto">
 								{#if product.stock > 0}
 									<form 
 										method="POST" 
@@ -353,25 +378,31 @@
 												}
 											};
 										}}
-										class="flex-1"
+										class="w-full"
 									>
 										<input type="hidden" name="product_id" value={product.id} />
 										<input type="hidden" name="quantity" value="1" />
 										<button
 											type="submit"
-											class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
+											class="w-full bg-white border-2 border-blue-600 text-blue-600 px-4 py-3 rounded-lg cursor-pointer text-sm font-bold hover:bg-blue-50 hover:shadow-md transition-all duration-300"
 										>
-											Add to Cart
+											Add to cart
 										</button>
 									</form>
 								{:else}
 									<button
 										disabled
-										class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-semibold"
+										class="w-full bg-gray-200 text-gray-500 border-2 border-gray-300 px-4 py-3 rounded-lg cursor-not-allowed text-sm font-semibold"
 									>
 										Out of Stock
 									</button>
 								{/if}
+								<a
+									href="/products/{product.id}"
+									class="w-full flex items-center justify-center px-4 py-2 rounded-lg no-underline text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+								>
+									View Details →
+								</a>
 							</div>
 						</div>
 					</div>

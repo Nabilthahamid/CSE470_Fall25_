@@ -504,6 +504,576 @@ CREATE TRIGGER trigger_update_stock_on_order_item
     EXECUTE FUNCTION update_product_stock_on_order_item();
 
 -- ============================================
+-- Step 10: Promotional Campaigns Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS promotional_campaigns (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    campaign_type VARCHAR(50) NOT NULL CHECK (campaign_type IN ('flash_sale', 'limited_time', 'buy_x_get_y', 'seasonal', 'other')),
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    discount_id UUID,
+    products JSONB DEFAULT '[]'::jsonb,
+    buy_x_get_y_config JSONB,
+    image_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT check_end_after_start CHECK (end_date >= start_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_promotional_campaigns_type ON promotional_campaigns(campaign_type);
+CREATE INDEX IF NOT EXISTS idx_promotional_campaigns_active ON promotional_campaigns(is_active);
+CREATE INDEX IF NOT EXISTS idx_promotional_campaigns_dates ON promotional_campaigns(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_promotional_campaigns_discount_id ON promotional_campaigns(discount_id);
+
+ALTER TABLE promotional_campaigns ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read campaigns" ON promotional_campaigns;
+DROP POLICY IF EXISTS "Allow admin manage campaigns" ON promotional_campaigns;
+
+CREATE POLICY "Allow public read campaigns" ON promotional_campaigns
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow admin manage campaigns" ON promotional_campaigns
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION update_promotional_campaigns_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_promotional_campaigns_updated_at ON promotional_campaigns;
+CREATE TRIGGER trigger_update_promotional_campaigns_updated_at
+    BEFORE UPDATE ON promotional_campaigns
+    FOR EACH ROW
+    EXECUTE FUNCTION update_promotional_campaigns_updated_at();
+
+-- ============================================
+-- Step 11: Discounts Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS discounts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    discount_type VARCHAR(50) NOT NULL CHECK (discount_type IN ('percentage', 'fixed_amount', 'free_shipping')),
+    discount_value DECIMAL(10, 2) NOT NULL CHECK (discount_value >= 0),
+    minimum_purchase DECIMAL(10, 2) CHECK (minimum_purchase >= 0),
+    maximum_discount DECIMAL(10, 2) CHECK (maximum_discount >= 0),
+    usage_limit_total INTEGER CHECK (usage_limit_total > 0),
+    usage_limit_per_customer INTEGER CHECK (usage_limit_per_customer > 0),
+    used_count INTEGER DEFAULT 0 NOT NULL CHECK (used_count >= 0),
+    start_date TIMESTAMP WITH TIME ZONE,
+    end_date TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    applicable_to VARCHAR(50) DEFAULT 'all' NOT NULL CHECK (applicable_to IN ('all', 'categories', 'products')),
+    applicable_ids JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT check_end_after_start CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_discounts_code ON discounts(code);
+CREATE INDEX IF NOT EXISTS idx_discounts_active ON discounts(is_active);
+CREATE INDEX IF NOT EXISTS idx_discounts_type ON discounts(discount_type);
+CREATE INDEX IF NOT EXISTS idx_discounts_dates ON discounts(start_date, end_date);
+
+ALTER TABLE discounts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read discounts" ON discounts;
+DROP POLICY IF EXISTS "Allow admin manage discounts" ON discounts;
+
+CREATE POLICY "Allow public read discounts" ON discounts
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow admin manage discounts" ON discounts
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 12: Discount Usage Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS discount_usage (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    discount_id UUID NOT NULL REFERENCES discounts(id) ON DELETE CASCADE,
+    order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    discount_amount DECIMAL(10, 2) NOT NULL CHECK (discount_amount >= 0),
+    used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_discount_usage_discount_id ON discount_usage(discount_id);
+CREATE INDEX IF NOT EXISTS idx_discount_usage_order_id ON discount_usage(order_id);
+CREATE INDEX IF NOT EXISTS idx_discount_usage_user_id ON discount_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_discount_usage_used_at ON discount_usage(used_at DESC);
+
+ALTER TABLE discount_usage ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read discount usage" ON discount_usage;
+DROP POLICY IF EXISTS "Allow authenticated insert discount usage" ON discount_usage;
+DROP POLICY IF EXISTS "Allow admin manage discount usage" ON discount_usage;
+
+CREATE POLICY "Allow public read discount usage" ON discount_usage
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow authenticated insert discount usage" ON discount_usage
+    FOR INSERT
+    WITH CHECK (true);
+
+CREATE POLICY "Allow admin manage discount usage" ON discount_usage
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- Function to update discounts updated_at timestamp
+CREATE OR REPLACE FUNCTION update_discounts_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_discounts_updated_at ON discounts;
+CREATE TRIGGER trigger_update_discounts_updated_at
+    BEFORE UPDATE ON discounts
+    FOR EACH ROW
+    EXECUTE FUNCTION update_discounts_updated_at();
+
+-- ============================================
+-- Step 13: Newsletters Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS newsletters (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    content_type VARCHAR(20) NOT NULL CHECK (content_type IN ('html', 'text')),
+    recipient_type VARCHAR(50) NOT NULL CHECK (recipient_type IN ('all', 'subscribers', 'customers', 'segment')),
+    recipient_segment TEXT,
+    scheduled_at TIMESTAMP WITH TIME ZONE,
+    sent_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(50) DEFAULT 'draft' NOT NULL CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'failed')),
+    recipient_count INTEGER DEFAULT 0 CHECK (recipient_count >= 0),
+    opened_count INTEGER DEFAULT 0 NOT NULL CHECK (opened_count >= 0),
+    clicked_count INTEGER DEFAULT 0 NOT NULL CHECK (clicked_count >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletters_status ON newsletters(status);
+CREATE INDEX IF NOT EXISTS idx_newsletters_scheduled_at ON newsletters(scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_newsletters_created_at ON newsletters(created_at DESC);
+
+ALTER TABLE newsletters ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow admin manage newsletters" ON newsletters;
+
+CREATE POLICY "Allow admin manage newsletters" ON newsletters
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 14: Email Sequences Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS email_sequences (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    trigger VARCHAR(50) NOT NULL CHECK (trigger IN ('welcome', 'abandoned_cart', 'order_confirmation', 'order_shipped', 'custom')),
+    trigger_delay INTEGER CHECK (trigger_delay >= 0),
+    emails JSONB DEFAULT '[]'::jsonb NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_sequences_trigger ON email_sequences(trigger);
+CREATE INDEX IF NOT EXISTS idx_email_sequences_active ON email_sequences(is_active);
+
+ALTER TABLE email_sequences ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow admin manage email sequences" ON email_sequences;
+
+CREATE POLICY "Allow admin manage email sequences" ON email_sequences
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 15: Email Campaigns Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS email_campaigns (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    content_type VARCHAR(20) NOT NULL CHECK (content_type IN ('html', 'text')),
+    recipient_count INTEGER DEFAULT 0 NOT NULL CHECK (recipient_count >= 0),
+    sent_count INTEGER DEFAULT 0 NOT NULL CHECK (sent_count >= 0),
+    opened_count INTEGER DEFAULT 0 NOT NULL CHECK (opened_count >= 0),
+    clicked_count INTEGER DEFAULT 0 NOT NULL CHECK (clicked_count >= 0),
+    bounced_count INTEGER DEFAULT 0 NOT NULL CHECK (bounced_count >= 0),
+    unsubscribed_count INTEGER DEFAULT 0 NOT NULL CHECK (unsubscribed_count >= 0),
+    started_at TIMESTAMP WITH TIME ZONE,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(50) DEFAULT 'draft' NOT NULL CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'paused', 'cancelled')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_status ON email_campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_email_campaigns_created_at ON email_campaigns(created_at DESC);
+
+ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow admin manage email campaigns" ON email_campaigns;
+
+CREATE POLICY "Allow admin manage email campaigns" ON email_campaigns
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- Function to update newsletters updated_at timestamp
+CREATE OR REPLACE FUNCTION update_newsletters_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_newsletters_updated_at ON newsletters;
+CREATE TRIGGER trigger_update_newsletters_updated_at
+    BEFORE UPDATE ON newsletters
+    FOR EACH ROW
+    EXECUTE FUNCTION update_newsletters_updated_at();
+
+-- Function to update email_sequences updated_at timestamp
+CREATE OR REPLACE FUNCTION update_email_sequences_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_email_sequences_updated_at ON email_sequences;
+CREATE TRIGGER trigger_update_email_sequences_updated_at
+    BEFORE UPDATE ON email_sequences
+    FOR EACH ROW
+    EXECUTE FUNCTION update_email_sequences_updated_at();
+
+-- Function to update email_campaigns updated_at timestamp
+CREATE OR REPLACE FUNCTION update_email_campaigns_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_email_campaigns_updated_at ON email_campaigns;
+CREATE TRIGGER trigger_update_email_campaigns_updated_at
+    BEFORE UPDATE ON email_campaigns
+    FOR EACH ROW
+    EXECUTE FUNCTION update_email_campaigns_updated_at();
+
+-- ============================================
+-- Step 16: Shipping Providers Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS shipping_providers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    api_key TEXT,
+    api_secret TEXT,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    base_rate DECIMAL(10, 2) NOT NULL CHECK (base_rate >= 0),
+    rate_per_kg DECIMAL(10, 2) CHECK (rate_per_kg >= 0),
+    rate_per_km DECIMAL(10, 2) CHECK (rate_per_km >= 0),
+    estimated_days_min INTEGER NOT NULL CHECK (estimated_days_min >= 0),
+    estimated_days_max INTEGER NOT NULL CHECK (estimated_days_max >= estimated_days_min),
+    config JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shipping_providers_code ON shipping_providers(code);
+CREATE INDEX IF NOT EXISTS idx_shipping_providers_active ON shipping_providers(is_active);
+
+ALTER TABLE shipping_providers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow admin manage shipping providers" ON shipping_providers;
+
+CREATE POLICY "Allow admin manage shipping providers" ON shipping_providers
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 17: Shipping Zones Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS shipping_zones (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    country VARCHAR(100),
+    regions JSONB DEFAULT '[]'::jsonb NOT NULL,
+    base_rate DECIMAL(10, 2) NOT NULL CHECK (base_rate >= 0),
+    rate_per_kg DECIMAL(10, 2) CHECK (rate_per_kg >= 0),
+    provider_id UUID REFERENCES shipping_providers(id) ON DELETE SET NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    estimated_days_min INTEGER NOT NULL CHECK (estimated_days_min >= 0),
+    estimated_days_max INTEGER NOT NULL CHECK (estimated_days_max >= estimated_days_min),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_shipping_zones_country ON shipping_zones(country);
+CREATE INDEX IF NOT EXISTS idx_shipping_zones_active ON shipping_zones(is_active);
+CREATE INDEX IF NOT EXISTS idx_shipping_zones_provider_id ON shipping_zones(provider_id);
+
+ALTER TABLE shipping_zones ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow admin manage shipping zones" ON shipping_zones;
+
+CREATE POLICY "Allow admin manage shipping zones" ON shipping_zones
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- Function to update shipping_providers updated_at timestamp
+CREATE OR REPLACE FUNCTION update_shipping_providers_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_shipping_providers_updated_at ON shipping_providers;
+CREATE TRIGGER trigger_update_shipping_providers_updated_at
+    BEFORE UPDATE ON shipping_providers
+    FOR EACH ROW
+    EXECUTE FUNCTION update_shipping_providers_updated_at();
+
+-- Function to update shipping_zones updated_at timestamp
+CREATE OR REPLACE FUNCTION update_shipping_zones_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_shipping_zones_updated_at ON shipping_zones;
+CREATE TRIGGER trigger_update_shipping_zones_updated_at
+    BEFORE UPDATE ON shipping_zones
+    FOR EACH ROW
+    EXECUTE FUNCTION update_shipping_zones_updated_at();
+
+-- ============================================
+-- Step 18: Homepage Content Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS homepage_content (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    hero_title TEXT,
+    hero_subtitle TEXT,
+    hero_image_url TEXT,
+    featured_section_title TEXT,
+    featured_section_content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE homepage_content ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read homepage content" ON homepage_content;
+DROP POLICY IF EXISTS "Allow admin manage homepage content" ON homepage_content;
+
+CREATE POLICY "Allow public read homepage content" ON homepage_content
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow admin manage homepage content" ON homepage_content
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 19: Banners Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS banners (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    image_url TEXT NOT NULL,
+    link_url TEXT,
+    link_text VARCHAR(255),
+    position VARCHAR(20) NOT NULL CHECK (position IN ('top', 'middle', 'bottom')),
+    "order" INTEGER DEFAULT 0 NOT NULL,
+    is_active BOOLEAN DEFAULT true NOT NULL,
+    start_date TIMESTAMP WITH TIME ZONE,
+    end_date TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT check_end_after_start CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_banners_position ON banners(position);
+CREATE INDEX IF NOT EXISTS idx_banners_active ON banners(is_active);
+CREATE INDEX IF NOT EXISTS idx_banners_order ON banners("order");
+
+ALTER TABLE banners ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read banners" ON banners;
+DROP POLICY IF EXISTS "Allow admin manage banners" ON banners;
+
+CREATE POLICY "Allow public read banners" ON banners
+    FOR SELECT
+    USING (true);
+
+CREATE POLICY "Allow admin manage banners" ON banners
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 20: Static Pages Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS static_pages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    slug VARCHAR(255) UNIQUE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    meta_title VARCHAR(255),
+    meta_description TEXT,
+    is_published BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_static_pages_slug ON static_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_static_pages_published ON static_pages(is_published);
+
+ALTER TABLE static_pages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read published pages" ON static_pages;
+DROP POLICY IF EXISTS "Allow admin manage pages" ON static_pages;
+
+CREATE POLICY "Allow public read published pages" ON static_pages
+    FOR SELECT
+    USING (is_published = true OR true);
+
+CREATE POLICY "Allow admin manage pages" ON static_pages
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================
+-- Step 21: FAQs Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS faqs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(100),
+    "order" INTEGER DEFAULT 0 NOT NULL,
+    is_published BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_faqs_category ON faqs(category);
+CREATE INDEX IF NOT EXISTS idx_faqs_published ON faqs(is_published);
+CREATE INDEX IF NOT EXISTS idx_faqs_order ON faqs("order");
+
+ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read published faqs" ON faqs;
+DROP POLICY IF EXISTS "Allow admin manage faqs" ON faqs;
+
+CREATE POLICY "Allow public read published faqs" ON faqs
+    FOR SELECT
+    USING (is_published = true OR true);
+
+CREATE POLICY "Allow admin manage faqs" ON faqs
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+-- Function to update homepage_content updated_at timestamp
+CREATE OR REPLACE FUNCTION update_homepage_content_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_homepage_content_updated_at ON homepage_content;
+CREATE TRIGGER trigger_update_homepage_content_updated_at
+    BEFORE UPDATE ON homepage_content
+    FOR EACH ROW
+    EXECUTE FUNCTION update_homepage_content_updated_at();
+
+-- Function to update banners updated_at timestamp
+CREATE OR REPLACE FUNCTION update_banners_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_banners_updated_at ON banners;
+CREATE TRIGGER trigger_update_banners_updated_at
+    BEFORE UPDATE ON banners
+    FOR EACH ROW
+    EXECUTE FUNCTION update_banners_updated_at();
+
+-- Function to update static_pages updated_at timestamp
+CREATE OR REPLACE FUNCTION update_static_pages_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_static_pages_updated_at ON static_pages;
+CREATE TRIGGER trigger_update_static_pages_updated_at
+    BEFORE UPDATE ON static_pages
+    FOR EACH ROW
+    EXECUTE FUNCTION update_static_pages_updated_at();
+
+-- Function to update faqs updated_at timestamp
+CREATE OR REPLACE FUNCTION update_faqs_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_faqs_updated_at ON faqs;
+CREATE TRIGGER trigger_update_faqs_updated_at
+    BEFORE UPDATE ON faqs
+    FOR EACH ROW
+    EXECUTE FUNCTION update_faqs_updated_at();
+
+-- ============================================
 -- COMPLETE SETUP FINISHED
 -- ============================================
 

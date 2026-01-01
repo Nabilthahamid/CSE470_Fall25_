@@ -2,9 +2,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
+	import { generateSlug, generateMetaTitle, generateMetaDescription, generateSchemaMarkup } from '$lib/utils/seo';
 
 	export let data: PageData;
 	export let form: ActionData;
+	export let params: { id: string };
 
 	let descriptionTextarea: HTMLTextAreaElement;
 	let generatingDescription = false;
@@ -60,6 +62,25 @@
 			descriptionTextarea.dispatchEvent(new Event('input', { bubbles: true }));
 		}
 		showDescriptionModal = false;
+	}
+
+	async function generateSEOFields() {
+		const nameInput = document.getElementById('name') as HTMLInputElement;
+		const brandInput = document.getElementById('brand') as HTMLInputElement;
+		const metaTitleInput = document.getElementById('meta_title') as HTMLInputElement;
+		const metaDescTextarea = document.getElementById('meta_description') as HTMLTextAreaElement;
+
+		const name = nameInput?.value || data.product.name;
+		const desc = descriptionTextarea?.value || data.product.description;
+		const brand = brandInput?.value || data.product.brand;
+
+		if (metaTitleInput && !metaTitleInput.value) {
+			metaTitleInput.value = generateMetaTitle(name, brand);
+		}
+
+		if (metaDescTextarea && !metaDescTextarea.value) {
+			metaDescTextarea.value = generateMetaDescription(desc);
+		}
 	}
 </script>
 
@@ -251,6 +272,136 @@
 						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
 					/>
 				</div>
+			</div>
+
+			<!-- SEO Tools Section -->
+			<div class="mb-8 p-6 bg-white/5 rounded-lg border border-white/10">
+				<h2 class="text-xl font-bold mb-4">SEO Tools</h2>
+				
+				<div class="mb-4">
+					<label for="slug" class="block mb-2 font-medium">URL Slug</label>
+					<input
+						type="text"
+						id="slug"
+						name="slug"
+						value={form?.slug !== undefined ? form.slug : (data.product.slug || '')}
+						placeholder="auto-generated-from-name"
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						on:input={(e) => {
+							const input = e.currentTarget;
+							if (!input.value && data.product.name) {
+								input.value = generateSlug(data.product.name);
+							}
+						}}
+					/>
+					<small class="block mt-1 text-gray-400 text-sm">URL-friendly version of product name</small>
+				</div>
+
+				<div class="mb-4">
+					<label for="meta_title" class="block mb-2 font-medium">Meta Title</label>
+					<input
+						type="text"
+						id="meta_title"
+						name="meta_title"
+						value={form?.meta_title !== undefined ? form.meta_title : (data.product.meta_title || '')}
+						maxlength="60"
+						placeholder="Auto-generated from product name"
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+					/>
+					<small class="block mt-1 text-gray-400 text-sm">SEO title (recommended: 50-60 characters)</small>
+				</div>
+
+				<div class="mb-4">
+					<label for="meta_description" class="block mb-2 font-medium">Meta Description</label>
+					<textarea
+						id="meta_description"
+						name="meta_description"
+						rows="3"
+						maxlength="160"
+						placeholder="Auto-generated from description"
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+					>{form?.meta_description !== undefined ? form.meta_description : (data.product.meta_description || '')}</textarea>
+					<small class="block mt-1 text-gray-400 text-sm">SEO description (recommended: 150-160 characters)</small>
+				</div>
+
+				<button
+					type="button"
+					on:click={generateSEOFields}
+					class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold"
+				>
+					Generate SEO Fields
+				</button>
+			</div>
+
+			<!-- Tags Section -->
+			<div class="mb-8 p-6 bg-white/5 rounded-lg border border-white/10">
+				<h2 class="text-xl font-bold mb-4">Product Tags</h2>
+				<div class="mb-4">
+					<label for="tags" class="block mb-2 font-medium">Tags (comma-separated)</label>
+					<input
+						type="text"
+						id="tags"
+						name="tags"
+						value={form?.tags !== undefined ? form.tags : (data.product.tags?.join(', ') || '')}
+						placeholder="e.g., featured, bestseller, new-arrival"
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+					/>
+					<small class="block mt-1 text-gray-400 text-sm">Add tags to help categorize and filter products</small>
+				</div>
+			</div>
+
+			<!-- Related Products Section -->
+			<div class="mb-8 p-6 bg-white/5 rounded-lg border border-white/10">
+				<h2 class="text-xl font-bold mb-4">Related Products</h2>
+				<div class="mb-4">
+					<label for="related_product_ids" class="block mb-2 font-medium">Related Product IDs (comma-separated)</label>
+					<input
+						type="text"
+						id="related_product_ids"
+						name="related_product_ids"
+						value={form?.related_product_ids !== undefined ? form.related_product_ids : (data.product.related_product_ids?.join(', ') || '')}
+						placeholder="Enter product IDs separated by commas"
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+					/>
+					<small class="block mt-1 text-gray-400 text-sm">Suggest related or upsell products to customers</small>
+				</div>
+				{#if data.allProducts && data.allProducts.length > 0}
+					<div class="mt-4 p-4 bg-white/5 rounded-lg border border-white/10">
+						<p class="text-sm font-medium mb-2">Available Products:</p>
+						<div class="max-h-40 overflow-y-auto space-y-1">
+							{#each data.allProducts.filter(p => p.id !== data.product.id) as product}
+								<div class="text-sm text-gray-400">
+									<span class="font-mono text-xs">{product.id.slice(0, 8)}</span> - {product.name}
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			<!-- Image Gallery Section -->
+			<div class="mb-8 p-6 bg-white/5 rounded-lg border border-white/10">
+				<h2 class="text-xl font-bold mb-4">Image Gallery</h2>
+				<div class="mb-4">
+					<label for="images" class="block mb-2 font-medium">Additional Images (comma-separated URLs)</label>
+					<textarea
+						id="images"
+						name="images"
+						rows="3"
+						placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+					>{form?.images !== undefined ? form.images : (data.product.images?.join(', ') || '')}</textarea>
+					<small class="block mt-1 text-gray-400 text-sm">Add multiple images for product gallery (drag-and-drop reordering coming soon)</small>
+				</div>
+				{#if data.product.images && data.product.images.length > 0}
+					<div class="grid grid-cols-4 gap-4 mt-4">
+						{#each data.product.images as image}
+							<div class="relative">
+								<img src={image} alt="Gallery" class="w-full h-24 object-cover rounded-lg border border-white/10" />
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 
 			<div class="flex gap-4 mt-8">

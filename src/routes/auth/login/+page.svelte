@@ -4,7 +4,7 @@
 	import type { PageData, ActionData } from './$types';
 
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 </script>
 
 <svelte:head>

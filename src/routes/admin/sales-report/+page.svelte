@@ -8,7 +8,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let startDate = '';
 	let endDate = '';
@@ -17,6 +17,8 @@
 	let showFilters = false;
 	let aiAnalytics: any = null;
 	let loadingAnalytics = false;
+	let aiSummary: string | null = null;
+	let loadingSummary = false;
 
 	onMount(async () => {
 		if (typeof window === 'undefined') return; // Only run on client
@@ -75,13 +77,33 @@
 	$: totalSales = data.sales.reduce((sum, sale) => sum + sale.total_amount, 0);
 	$: totalQuantity = data.sales.reduce((sum, sale) => sum + sale.quantity, 0);
 	$: totalProfit = data.sales.reduce((sum, sale) => sum + sale.profit, 0);
+
+	async function generateAISummary() {
+		loadingSummary = true;
+		aiSummary = null;
+		try {
+			const response = await fetch('/api/admin/gemini-sales-summary', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ startDate, endDate })
+			});
+			if (response.ok) {
+				const result = await response.json();
+				aiSummary = result.summary;
+			}
+		} catch (error) {
+			console.error('Error generating AI summary:', error);
+		} finally {
+			loadingSummary = false;
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>Sales Report - Admin Dashboard</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto p-8">
+<div class="max-w-7xl mx-auto">
 	<div class="flex justify-between items-center mb-8">
 		<h1 class="m-0 text-3xl font-bold">Sales Report</h1>
 		<div class="flex gap-4">
@@ -194,6 +216,26 @@
 			</p>
 		</div>
 	</div>
+
+	<!-- AI Sales Summary -->
+	{#if aiSummary}
+		<div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200 shadow-lg p-6 mb-6">
+			<div class="flex items-center gap-3 mb-4">
+				<div class="bg-gradient-to-br from-indigo-600 to-purple-600 p-3 rounded-xl">
+					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+					</svg>
+				</div>
+				<div>
+					<h2 class="text-xl font-bold text-gray-900">AI-Generated Executive Summary</h2>
+					<p class="text-sm text-gray-600">Powered by Google Gemini</p>
+				</div>
+			</div>
+			<div class="bg-white rounded-lg p-4 border border-indigo-100">
+				<p class="text-gray-700 whitespace-pre-line leading-relaxed">{aiSummary}</p>
+			</div>
+		</div>
+	{/if}
 
 	<!-- AI Analytics Section -->
 	{#if aiAnalytics}

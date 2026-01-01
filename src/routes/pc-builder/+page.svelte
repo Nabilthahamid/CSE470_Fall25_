@@ -8,7 +8,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let selectedComponents: Record<string, { product: Product; category: ComponentCategory }> = {};
 	let hideUnconfigured = false;

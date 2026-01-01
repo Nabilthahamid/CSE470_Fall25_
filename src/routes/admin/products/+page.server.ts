@@ -10,9 +10,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	requireAdmin(locals.user);
 
 	try {
+		// Get all filter parameters
 		const searchQuery = url.searchParams.get('search') || '';
-		const products = searchQuery.trim()
-			? await productService.searchProducts(searchQuery)
+		const categoryId = url.searchParams.get('category') || '';
+		const brand = url.searchParams.get('brand') || '';
+		const stockStatus = url.searchParams.get('stockStatus') || 'all';
+		const minPrice = url.searchParams.get('minPrice') ? parseFloat(url.searchParams.get('minPrice')!) : undefined;
+		const maxPrice = url.searchParams.get('maxPrice') ? parseFloat(url.searchParams.get('maxPrice')!) : undefined;
+		const startDate = url.searchParams.get('startDate') || '';
+		const endDate = url.searchParams.get('endDate') || '';
+
+		// Check if any filters are applied
+		const hasFilters = searchQuery || categoryId || brand || stockStatus !== 'all' || minPrice !== undefined || maxPrice !== undefined || startDate || endDate;
+
+		const products = hasFilters
+			? await productService.filterProducts({
+					search: searchQuery || undefined,
+					categoryId: categoryId || undefined,
+					brand: brand || undefined,
+					stockStatus: stockStatus as any,
+					minPrice,
+					maxPrice,
+					startDate: startDate || undefined,
+					endDate: endDate || undefined
+				})
 			: await productService.getAllProducts();
 		
 		// Load component categories (handle gracefully if table doesn't exist)
@@ -23,11 +44,31 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			console.error('Error loading component categories:', error);
 			// Continue without categories
 		}
+
+		// Get unique brands for filter dropdown
+		let brands: string[] = [];
+		try {
+			const allProducts = await productService.getAllProducts();
+			brands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))] as string[];
+			brands.sort();
+		} catch (error) {
+			console.error('Error loading brands:', error);
+		}
 		
 		return {
 			products,
 			categories,
+			brands,
 			searchQuery,
+			filters: {
+				categoryId,
+				brand,
+				stockStatus,
+				minPrice: minPrice?.toString() || '',
+				maxPrice: maxPrice?.toString() || '',
+				startDate,
+				endDate
+			},
 			error: null
 		};
 	} catch (error) {
@@ -35,7 +76,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		return {
 			products: [],
 			categories: [],
+			brands: [],
 			searchQuery: '',
+			filters: {
+				categoryId: '',
+				brand: '',
+				stockStatus: 'all',
+				minPrice: '',
+				maxPrice: '',
+				startDate: '',
+				endDate: ''
+			},
 			error: message
 		};
 	}

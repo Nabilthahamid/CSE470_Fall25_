@@ -3,7 +3,7 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	export const params = {};
+	export let params: { id: string };
 
 	function getStatusColor(status: string): string {
 		switch (status) {

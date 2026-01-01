@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 
 	export let data: PageData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let searchOrderId = '';
 

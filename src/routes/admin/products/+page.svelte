@@ -7,13 +7,23 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let showCreateForm = false;
 	let searchInput = data.searchQuery || '';
 	let showPriceOptimization = false;
 	let priceOptimizations: any[] = [];
 	let loadingOptimizations = false;
+	
+	// Advanced Filters
+	let showFilters = false;
+	let filterCategory = data.filters?.categoryId || '';
+	let filterBrand = data.filters?.brand || '';
+	let filterStockStatus = data.filters?.stockStatus || 'all';
+	let filterMinPrice = data.filters?.minPrice || '';
+	let filterMaxPrice = data.filters?.maxPrice || '';
+	let filterStartDate = data.filters?.startDate || '';
+	let filterEndDate = data.filters?.endDate || '';
 	
 	// AI Description Generation
 	let descriptionTextarea: HTMLTextAreaElement;
@@ -28,18 +38,56 @@
 		showCreateForm = !showCreateForm;
 	}
 
-	function handleSearch() {
-		const query = searchInput.trim();
-		if (query) {
-			goto(`/admin/products?search=${encodeURIComponent(query)}`);
-		} else {
-			goto('/admin/products');
+	function applyFilters() {
+		const params = new URLSearchParams();
+		
+		if (searchInput.trim()) {
+			params.set('search', searchInput.trim());
 		}
+		if (filterCategory) {
+			params.set('category', filterCategory);
+		}
+		if (filterBrand) {
+			params.set('brand', filterBrand);
+		}
+		if (filterStockStatus !== 'all') {
+			params.set('stockStatus', filterStockStatus);
+		}
+		if (filterMinPrice) {
+			params.set('minPrice', filterMinPrice);
+		}
+		if (filterMaxPrice) {
+			params.set('maxPrice', filterMaxPrice);
+		}
+		if (filterStartDate) {
+			params.set('startDate', filterStartDate);
+		}
+		if (filterEndDate) {
+			params.set('endDate', filterEndDate);
+		}
+		
+		const queryString = params.toString();
+		goto(`/admin/products${queryString ? '?' + queryString : ''}`);
+	}
+
+	function clearFilters() {
+		searchInput = '';
+		filterCategory = '';
+		filterBrand = '';
+		filterStockStatus = 'all';
+		filterMinPrice = '';
+		filterMaxPrice = '';
+		filterStartDate = '';
+		filterEndDate = '';
+		goto('/admin/products');
+	}
+
+	function handleSearch() {
+		applyFilters();
 	}
 
 	function clearSearch() {
-		searchInput = '';
-		goto('/admin/products');
+		clearFilters();
 	}
 
 	async function loadPriceOptimizations() {
@@ -119,7 +167,7 @@
 	<title>Product Management - Admin Dashboard</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto p-8">
+<div class="max-w-7xl mx-auto">
 	<div class="flex justify-between items-center mb-8">
 		<h1 class="m-0 text-3xl font-bold">Product Management</h1>
 		<div class="flex gap-3">
@@ -342,9 +390,25 @@
 	{/if}
 
 	<div class="mt-8">
-		<div class="mb-6 flex gap-4 items-end">
-			<div class="flex-1">
-				<label for="search" class="block mb-2 font-medium">Search Products</label>
+		<!-- Advanced Search & Filter Panel -->
+		<div class="bg-white/5 rounded-lg border border-white/10 p-6 mb-6">
+			<div class="flex items-center justify-between mb-4">
+				<h2 class="text-xl font-semibold">Search & Filter Products</h2>
+				<button
+					type="button"
+					on:click={() => showFilters = !showFilters}
+					class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+					</svg>
+					{showFilters ? 'Hide Filters' : 'Show Filters'}
+				</button>
+			</div>
+
+			<!-- Basic Search -->
+			<div class="mb-4">
+				<label for="search" class="block mb-2 font-medium text-sm">Search</label>
 				<div class="flex gap-2">
 					<input
 						type="text"
@@ -365,22 +429,114 @@
 					>
 						Search
 					</button>
-					{#if data.searchQuery}
-						<button
-							type="button"
-							on:click={clearSearch}
-							class="bg-gray-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-gray-700"
-						>
-							Clear
-						</button>
-					{/if}
+					<button
+						type="button"
+						on:click={clearFilters}
+						class="bg-gray-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-gray-700"
+					>
+						Clear All
+					</button>
 				</div>
 			</div>
+
+			<!-- Advanced Filters (Collapsible) -->
+			{#if showFilters}
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-white/10">
+					<!-- Category Filter -->
+					<div>
+						<label for="filterCategory" class="block mb-2 font-medium text-sm">Category</label>
+						<select
+							id="filterCategory"
+							bind:value={filterCategory}
+							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						>
+							<option value="">All Categories</option>
+							{#each data.categories as category}
+								<option value={category.id}>{category.display_name}</option>
+							{/each}
+						</select>
+					</div>
+
+					<!-- Brand Filter -->
+					<div>
+						<label for="filterBrand" class="block mb-2 font-medium text-sm">Brand</label>
+						<select
+							id="filterBrand"
+							bind:value={filterBrand}
+							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						>
+							<option value="">All Brands</option>
+							{#each data.brands as brand}
+								<option value={brand}>{brand}</option>
+							{/each}
+						</select>
+					</div>
+
+					<!-- Stock Status Filter -->
+					<div>
+						<label for="filterStockStatus" class="block mb-2 font-medium text-sm">Stock Status</label>
+						<select
+							id="filterStockStatus"
+							bind:value={filterStockStatus}
+							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						>
+							<option value="all">All</option>
+							<option value="in_stock">In Stock</option>
+							<option value="low_stock">Low Stock (≤10)</option>
+							<option value="out_of_stock">Out of Stock</option>
+						</select>
+					</div>
+
+					<!-- Price Range -->
+					<div>
+						<label class="block mb-2 font-medium text-sm">Price Range</label>
+						<div class="flex gap-2">
+							<input
+								type="number"
+								bind:value={filterMinPrice}
+								placeholder="Min"
+								step="0.01"
+								min="0"
+								class="flex-1 p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							/>
+							<input
+								type="number"
+								bind:value={filterMaxPrice}
+								placeholder="Max"
+								step="0.01"
+								min="0"
+								class="flex-1 p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							/>
+						</div>
+					</div>
+
+					<!-- Date Range -->
+					<div>
+						<label for="filterStartDate" class="block mb-2 font-medium text-sm">Created From</label>
+						<input
+							type="date"
+							id="filterStartDate"
+							bind:value={filterStartDate}
+							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						/>
+					</div>
+
+					<div>
+						<label for="filterEndDate" class="block mb-2 font-medium text-sm">Created To</label>
+						<input
+							type="date"
+							id="filterEndDate"
+							bind:value={filterEndDate}
+							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						/>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<h2 class="mb-6 text-2xl font-semibold">
-			{#if data.searchQuery}
-				Search Results ({data.products.length})
+			{#if data.searchQuery || data.filters?.categoryId || data.filters?.brand || data.filters?.stockStatus !== 'all' || data.filters?.minPrice || data.filters?.maxPrice || data.filters?.startDate || data.filters?.endDate}
+				Filtered Results ({data.products.length})
 			{:else}
 				All Products ({data.products.length})
 			{/if}

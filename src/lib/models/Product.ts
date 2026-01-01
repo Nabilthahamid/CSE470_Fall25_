@@ -10,6 +10,12 @@ export interface Product {
 	component_category_id?: string | null;
 	brand?: string | null;
 	specifications?: string | null; // JSON string or text
+	tags?: string[]; // Product tags
+	related_product_ids?: string[]; // Related/upsell products
+	slug?: string; // URL-friendly slug
+	meta_title?: string; // SEO meta title
+	meta_description?: string; // SEO meta description
+	images?: string[]; // Image gallery
 	created_at?: string;
 	updated_at?: string;
 	// Joined data
@@ -26,6 +32,12 @@ export interface CreateProductDTO {
 	component_category_id?: string | null;
 	brand?: string | null;
 	specifications?: string | null;
+	tags?: string[];
+	related_product_ids?: string[];
+	slug?: string;
+	meta_title?: string;
+	meta_description?: string;
+	images?: string[];
 }
 
 export interface UpdateProductDTO {
@@ -38,6 +50,12 @@ export interface UpdateProductDTO {
 	component_category_id?: string | null;
 	brand?: string | null;
 	specifications?: string | null;
+	tags?: string[];
+	related_product_ids?: string[];
+	slug?: string;
+	meta_title?: string;
+	meta_description?: string;
+	images?: string[];
 }
 
 export interface ProductRepository {

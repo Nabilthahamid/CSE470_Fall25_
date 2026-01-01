@@ -3,7 +3,7 @@
 	import type { PageData } from './$types';
 
 	export let data: PageData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 </script>
 
 <svelte:head>

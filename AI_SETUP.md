@@ -9,7 +9,7 @@ To enable AI-powered features (like AI Comparison Insights), you need to add you
 Open your `.env` file in the project root and add:
 
 ```env
-OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_API_KEY=your-api-key-here
 ```
 
 ### Step 2: Restart Development Server
@@ -40,7 +40,8 @@ npm run dev
 
 ## Security Notes
 
-⚠️ **Important**: 
+⚠️ **Important**:
+
 - Never commit your `.env` file to Git
 - The `.env` file is already in `.gitignore`
 - Keep your API key secret
@@ -49,6 +50,7 @@ npm run dev
 ## Troubleshooting
 
 If AI features don't work:
+
 1. Check that `OPENAI_API_KEY` is in your `.env` file
 2. Verify the API key is correct (no extra spaces)
 3. Restart your development server
@@ -62,10 +64,10 @@ If AI features don't work:
 ## Future AI Features
 
 Once the API key is configured, you can also enable:
+
 - AI Product Recommendations
 - AI Chatbot
 - AI PC Builder Assistant
 - AI Product Description Generator
 
 See `AI_INTEGRATION_GUIDE.md` for more details.
-

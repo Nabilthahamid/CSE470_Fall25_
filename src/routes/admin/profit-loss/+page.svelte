@@ -7,7 +7,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let startDate = '';
 	let endDate = '';
@@ -49,7 +49,7 @@
 	<title>Profit/Loss Report - Admin Dashboard</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto p-8">
+<div class="max-w-7xl mx-auto">
 	<div class="flex justify-between items-center mb-8">
 		<h1 class="m-0 text-3xl font-bold">Profit/Loss Report</h1>
 		<div class="flex gap-4">

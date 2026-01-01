@@ -11,6 +11,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
+	export let params: { id: string };
 
 	let showReviewForm = false;
 	let rating = 5;

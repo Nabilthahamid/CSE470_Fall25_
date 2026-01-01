@@ -6,7 +6,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	// AI Recommendations
 	let recommendations: any = null;

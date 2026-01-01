@@ -20,8 +20,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			console.error('Error loading component categories:', error);
 			// Continue without categories
 		}
+
+		// Load all products for related products selection
+		let allProducts = [];
+		try {
+			allProducts = await productService.getAllProducts();
+		} catch (error) {
+			console.error('Error loading products:', error);
+		}
 		
-		return { product, categories };
+		return { product, categories, allProducts };
 	} catch (error) {
 		const { message } = handleError(error);
 		throw redirect(302, '/admin/products?error=' + encodeURIComponent(message));
@@ -42,6 +50,12 @@ export const actions: Actions = {
 		const component_category_id = formData.get('component_category_id')?.toString() || null;
 		const brand = formData.get('brand')?.toString() || null;
 		const specifications = formData.get('specifications')?.toString() || null;
+		const tags = formData.get('tags')?.toString() || '';
+		const related_product_ids = formData.get('related_product_ids')?.toString() || '';
+		const slug = formData.get('slug')?.toString() || null;
+		const meta_title = formData.get('meta_title')?.toString() || null;
+		const meta_description = formData.get('meta_description')?.toString() || null;
+		const images = formData.get('images')?.toString() || '';
 
 		const updateData: any = {};
 		if (name) updateData.name = name;
@@ -52,6 +66,12 @@ export const actions: Actions = {
 		if (component_category_id !== null) updateData.component_category_id = component_category_id || null;
 		if (brand !== null) updateData.brand = brand || null;
 		if (specifications !== null) updateData.specifications = specifications || null;
+		if (tags) updateData.tags = tags.split(',').map(t => t.trim()).filter(Boolean);
+		if (related_product_ids) updateData.related_product_ids = related_product_ids.split(',').map(id => id.trim()).filter(Boolean);
+		if (slug !== null) updateData.slug = slug || null;
+		if (meta_title !== null) updateData.meta_title = meta_title || null;
+		if (meta_description !== null) updateData.meta_description = meta_description || null;
+		if (images) updateData.images = images.split(',').map(img => img.trim()).filter(Boolean);
 
 		// Handle image: file upload takes priority, then URL, then deletion
 		if (image_file && image_file.size > 0) {

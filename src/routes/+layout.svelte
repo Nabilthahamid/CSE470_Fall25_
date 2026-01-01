@@ -9,7 +9,8 @@
 	import AIChatbot from '$lib/components/AIChatbot.svelte';
 
 	export let data: LayoutData;
-	export const params = {};
+	// @ts-ignore - SvelteKit may pass params even without dynamic segments
+	export let params: Record<string, string> = {};
 	
 	// Check if we're on an admin page
 	$: isAdminPage = $page.url.pathname.startsWith('/admin');

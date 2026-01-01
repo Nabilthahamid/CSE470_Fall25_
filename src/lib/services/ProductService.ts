@@ -127,6 +127,78 @@ export class ProductService {
 	}
 
 	/**
+	 * Filter products with advanced filters
+	 */
+	async filterProducts(filters: {
+		search?: string;
+		categoryId?: string;
+		brand?: string;
+		stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock' | 'all';
+		minPrice?: number;
+		maxPrice?: number;
+		startDate?: string;
+		endDate?: string;
+	}): Promise<Product[]> {
+		let query = supabase
+			.from('products')
+			.select('*')
+			.order('created_at', { ascending: false });
+
+		// Search filter
+		if (filters.search && filters.search.trim()) {
+			const searchTerm = `%${filters.search.trim()}%`;
+			query = query.or(`name.ilike.${searchTerm},description.ilike.${searchTerm}`);
+		}
+
+		// Category filter
+		if (filters.categoryId) {
+			query = query.eq('component_category_id', filters.categoryId);
+		}
+
+		// Brand filter
+		if (filters.brand) {
+			query = query.ilike('brand', `%${filters.brand}%`);
+		}
+
+		// Stock status filter
+		if (filters.stockStatus) {
+			switch (filters.stockStatus) {
+				case 'in_stock':
+					query = query.gt('stock', 0);
+					break;
+				case 'low_stock':
+					query = query.gt('stock', 0).lte('stock', 10);
+					break;
+				case 'out_of_stock':
+					query = query.eq('stock', 0);
+					break;
+				// 'all' doesn't add any filter
+			}
+		}
+
+		// Price range filter
+		if (filters.minPrice !== undefined) {
+			query = query.gte('price', filters.minPrice);
+		}
+		if (filters.maxPrice !== undefined) {
+			query = query.lte('price', filters.maxPrice);
+		}
+
+		// Date range filter (created_at)
+		if (filters.startDate) {
+			query = query.gte('created_at', filters.startDate);
+		}
+		if (filters.endDate) {
+			query = query.lte('created_at', filters.endDate);
+		}
+
+		const { data, error } = await query;
+
+		if (error) throw new Error(`Failed to filter products: ${error.message}`);
+		return data || [];
+	}
+
+	/**
 	 * Get product by ID
 	 */
 	async getProductById(id: string): Promise<Product> {

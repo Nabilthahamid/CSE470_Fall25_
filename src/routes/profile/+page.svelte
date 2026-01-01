@@ -5,7 +5,7 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export const params = {};
+	export let params: Record<string, string> = {};
 
 	let customer_name = data.user?.customer_name || '';
 	let customer_address = data.user?.customer_address || '';

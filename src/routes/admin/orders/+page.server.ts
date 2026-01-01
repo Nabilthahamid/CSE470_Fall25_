@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
 import { orderService } from '$lib/services/OrderService';
+import { aiService } from '$lib/services/AIService';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -10,14 +11,67 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	try {
 		const statusFilter = url.searchParams.get('status') as any;
-		const orders = await orderService.getAllOrders(
-			statusFilter ? { status: statusFilter } : undefined
-		);
+		const searchQuery = url.searchParams.get('search') || '';
+		const startDate = url.searchParams.get('startDate') || '';
+		const endDate = url.searchParams.get('endDate') || '';
+
+		// Build filters
+		const filters: any = {};
+		if (statusFilter) {
+			filters.status = statusFilter;
+		}
+		if (startDate) {
+			filters.startDate = startDate;
+		}
+		if (endDate) {
+			filters.endDate = endDate;
+		}
+
+		let orders = await orderService.getAllOrders(Object.keys(filters).length > 0 ? filters : undefined);
+
+		// Apply search filter (client-side for now, can be moved to server-side)
+		if (searchQuery.trim()) {
+			const searchLower = searchQuery.toLowerCase();
+			orders = orders.filter(order => 
+				order.id.toLowerCase().includes(searchLower) ||
+				order.customer_name?.toLowerCase().includes(searchLower) ||
+				order.customer_email?.toLowerCase().includes(searchLower) ||
+				order.tracking_number?.toLowerCase().includes(searchLower)
+			);
+		}
+
+		// Calculate risk scores for orders (non-blocking, catch errors gracefully)
+		const orderRiskScores = new Map<string, any>();
+		try {
+			const riskScores = await Promise.all(
+				orders.map(async (order) => {
+					try {
+						const riskScore = await aiService.scoreOrderRisk(order);
+						return { orderId: order.id, riskScore };
+					} catch (error) {
+						console.error(`Error calculating risk for order ${order.id}:`, error);
+						return null;
+					}
+				})
+			);
+			riskScores.forEach(rs => {
+				if (rs) orderRiskScores.set(rs.orderId, rs.riskScore);
+			});
+		} catch (error) {
+			console.error('Error calculating order risk scores:', error);
+			// Continue without risk scores
+		}
 
 		return {
 			orders,
+			orderRiskScores: Object.fromEntries(orderRiskScores),
 			user: locals.user,
-			currentFilter: statusFilter || 'all'
+			currentFilter: statusFilter || 'all',
+			searchQuery,
+			filters: {
+				startDate,
+				endDate
+			}
 		};
 	} catch (error) {
 		const { message } = handleError(error);
@@ -25,6 +79,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			orders: [],
 			user: locals.user,
 			currentFilter: 'all',
+			searchQuery: '',
+			filters: {
+				startDate: '',
+				endDate: ''
+			},
 			error: message
 		};
 	}
