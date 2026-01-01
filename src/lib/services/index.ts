@@ -9,3 +9,4 @@ export * from './CartService';
 export * from './OrderService';
 export * from './EmailService';
 export * from './PCBuildService';
+export * from './AIService';

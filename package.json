@@ -1,5 +1,5 @@
 {
-	"name": "sveltekit-mvc-app",
+	"name": "tinytech",
 	"version": "0.0.1",
 	"private": true,
 	"scripts": {
@@ -38,6 +38,7 @@
 		"@supabase/supabase-js": "^2.39.0",
 		"bcryptjs": "^2.4.3",
 		"cookie": "^0.6.0",
-		"jose": "^5.10.0"
+		"jose": "^5.10.0",
+		"openai": "^6.15.0"
 	}
 }

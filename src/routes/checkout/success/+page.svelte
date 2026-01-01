@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Order Successful - Shop</title>
+	<title>Order Successful - TinyTech</title>
 </svelte:head>
 
 <div class="max-w-3xl mx-auto p-8 text-center">

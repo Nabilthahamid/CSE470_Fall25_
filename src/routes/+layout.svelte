@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import type { LayoutData } from './$types';
 	import { getComparisonCount } from '$lib/utils/comparison';
+	import AIChatbot from '$lib/components/AIChatbot.svelte';
 
 	export let data: LayoutData;
 	export const params = {};
@@ -30,7 +31,7 @@
 
 <nav class="bg-gray-900 py-4 border-b border-gray-800">
 	<div class="max-w-7xl mx-auto px-8 flex justify-between items-center gap-4">
-		<a href={homeLink} class="text-2xl font-bold text-white no-underline">MVC App</a>
+		<a href={homeLink} class="text-2xl font-bold text-white no-underline">TinyTech</a>
 
 		<div class="flex gap-6 items-center">
 			{#if isAdminPage}
@@ -47,6 +48,7 @@
 				<a href="/products" class="text-white no-underline transition-colors hover:text-indigo-400">Products</a>
 				<a href="/pc-builder" class="text-white no-underline transition-colors hover:text-indigo-400">PC Builder</a>
 				<a href="/cart" class="text-white no-underline transition-colors hover:text-indigo-400">Cart</a>
+				<a href="/orders" class="text-white no-underline transition-colors hover:text-indigo-400">Orders</a>
 				<a href="/compare" class="relative text-white no-underline transition-colors hover:text-indigo-400">
 					Compare
 					{#if comparisonCount > 0}
@@ -86,4 +88,7 @@
 	<slot />
 </main>
 
-
+<!-- AI Chatbot - Show on all pages except admin -->
+{#if !isAdminPage}
+	<AIChatbot userId={data.user?.id || null} />
+{/if}

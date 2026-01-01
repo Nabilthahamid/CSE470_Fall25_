@@ -109,6 +109,26 @@ export const actions: Actions = {
 				return { error: 'You have already reviewed this product' };
 			}
 
+			// AI Moderation (non-blocking, just logs)
+			try {
+				const { aiService } = await import('$lib/services/AIService');
+				const moderation = await aiService.moderateReview({
+					rating,
+					comment: comment || null,
+					user_id: locals.user.id
+				});
+
+				if (moderation.recommendation === 'reject') {
+					return { error: 'Your review was flagged as inappropriate. Please revise and try again.' };
+				} else if (moderation.recommendation === 'review' && moderation.flags.length > 0) {
+					console.log('Review flagged for manual review:', moderation.flags);
+					// Still allow the review, but log for admin review
+				}
+			} catch (modError) {
+				console.error('Moderation check failed, proceeding with review:', modError);
+				// Continue with review creation even if moderation fails
+			}
+
 			await reviewService.createReview(
 				{
 					product_id: params.id,

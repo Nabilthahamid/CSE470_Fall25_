@@ -42,6 +42,17 @@ class ProductRepositoryImpl implements ProductRepository {
 		return unique;
 	}
 
+	async getByCategory(categoryId: string): Promise<Product[]> {
+		const { data, error } = await supabase
+			.from('products')
+			.select('*')
+			.eq('component_category_id', categoryId)
+			.order('created_at', { ascending: false });
+
+		if (error) throw new Error(`Failed to fetch products by category: ${error.message}`);
+		return data || [];
+	}
+
 	async getById(id: string): Promise<Product | null> {
 		const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
 
@@ -105,6 +116,14 @@ export class ProductService {
 	 */
 	async searchProducts(query: string): Promise<Product[]> {
 		return await this.repository.search(query);
+	}
+
+	/**
+	 * Get products by category ID
+	 */
+	async getProductsByCategory(categoryId: string): Promise<Product[]> {
+		if (!categoryId) throw new Error('Category ID is required');
+		return await this.repository.getByCategory(categoryId);
 	}
 
 	/**

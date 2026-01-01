@@ -52,7 +52,7 @@
 </script>
 
 <svelte:head>
-	<title>Checkout - Shop</title>
+	<title>Checkout - TinyTech</title>
 </svelte:head>
 
 <div class="max-w-6xl mx-auto p-8">

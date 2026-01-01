@@ -8,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Users - MVC SvelteKit App</title>
+	<title>Users - TinyTech</title>
 </svelte:head>
 
 <div class="max-w-7xl mx-auto p-8 bg-gray-50 min-h-screen">

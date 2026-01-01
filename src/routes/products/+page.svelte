@@ -74,6 +74,7 @@
 		const url = new URL(window.location.href);
 		if (searchInput.trim()) {
 			url.searchParams.set('search', searchInput.trim());
+			url.searchParams.delete('category'); // Clear category when searching
 		} else {
 			url.searchParams.delete('search');
 		}
@@ -96,15 +97,29 @@
 </script>
 
 <svelte:head>
-	<title>Products - Shop</title>
+	<title>Products - TinyTech</title>
 </svelte:head>
 
 <div class="bg-gray-50 min-h-screen py-8">
 	<!-- Popup Modal -->
 	{#if showPopup}
-		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" on:click={closePopup} on:keydown={(e) => e.key === 'Escape' && closePopup()}>
-			<div class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" on:click|stopPropagation>
+		<div 
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="popup-title"
+			tabindex="-1"
+			on:click={closePopup} 
+			on:keydown={(e) => e.key === 'Escape' && closePopup()}
+		>
+			<div 
+				class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" 
+				role="document"
+				on:click|stopPropagation
+				on:keydown|stopPropagation
+			>
 				<div class="p-6 text-center">
+					<h2 id="popup-title" class="sr-only">{popupType === 'success' ? 'Success' : 'Error'}</h2>
 					<div class="mb-4">
 						{#if popupType === 'success'}
 							<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100">
@@ -137,8 +152,30 @@
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Header Section -->
 		<div class="text-center mb-12">
-			<h1 class="text-4xl md:text-5xl mb-4 font-bold text-gray-900">Our Products</h1>
-			<p class="text-gray-600 text-lg">Discover amazing products at great prices</p>
+			<h1 class="text-4xl md:text-5xl mb-4 font-bold text-gray-900">
+				{#if data.category}
+					{data.category.display_name}
+				{:else}
+					Our Products
+				{/if}
+			</h1>
+			<p class="text-gray-600 text-lg">
+				{#if data.category}
+					Products in {data.category.display_name} category
+				{:else}
+					Discover amazing products at great prices
+				{/if}
+			</p>
+			{#if data.category}
+				<div class="mt-4">
+					<a
+						href="/products"
+						class="inline-block text-indigo-600 hover:text-indigo-700 underline text-sm font-medium"
+					>
+						← View All Products
+					</a>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Search Bar -->

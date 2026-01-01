@@ -8,7 +8,7 @@
 </script>
 
 <svelte:head>
-	<title>Login - MVC SvelteKit App</title>
+	<title>Login - TinyTech</title>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-screen p-8 bg-gray-50">

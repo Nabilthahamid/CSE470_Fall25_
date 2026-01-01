@@ -47,5 +47,6 @@ export interface ProductRepository {
 	update(id: string, data: UpdateProductDTO): Promise<Product>;
 	delete(id: string): Promise<void>;
 	search(query: string): Promise<Product[]>;
+	getByCategory(categoryId: string): Promise<Product[]>;
 }
 

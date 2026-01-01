@@ -18,6 +18,18 @@
 	let showProductModal = false;
 	let currentCategory: ComponentCategory | null = null;
 	let showOverview = false;
+	
+	// AI Features
+	let showAIAssistant = false;
+	let aiChatMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+	let aiChatInput = '';
+	let aiLoading = false;
+	let showOptimizeModal = false;
+	let optimizationResults: any = null;
+	let showPrebuiltModal = false;
+	let prebuiltBuilds: any[] = [];
+	let prebuiltUseCase = 'gaming';
+	let prebuiltBudget = 50000;
 
 	// Calculate total price
 	$: totalPrice = Object.values(selectedComponents).reduce(
@@ -81,6 +93,129 @@
 	function getSelectedProduct(categoryId: string): Product | null {
 		return selectedComponents[categoryId]?.product || null;
 	}
+
+	// AI Assistant Functions
+	async function sendAIMessage() {
+		if (!aiChatInput.trim() || aiLoading) return;
+
+		const userMessage = aiChatInput.trim();
+		aiChatInput = '';
+		aiChatMessages = [...aiChatMessages, { role: 'user', content: userMessage }];
+		aiLoading = true;
+
+		try {
+			// Extract budget and use case from message
+			const budgetMatch = userMessage.match(/(\d+)\s*(?:taka|tk|taka|bdt)/i);
+			const budget = budgetMatch ? parseFloat(budgetMatch[1]) : 50000;
+			
+			let useCase = 'gaming';
+			if (userMessage.toLowerCase().includes('work') || userMessage.toLowerCase().includes('office')) {
+				useCase = 'work';
+			} else if (userMessage.toLowerCase().includes('content') || userMessage.toLowerCase().includes('editing')) {
+				useCase = 'content-creation';
+			}
+
+			const response = await fetch('/api/pc-builder/ai-suggest', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ budget, useCase, preferences: userMessage })
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				let assistantMessage = data.explanation + '\n\nSuggested Components:\n';
+				data.suggestions.forEach((s: any) => {
+					assistantMessage += `• ${s.categoryName}: ${s.productName} - Tk ${s.price.toFixed(2)}\n`;
+					assistantMessage += `  Reason: ${s.reason}\n\n`;
+				});
+				assistantMessage += `\nTotal: Tk ${data.totalPrice.toFixed(2)}`;
+				aiChatMessages = [...aiChatMessages, { role: 'assistant', content: assistantMessage }];
+			} else {
+				aiChatMessages = [...aiChatMessages, { 
+					role: 'assistant', 
+					content: 'Sorry, I encountered an error. Please try again.' 
+				}];
+			}
+		} catch (error) {
+			console.error('AI Assistant error:', error);
+			aiChatMessages = [...aiChatMessages, { 
+				role: 'assistant', 
+				content: 'Sorry, I encountered an error. Please try again.' 
+			}];
+		} finally {
+			aiLoading = false;
+		}
+	}
+
+	async function optimizeBuild() {
+		if (Object.keys(selectedComponents).length === 0) {
+			alert('Please select some components first');
+			return;
+		}
+
+		showOptimizeModal = true;
+		optimizationResults = null;
+
+		try {
+			const build = Object.entries(selectedComponents).map(([categoryId, comp]) => ({
+				categoryId,
+				productId: comp.product.id,
+				price: comp.product.price
+			}));
+
+			const response = await fetch('/api/pc-builder/ai-optimize', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ build, optimizationGoal: 'value' })
+			});
+
+			if (response.ok) {
+				optimizationResults = await response.json();
+			}
+		} catch (error) {
+			console.error('Optimization error:', error);
+		}
+	}
+
+	async function loadPrebuiltBuilds() {
+		showPrebuiltModal = true;
+		prebuiltBuilds = [];
+
+		try {
+			const response = await fetch('/api/pc-builder/ai-prebuilt', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ useCase: prebuiltUseCase, budget: prebuiltBudget })
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				prebuiltBuilds = data.builds || [];
+			}
+		} catch (error) {
+			console.error('Pre-built builds error:', error);
+		}
+	}
+
+	function applyOptimization(opt: any) {
+		const product = data.productsByCategory[opt.categoryId]?.find((p: Product) => p.id === opt.suggestedProductId);
+		const category = data.categories.find(c => c.id === opt.categoryId);
+		if (product && category) {
+			selectProduct(product, category);
+			showOptimizeModal = false;
+		}
+	}
+
+	function applyPrebuiltBuild(build: any) {
+		build.components.forEach((comp: any) => {
+			const product = data.productsByCategory[comp.categoryId]?.find((p: Product) => p.id === comp.productId);
+			const category = data.categories.find(c => c.id === comp.categoryId);
+			if (product && category) {
+				selectedComponents[comp.categoryId] = { product, category };
+			}
+		});
+		showPrebuiltModal = false;
+	}
 </script>
 
 <svelte:head>
@@ -110,7 +245,33 @@
 						<span class="text-sm text-gray-700">Hide Unconfigured Components</span>
 					</label>
 				</div>
-				<div class="flex items-center gap-4">
+				<div class="flex items-center gap-4 flex-wrap">
+					<button
+						type="button"
+						on:click={() => showAIAssistant = !showAIAssistant}
+						class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold flex items-center gap-2"
+					>
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+						</svg>
+						AI Assistant
+					</button>
+					{#if itemCount > 0}
+						<button
+							type="button"
+							on:click={optimizeBuild}
+							class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
+						>
+							⚡ Optimize Build
+						</button>
+					{/if}
+					<button
+						type="button"
+						on:click={loadPrebuiltBuilds}
+						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
+					>
+						📦 Pre-built Builds
+					</button>
 					<button
 						type="button"
 						on:click={() => (showOverview = !showOverview)}
@@ -472,6 +633,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="product-modal-title"
+		tabindex="-1"
 		on:click={() => {
 			showProductModal = false;
 			currentCategory = null;
@@ -564,6 +726,7 @@
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="save-modal-title"
+		tabindex="-1"
 		on:click={() => (showSaveModal = false)}
 		on:keydown={(e) => {
 			if (e.key === 'Escape') {
@@ -635,3 +798,233 @@
 	</div>
 {/if}
 
+<!-- AI Assistant Modal -->
+{#if showAIAssistant}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="ai-assistant-title"
+		tabindex="-1"
+		on:click={() => showAIAssistant = false}
+		on:keydown={(e) => e.key === 'Escape' && (showAIAssistant = false)}
+	>
+		<div 
+			class="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-[600px] flex flex-col m-4" 
+			role="document"
+			on:click|stopPropagation
+			on:keydown|stopPropagation
+		>
+			<div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+					</svg>
+					<h2 id="ai-assistant-title" class="text-xl font-bold">AI PC Builder Assistant</h2>
+				</div>
+				<button on:click={() => showAIAssistant = false} class="text-white hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+				{#if aiChatMessages.length === 0}
+					<div class="text-center py-8">
+						<p class="text-gray-600 mb-4">Ask me to build a PC! For example:</p>
+						<p class="text-sm text-gray-500">"I need a gaming PC for 50000 taka"</p>
+						<p class="text-sm text-gray-500">"Build a workstation PC for 80000 taka"</p>
+					</div>
+				{/if}
+				{#each aiChatMessages as message}
+					<div class="flex {message.role === 'user' ? 'justify-end' : 'justify-start'}">
+						<div class="max-w-[80%] rounded-lg px-4 py-2 {message.role === 'user' ? 'bg-purple-600 text-white' : 'bg-white text-gray-800 border border-gray-200'}">
+							<p class="text-sm whitespace-pre-wrap">{message.content}</p>
+						</div>
+					</div>
+				{/each}
+				{#if aiLoading}
+					<div class="flex justify-start">
+						<div class="bg-white rounded-lg px-4 py-2 border border-gray-200">
+							<div class="flex gap-1">
+								<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+								<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+								<div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+			<div class="border-t border-gray-200 p-4 bg-white rounded-b-xl">
+				<div class="flex gap-2">
+					<input
+						type="text"
+						bind:value={aiChatInput}
+						on:keypress={(e) => e.key === 'Enter' && sendAIMessage()}
+						placeholder="Ask for a PC build (e.g., 'gaming PC for 50000 taka')..."
+						disabled={aiLoading}
+						class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+					/>
+					<button
+						on:click={sendAIMessage}
+						disabled={!aiChatInput.trim() || aiLoading}
+						class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Send
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Optimize Build Modal -->
+{#if showOptimizeModal}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="optimize-modal-title"
+		tabindex="-1"
+		on:click={() => showOptimizeModal = false}
+		on:keydown={(e) => e.key === 'Escape' && (showOptimizeModal = false)}
+	>
+		<div 
+			class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto m-4" 
+			role="document"
+			on:click|stopPropagation
+			on:keydown|stopPropagation
+		>
+			<div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
+				<h2 id="optimize-modal-title" class="text-xl font-bold">⚡ AI Build Optimization</h2>
+				<button on:click={() => showOptimizeModal = false} class="text-white hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div class="p-6">
+				{#if optimizationResults}
+					<p class="text-gray-700 mb-4">{optimizationResults.explanation}</p>
+					{#if optimizationResults.optimizations.length > 0}
+						<div class="space-y-4">
+							{#each optimizationResults.optimizations as opt}
+								<div class="border border-gray-200 rounded-lg p-4">
+									<h3 class="font-semibold text-gray-900 mb-2">{opt.categoryName}</h3>
+									<div class="grid grid-cols-2 gap-4 mb-3">
+										<div>
+											<p class="text-sm text-gray-600">Current</p>
+											<p class="font-semibold">{opt.currentProductName}</p>
+											<p class="text-sm text-gray-500">Tk {opt.currentPrice.toFixed(2)}</p>
+										</div>
+										<div>
+											<p class="text-sm text-gray-600">Suggested</p>
+											<p class="font-semibold text-green-600">{opt.suggestedProductName}</p>
+											<p class="text-sm text-green-600">Tk {opt.suggestedPrice.toFixed(2)}</p>
+										</div>
+									</div>
+									<p class="text-sm text-gray-700 mb-2">{opt.reason}</p>
+									<p class="text-sm font-semibold text-green-600 mb-3">Save: Tk {opt.savings.toFixed(2)}</p>
+									<button
+										on:click={() => applyOptimization(opt)}
+										class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm"
+									>
+										Apply This Change
+									</button>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-gray-600">No optimizations found. Your build is already well-optimized!</p>
+					{/if}
+				{:else}
+					<div class="text-center py-8">
+						<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-4"></div>
+						<p class="text-gray-600">Analyzing your build...</p>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Pre-built Builds Modal -->
+{#if showPrebuiltModal}
+	<div 
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="prebuilt-modal-title"
+		tabindex="-1"
+		on:click={() => showPrebuiltModal = false}
+		on:keydown={(e) => e.key === 'Escape' && (showPrebuiltModal = false)}
+	>
+		<div 
+			class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-y-auto m-4" 
+			role="document"
+			on:click|stopPropagation
+			on:keydown|stopPropagation
+		>
+			<div class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
+				<h2 id="prebuilt-modal-title" class="text-xl font-bold">📦 AI Pre-built Configurations</h2>
+				<button on:click={() => showPrebuiltModal = false} class="text-white hover:text-gray-200">
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+			<div class="p-6">
+				<div class="mb-6 flex gap-4">
+					<select bind:value={prebuiltUseCase} class="px-4 py-2 border border-gray-300 rounded-lg">
+						<option value="gaming">Gaming</option>
+						<option value="work">Work/Productivity</option>
+						<option value="content-creation">Content Creation</option>
+					</select>
+					<input
+						type="number"
+						bind:value={prebuiltBudget}
+						placeholder="Budget (Tk)"
+						class="px-4 py-2 border border-gray-300 rounded-lg"
+					/>
+					<button
+						on:click={loadPrebuiltBuilds}
+						class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+					>
+						Generate Builds
+					</button>
+				</div>
+				{#if prebuiltBuilds.length > 0}
+					<div class="space-y-6">
+						{#each prebuiltBuilds as build}
+							<div class="border border-gray-200 rounded-lg p-5">
+								<h3 class="text-xl font-bold text-gray-900 mb-2">{build.name}</h3>
+								<p class="text-gray-600 mb-4">{build.description}</p>
+								<div class="mb-4">
+									<h4 class="font-semibold text-gray-900 mb-2">Components:</h4>
+									<ul class="space-y-2">
+										{#each build.components as comp}
+											<li class="text-sm text-gray-700">
+												• {comp.productName} - Tk {comp.price.toFixed(2)}
+											</li>
+										{/each}
+									</ul>
+								</div>
+								<div class="flex items-center justify-between">
+									<p class="text-lg font-bold text-blue-600">Total: Tk {build.totalPrice.toFixed(2)}</p>
+									<button
+										on:click={() => applyPrebuiltBuild(build)}
+										class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+									>
+										Use This Build
+									</button>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-gray-600 text-center py-8">Click "Generate Builds" to see AI-recommended configurations</p>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}

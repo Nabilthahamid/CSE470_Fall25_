@@ -18,7 +18,7 @@
 </script>
 
 <svelte:head>
-	<title>Profile - MVC SvelteKit App</title>
+	<title>Profile - TinyTech</title>
 </svelte:head>
 
 <div class="max-w-3xl mx-auto p-8 bg-gray-50 min-h-screen">

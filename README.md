@@ -1,6 +1,6 @@
-# SvelteKit MVC Architecture
+# TinyTech
 
-A modern web application built with **SvelteKit**, **TypeScript**, and **Supabase**, following the **Model-View-Controller (MVC)** architectural pattern.
+A modern e-commerce web application built with **SvelteKit**, **TypeScript**, and **Supabase**, following the **Model-View-Controller (MVC)** architectural pattern.
 
 ## 🏗️ Architecture Overview
 
@@ -114,8 +114,14 @@ The `.env` file has been configured with your Supabase credentials:
 - `SUPABASE_SERVICE_ROLE_KEY` - Service role key (server-side only, never expose to client)
 - `DATABASE_URL` - Direct PostgreSQL connection string
 - `SUPABASE_JWT_SECRET` - JWT secret for authentication
+- `OPENAI_API_KEY` - OpenAI API key (optional, for AI features like product comparison insights)
 
 **Note:** The `.env` file is in `.gitignore` and should never be committed to version control.
+
+**To enable AI features:**
+1. Get an OpenAI API key from https://platform.openai.com/api-keys
+2. Add `OPENAI_API_KEY=your_key_here` to your `.env` file
+3. AI features will automatically use OpenAI for enhanced analysis
 
 3. **Run development server:**
 ```bash

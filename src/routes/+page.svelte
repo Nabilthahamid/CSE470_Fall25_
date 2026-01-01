@@ -67,26 +67,141 @@
 		if (popupTimeout) clearTimeout(popupTimeout);
 	}
 
+
 </script>
 
 <svelte:head>
-	<title>Home - Shop</title>
+	<title>Home - TinyTech</title>
 	<meta name="description" content="Browse our products" />
 </svelte:head>
 
-<div class="bg-gray-50 min-h-screen py-8">
+<div class="bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50 min-h-screen">
 	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 		<!-- Hero Section -->
-		<div class="text-center mb-12">
-			<h1 class="text-5xl md:text-6xl mb-4 font-bold text-gray-900">Welcome to Our Store</h1>
-			<p class="text-gray-600 text-xl mb-6">Discover amazing products at great prices</p>
-			<a
-				href="/products"
-				class="inline-block bg-indigo-600 text-white px-8 py-3 rounded-lg no-underline font-semibold transition-colors hover:bg-indigo-700"
-			>
-				Browse All Products →
-			</a>
+		<div class="text-center mb-16 relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-12 md:p-16 lg:p-20 shadow-2xl">
+			<!-- Animated Background Pattern -->
+			<div class="absolute inset-0 opacity-10">
+				<div class="absolute inset-0" style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 50px 50px;"></div>
+			</div>
+			<div class="relative z-10">
+				<h1 class="text-4xl md:text-5xl lg:text-6xl mb-6 font-bold text-white leading-tight drop-shadow-lg animate-fade-in">
+					Leading Computer, Laptop & Gaming PC Retail & Online Shop in Bangladesh
+				</h1>
+				<p class="text-xl md:text-2xl mb-8 text-indigo-100 font-medium drop-shadow-md">Discover amazing products at great prices</p>
+				<div class="flex flex-wrap justify-center gap-4">
+					<a
+						href="/products"
+						class="group inline-flex items-center gap-2 bg-white text-indigo-600 px-8 py-4 rounded-xl no-underline font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl hover:bg-indigo-50"
+					>
+						<span>Browse All Products</span>
+						<svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+						</svg>
+					</a>
+					<a
+						href="/pc-builder"
+						class="group inline-flex items-center gap-2 bg-indigo-700 bg-opacity-30 backdrop-blur-sm border-2 border-white text-white px-8 py-4 rounded-xl no-underline font-bold text-lg transition-all hover:scale-105 hover:bg-opacity-50 hover:shadow-2xl"
+					>
+						<span>Build Your PC</span>
+						<svg class="w-5 h-5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+						</svg>
+					</a>
+				</div>
+			</div>
 		</div>
+
+		<!-- Featured Category Section -->
+		{#if data.categories && data.categories.length > 0}
+			<div class="mb-16">
+				<div class="text-center mb-10">
+					<h2 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">Featured Category</h2>
+					<p class="text-gray-600 text-lg font-medium">Get Your Desired Product from Featured Category!</p>
+				</div>
+				<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 md:gap-6">
+					{#each data.categories.slice(0, 16) as category (category.id)}
+						<a
+							href="/products?category={category.id}"
+							class="group bg-white rounded-xl p-6 flex flex-col items-center justify-center hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 border-gray-200 hover:border-indigo-500 hover:-translate-y-2 hover:scale-105"
+						>
+							<div class="w-16 h-16 mb-4 flex items-center justify-center text-indigo-600 group-hover:text-indigo-700 group-hover:scale-110 transition-all duration-300">
+								{#if category.name === 'cpu'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+									</svg>
+								{:else if category.name === 'motherboard'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+									</svg>
+								{:else if category.name === 'ram'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+									</svg>
+								{:else if category.name === 'storage'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+									</svg>
+								{:else if category.name === 'graphics_card'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+									</svg>
+								{:else if category.name === 'power_supply'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+									</svg>
+								{:else if category.name === 'casing'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+									</svg>
+								{:else if category.name === 'monitor'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+									</svg>
+								{:else if category.name === 'keyboard'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+									</svg>
+								{:else if category.name === 'mouse'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+									</svg>
+								{:else if category.name === 'headphone'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+									</svg>
+								{:else if category.name === 'speakers' || category.name === 'speakers_home_theater'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+									</svg>
+								{:else if category.name === 'cpu_cooler' || category.name === 'casing_cooler'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+									</svg>
+								{:else if category.name === 'wifi_adapter'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+									</svg>
+								{:else if category.name === 'antivirus'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+									</svg>
+								{:else if category.name === 'ups'}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+									</svg>
+								{:else}
+									<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+									</svg>
+								{/if}
+							</div>
+							<p class="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 text-center transition-colors">{category.display_name}</p>
+						</a>
+					{/each}
+				</div>
+			</div>
+		{/if}
 
 	<!-- Popup Modal -->
 	{#if showPopup}
@@ -95,6 +210,7 @@
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="popup-title"
+			tabindex="-1"
 			on:click={closePopup} 
 			on:keydown={(e) => e.key === 'Escape' && closePopup()}
 		>
@@ -172,12 +288,12 @@
 							{#each categoryProducts as product (product.id)}
 								<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
 									<!-- Product Image -->
-									<div class="h-64 relative bg-gray-100 overflow-hidden">
+									<div class="h-64 relative bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
 										{#if product.image_url}
 											<img
 												src={product.image_url}
 												alt={product.name}
-												class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+												class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
 												on:error={(e) => {
 													e.currentTarget.style.display = 'none';
 												}}
@@ -189,15 +305,15 @@
 										{/if}
 										
 										<!-- Stock Badge -->
-										<div class="absolute top-3 right-3">
+										<div class="absolute top-3 right-3 z-10">
 											{#if product.stock > 0}
-												<span class="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-													<span>✓</span>
+												<span class="inline-flex items-center gap-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+													<span class="text-sm">✓</span>
 													<span>In Stock</span>
 												</span>
 											{:else}
-												<span class="inline-flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-													<span>✕</span>
+												<span class="inline-flex items-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+													<span class="text-sm">✕</span>
 													<span>Out of Stock</span>
 												</span>
 											{/if}
@@ -205,20 +321,20 @@
 									</div>
 
 									<!-- Product Info -->
-									<div class="p-5 flex flex-col flex-1">
-										<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14">
+									<div class="p-6 flex flex-col flex-1 bg-gradient-to-b from-white to-gray-50">
+										<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14 group-hover:text-indigo-600 transition-colors">
 											{product.name}
 										</h3>
 										{#if product.brand}
-											<p class="text-xs text-indigo-600 font-semibold mb-1">{product.brand}</p>
+											<p class="text-xs text-indigo-600 font-bold mb-2 uppercase tracking-wide">{product.brand}</p>
 										{/if}
-										<p class="text-sm mb-3 text-gray-600 line-clamp-2 h-10">
+										<p class="text-sm mb-4 text-gray-600 line-clamp-2 h-10 leading-relaxed">
 											{product.description || 'No description available'}
 										</p>
 										
 										<!-- Price and Stock -->
-										<div class="mb-4 flex-shrink-0">
-											<p class="text-2xl font-bold mb-1 text-gray-900">
+										<div class="mb-4 flex-shrink-0 pb-4 border-b border-gray-200">
+											<p class="text-3xl font-extrabold mb-1 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
 												Tk {product.price.toFixed(2)}
 											</p>
 											{#if product.stock > 0}
@@ -229,13 +345,13 @@
 										</div>
 
 										<!-- Compare Button -->
-										<div class="mb-3">
+										<div class="mb-4">
 											<button
 												type="button"
 												on:click={() => handleCompareToggle(product.id)}
-												class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors {comparisonStates[product.id]
-													? 'bg-indigo-600 text-white hover:bg-indigo-700'
-													: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+												class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 {comparisonStates[product.id]
+													? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+													: 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'}"
 											>
 												<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -245,10 +361,10 @@
 										</div>
 
 										<!-- Action Buttons -->
-										<div class="flex gap-2 mt-auto">
+										<div class="flex gap-3 mt-auto">
 											<a
 												href="/products/{product.id}"
-												class="flex-1 flex items-center justify-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
+												class="flex-1 flex items-center justify-center px-4 py-3 rounded-lg no-underline text-sm font-bold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white hover:shadow-lg transition-all duration-300 hover:scale-105"
 											>
 												View Details
 											</a>
@@ -280,7 +396,7 @@
 													<input type="hidden" name="quantity" value="1" />
 													<button
 														type="submit"
-														class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
+														class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-bold hover:from-green-700 hover:to-green-800 hover:shadow-lg transition-all duration-300 hover:scale-105"
 													>
 														Add to Cart
 													</button>
@@ -288,7 +404,7 @@
 											{:else}
 												<button
 													disabled
-													class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-semibold"
+													class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-3 rounded-lg cursor-not-allowed text-sm font-semibold"
 												>
 													Out of Stock
 												</button>
@@ -308,14 +424,14 @@
 					<h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-6">Other Products</h2>
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
 						{#each data.regularProducts as product (product.id)}
-							<div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col">
+							<div class="group bg-white rounded-xl border-2 border-gray-200 overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col hover:-translate-y-1">
 								<!-- Product Image -->
-								<div class="h-64 relative bg-gray-100 overflow-hidden">
+								<div class="h-64 relative bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
 									{#if product.image_url}
 										<img
 											src={product.image_url}
 											alt={product.name}
-											class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+											class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
 											on:error={(e) => {
 												e.currentTarget.style.display = 'none';
 											}}
@@ -327,15 +443,15 @@
 									{/if}
 									
 									<!-- Stock Badge -->
-									<div class="absolute top-3 right-3">
+									<div class="absolute top-3 right-3 z-10">
 										{#if product.stock > 0}
-											<span class="inline-flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-												<span>✓</span>
+											<span class="inline-flex items-center gap-1 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+												<span class="text-sm">✓</span>
 												<span>In Stock</span>
 											</span>
 										{:else}
-											<span class="inline-flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-md">
-												<span>✕</span>
+											<span class="inline-flex items-center gap-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+												<span class="text-sm">✕</span>
 												<span>Out of Stock</span>
 											</span>
 										{/if}
@@ -343,17 +459,17 @@
 								</div>
 
 								<!-- Product Info -->
-								<div class="p-5 flex flex-col flex-1">
-									<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14">
+								<div class="p-6 flex flex-col flex-1 bg-gradient-to-b from-white to-gray-50">
+									<h3 class="m-0 mb-2 text-lg font-bold text-gray-900 line-clamp-2 h-14 group-hover:text-indigo-600 transition-colors">
 										{product.name}
 									</h3>
-									<p class="text-sm mb-3 text-gray-600 line-clamp-2 h-10">
+									<p class="text-sm mb-4 text-gray-600 line-clamp-2 h-10 leading-relaxed">
 										{product.description || 'No description available'}
 									</p>
 									
 									<!-- Price and Stock -->
-									<div class="mb-4 flex-shrink-0">
-										<p class="text-2xl font-bold mb-1 text-gray-900">
+									<div class="mb-4 flex-shrink-0 pb-4 border-b border-gray-200">
+										<p class="text-3xl font-extrabold mb-1 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
 											Tk {product.price.toFixed(2)}
 										</p>
 										{#if product.stock > 0}
@@ -364,13 +480,13 @@
 									</div>
 
 									<!-- Compare Button -->
-									<div class="mb-3">
+									<div class="mb-4">
 										<button
 											type="button"
 											on:click={() => handleCompareToggle(product.id)}
-											class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors {comparisonStates[product.id]
-												? 'bg-indigo-600 text-white hover:bg-indigo-700'
-												: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+											class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-300 {comparisonStates[product.id]
+												? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+												: 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md'}"
 										>
 											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -380,10 +496,10 @@
 									</div>
 
 									<!-- Action Buttons -->
-									<div class="flex gap-2 mt-auto">
+									<div class="flex gap-3 mt-auto">
 										<a
 											href="/products/{product.id}"
-											class="flex-1 flex items-center justify-center px-4 py-2.5 rounded-lg no-underline text-sm font-semibold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-colors"
+											class="flex-1 flex items-center justify-center px-4 py-3 rounded-lg no-underline text-sm font-bold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white hover:shadow-lg transition-all duration-300 hover:scale-105"
 										>
 											View Details
 										</a>
@@ -415,7 +531,7 @@
 												<input type="hidden" name="quantity" value="1" />
 												<button
 													type="submit"
-													class="w-full bg-green-600 text-white border-none px-4 py-2.5 rounded-lg cursor-pointer text-sm font-semibold hover:bg-green-700 transition-colors"
+													class="w-full bg-gradient-to-r from-green-600 to-green-700 text-white border-none px-4 py-3 rounded-lg cursor-pointer text-sm font-bold hover:from-green-700 hover:to-green-800 hover:shadow-lg transition-all duration-300 hover:scale-105"
 												>
 													Add to Cart
 												</button>
@@ -423,7 +539,7 @@
 										{:else}
 											<button
 												disabled
-												class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-2.5 rounded-lg cursor-not-allowed text-sm font-semibold"
+												class="flex-1 bg-gray-200 text-gray-500 border-none px-4 py-3 rounded-lg cursor-not-allowed text-sm font-semibold"
 											>
 												Out of Stock
 											</button>
@@ -436,5 +552,325 @@
 				</div>
 			{/if}
 		{/if}
+
+		<!-- About Section -->
+		<div class="mb-16 bg-gradient-to-br from-white via-indigo-50 to-purple-50 rounded-2xl shadow-2xl p-8 md:p-12 border-2 border-indigo-100">
+			<div class="grid md:grid-cols-2 gap-8 md:gap-12">
+				<!-- Best Laptop Shop -->
+				<div class="space-y-4 group hover:bg-white p-6 rounded-xl transition-all duration-300">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="bg-gradient-to-br from-indigo-500 to-indigo-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+							<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+							</svg>
+						</div>
+						<h2 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Best Laptop Shop in Bangladesh</h2>
+					</div>
+					<p class="text-gray-700 leading-relaxed">
+						We are the most popular Laptop Brand Shop in BD. Our laptop shop has the perfect device, whether you are a freelancer, 
+						officegoer, or student. Gamers love our collection of Gaming Laptops because we always bring the latest laptops in Bangladesh. 
+						As the best laptop shop in BD, a customer's budget is our first concern. We bring the latest Intel Laptop and AMD Laptop 
+						under budget for every customer - from starters to expert users.
+					</p>
+				</div>
+
+				<!-- Desktop PC Shop -->
+				<div class="space-y-4 group hover:bg-white p-6 rounded-xl transition-all duration-300">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="bg-gradient-to-br from-green-500 to-green-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+							<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+							</svg>
+						</div>
+						<h2 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">Best Desktop PC Shop In Bangladesh</h2>
+					</div>
+					<p class="text-gray-700 leading-relaxed">
+						We have the most comprehensive array of Desktop PCs. We offer top-of-the-line Custom PC, Brand PC, All-in-One PC, and 
+						Portable Mini PC. You can always depend on our PC shop experts to build the best desktop PC or computer with parts of your choice. 
+						Take your gaming or professional content creation to the next level with a large collection of high-end Gaming PC and Editing PC. 
+						You can build a complete personal computer with the best desktop PC parts using our <a href="/pc-builder" class="text-indigo-600 hover:underline font-semibold">PC Builder feature</a>.
+					</p>
+				</div>
+
+				<!-- Gaming PC Shop -->
+				<div class="space-y-4 group hover:bg-white p-6 rounded-xl transition-all duration-300">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="bg-gradient-to-br from-red-500 to-pink-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+							<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+							</svg>
+						</div>
+						<h2 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">Best Gaming PC Shop In Bangladesh</h2>
+					</div>
+					<p class="text-gray-700 leading-relaxed">
+						We love gaming. Therefore, we aim to provide a holistic gaming experience. Our specialized gaming shop offers the broadest range 
+						of Gaming PC, Gaming Laptops, and Game Consoles. We consist of Gaming Motherboards, Liquid Coolers, Custom Water Cooling for PC, 
+						Gaming Casings, high-performance RAM Kits, Graphics Cards, and exceptional Gaming accessories including Gaming Chairs, Gaming Sofas, 
+						RGB Mousepads, Gaming Headphones, and many more.
+					</p>
+				</div>
+
+				<!-- Office Equipment & More -->
+				<div class="space-y-4 group hover:bg-white p-6 rounded-xl transition-all duration-300">
+					<div class="flex items-center gap-3 mb-4">
+						<div class="bg-gradient-to-br from-purple-500 to-purple-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300">
+							<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+							</svg>
+						</div>
+						<h2 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Office Equipment & Gadgets</h2>
+					</div>
+					<p class="text-gray-700 leading-relaxed">
+						We are Bangladesh's most trusted Office Equipment Shop, providing the best Office Solution for more than years. Find Laptops, 
+						Desktops, Antiviruses, CCTV & IP Cameras, Printers, Routers, and more for smooth office operation. We also bring in the most 
+						sought-after gadgets including Smart Watch, Earbuds, TV, Power Bank, Mobile Phone Accessories, Drones, Studio Equipment, DSLR 
+						Camera, and more from internationally reputed brands.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Services Section -->
+		<div class="mb-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-2xl p-8 md:p-12 relative overflow-hidden">
+			<!-- Background Pattern -->
+			<div class="absolute inset-0 opacity-10">
+				<div class="absolute inset-0" style="background-image: radial-gradient(circle, white 2px, transparent 2px); background-size: 40px 40px;"></div>
+			</div>
+			<div class="relative z-10">
+				<h2 class="text-3xl md:text-4xl font-bold text-white text-center mb-12 drop-shadow-lg">Why Choose Us?</h2>
+				<div class="grid md:grid-cols-3 gap-8">
+					<div class="text-center p-8 bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+						<div class="bg-gradient-to-br from-green-500 to-green-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+							<svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						</svg>
+					</div>
+						<h3 class="text-xl font-bold text-gray-900 mb-4">Best Price</h3>
+						<p class="text-gray-700 leading-relaxed">
+							We deliver the best products for the best price with extended after-sales support & the highest standard of customer service.
+						</p>
+					</div>
+
+					<div class="text-center p-8 bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+						<div class="bg-gradient-to-br from-blue-500 to-blue-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+							<svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
+							</svg>
+						</div>
+						<h3 class="text-xl font-bold text-gray-900 mb-4">After-sales Customer Service</h3>
+						<p class="text-gray-700 leading-relaxed">
+							We have dedicated service centers and are proud to offer computer home service. Our customers get the highest priority in all matters.
+						</p>
+					</div>
+
+					<div class="text-center p-8 bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+						<div class="bg-gradient-to-br from-purple-500 to-pink-600 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+							<svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+							</svg>
+						</div>
+						<h3 class="text-xl font-bold text-gray-900 mb-4">Fastest Delivery</h3>
+						<p class="text-gray-700 leading-relaxed">
+							We offer your desired product within the fastest delivery timeframe. With our nationwide presence, we cover all districts of Bangladesh.
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Online Shopping Section -->
+		<div class="mb-16 bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-2xl p-8 md:p-12 text-center border-2 border-indigo-100">
+			<h2 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-6">Trusted Online Shopping From Bangladesh</h2>
+			<p class="text-gray-700 text-lg md:text-xl mb-10 max-w-4xl mx-auto leading-relaxed">
+				We believe the most in customer satisfaction. Our highly trusted online shop has been regarded as one of the best E-Commerce websites. 
+				We are revolutionizing online shopping in Bangladesh, featuring a brilliant search engine that helps our valued customers find their 
+				desired products easily. We have developed the most comprehensive <a href="/pc-builder" class="text-indigo-600 hover:text-indigo-700 underline font-bold transition-colors">PC Builder App</a>, 
+				also integrated into our online retail store. With the PC Builder, you can build your Custom PC for gaming or productivity, save the build, 
+				and get an estimated budget and detailed performance report.
+			</p>
+			<div class="flex flex-wrap justify-center gap-4">
+				<a
+					href="/products"
+					class="group inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-10 py-4 rounded-xl no-underline font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl"
+				>
+					<span>Shop Now</span>
+					<svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+					</svg>
+				</a>
+				<a
+					href="/pc-builder"
+					class="group inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-teal-600 text-white px-10 py-4 rounded-xl no-underline font-bold text-lg transition-all hover:scale-105 hover:shadow-2xl"
+				>
+					<span>Build Your PC</span>
+					<svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+					</svg>
+				</a>
+			</div>
+		</div>
 	</div>
+
+	<!-- Footer -->
+	<footer class="bg-gray-800 text-white mt-16">
+		<div class="max-w-7xl mx-auto px-8 py-12">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+				<!-- SUPPORT Column -->
+				<div>
+					<h3 class="text-xl font-bold mb-6">SUPPORT</h3>
+					<div class="space-y-4">
+						<a
+							href="tel:16793"
+							class="flex items-center gap-3 p-4 bg-gray-700 rounded-lg border border-gray-600 hover:bg-gray-600 transition-colors group"
+						>
+							<svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+							</svg>
+							<div>
+								<p class="text-sm text-gray-300">9 AM - 8 PM</p>
+								<p class="text-2xl font-bold text-orange-500">16793</p>
+							</div>
+						</a>
+						<a
+							href="/store-locator"
+							class="flex items-center gap-3 p-4 bg-gray-700 rounded-lg border border-gray-600 hover:bg-gray-600 transition-colors group"
+						>
+							<svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+							</svg>
+							<div>
+								<p class="text-white font-medium">Store Locator</p>
+								<p class="text-sm text-orange-500">Find Our Stores</p>
+							</div>
+						</a>
+					</div>
+				</div>
+
+				<!-- ABOUT US Column -->
+				<div>
+					<h3 class="text-xl font-bold mb-6">ABOUT US</h3>
+					<ul class="space-y-2">
+						<li><a href="/affiliate" class="text-gray-300 hover:text-orange-500 transition-colors">Affiliate Program</a></li>
+						<li><a href="/delivery" class="text-gray-300 hover:text-orange-500 transition-colors">Online Delivery</a></li>
+						<li><a href="/refund" class="text-gray-300 hover:text-orange-500 transition-colors">Refund and Return Policy</a></li>
+						<li><a href="/blog" class="text-gray-300 hover:text-orange-500 transition-colors">Blog</a></li>
+						<li><a href="/emi" class="text-gray-300 hover:text-orange-500 transition-colors">EMI Terms</a></li>
+						<li><a href="/privacy" class="text-gray-300 hover:text-orange-500 transition-colors">Privacy Policy</a></li>
+						<li><a href="/points" class="text-gray-300 hover:text-orange-500 transition-colors">Star Point Policy</a></li>
+						<li><a href="/contact" class="text-gray-300 hover:text-orange-500 transition-colors">Contact Us</a></li>
+						<li><a href="/about" class="text-gray-300 hover:text-orange-500 transition-colors">About Us</a></li>
+						<li><a href="/terms" class="text-gray-300 hover:text-orange-500 transition-colors">Terms and Conditions</a></li>
+						<li><a href="/career" class="text-gray-300 hover:text-orange-500 transition-colors">Career</a></li>
+						<li><a href="/brands" class="text-gray-300 hover:text-orange-500 transition-colors">Brands</a></li>
+					</ul>
+				</div>
+
+				<!-- STAY CONNECTED Column -->
+				<div>
+					<h3 class="text-xl font-bold mb-6">STAY CONNECTED</h3>
+					<div class="space-y-4">
+						<div>
+							<p class="text-lg font-semibold mb-2">TinyTech Ltd</p>
+							<p class="text-sm text-gray-300 mb-4">
+								Head Office: 28 Kazi Nazrul Islam Ave, Navana Zohura Square, Dhaka 1000
+							</p>
+							<p class="text-sm">
+								<span class="text-gray-300">Email:</span>
+								<a href="mailto:webteam@tinytech.com" class="text-orange-500 hover:text-orange-400 transition-colors">
+									webteam@tinytech.com
+								</a>
+							</p>
+						</div>
+						<div class="flex gap-4 mt-6">
+							<a
+								href="https://wa.me/16793"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+								aria-label="WhatsApp"
+							>
+								<svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.084-.272-.133-.57-.223m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+								</svg>
+							</a>
+							<a
+								href="https://facebook.com/tinytech"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+								aria-label="Facebook"
+							>
+								<svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 7.775v2.119H4.062v3.47h5.484v8.385C15.612 23.027 20 18.062 20 12.073z"/>
+								</svg>
+							</a>
+							<a
+								href="https://youtube.com/tinytech"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+								aria-label="YouTube"
+							>
+								<svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+								</svg>
+							</a>
+							<a
+								href="https://instagram.com/tinytech"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+								aria-label="Instagram"
+							>
+								<svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+								</svg>
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Divider -->
+			<div class="border-t border-gray-700 pt-8 mt-8">
+				<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+					<!-- Mobile App Promotion -->
+					<div class="flex flex-col md:flex-row items-center gap-4">
+						<p class="text-white font-medium">Experience TinyTech App on your mobile:</p>
+						<div class="flex gap-3">
+							<a
+								href="https://play.google.com/store/apps"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-2 px-4 py-2 bg-black border-2 border-white rounded-lg hover:bg-gray-900 transition-colors"
+							>
+								<svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L16.81,15.12L14.54,12.85L16.81,10.81L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+								</svg>
+								<span class="text-white text-sm font-semibold">Download on Google Play</span>
+							</a>
+							<a
+								href="https://apps.apple.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-2 px-4 py-2 bg-black border-2 border-white rounded-lg hover:bg-gray-900 transition-colors"
+							>
+								<svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+									<path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-1.02.65.03 2.47.26 3.64 1.98-3.12 1.85-2.91 5.98.78 7.13-.61.26-1.78.73-2.56 1.27l-1.12-2.35c.59-.34 1.23-.72 1.78-1.18.37-.3.71-.59 1.08-.88zm-1.01-17.5c-.24-.03-.48-.1-.71-.19-.46-.2-.84-.51-1.15-.92-.65-1.03-.58-2.39.17-3.27.37-.44.85-.78 1.36-1.02.51-.24 1.05-.37 1.58-.41.24.66.37 1.35.38 2.04.01.69-.12 1.38-.36 2.04-.24.66-.6 1.26-1.05 1.77-.45.51-1 1.01-1.58 1.4-.29.2-.6.37-.91.51-.15.07-.31.13-.48.18z"/>
+								</svg>
+								<span class="text-white text-sm font-semibold">Download on App Store</span>
+							</a>
+						</div>
+					</div>
+
+					<!-- Copyright -->
+					<div class="text-center md:text-right">
+						<p class="text-gray-400 text-sm">© 2025 TinyTech Ltd | All rights reserved</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</footer>
 </div>

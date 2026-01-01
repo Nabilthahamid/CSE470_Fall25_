@@ -67,9 +67,17 @@ class OrderRepositoryImpl implements OrderRepository {
 			throw new Error(`Failed to fetch order: ${error.message}`);
 		}
 
+		// Fetch status history
+		const { data: history } = await supabase
+			.from('order_status_history')
+			.select('*')
+			.eq('order_id', id)
+			.order('created_at', { ascending: true });
+
 		return {
 			...data,
-			items: data.order_items || []
+			items: data.order_items || [],
+			status_history: history || []
 		};
 	}
 
@@ -98,7 +106,7 @@ class OrderRepositoryImpl implements OrderRepository {
 				payment_method: orderData.payment_method || null,
 				shipping_cost: orderData.shipping_cost || 0,
 				total_amount: totalAmount,
-				status: 'completed'
+				status: 'pending'
 			})
 			.select()
 			.single();
@@ -145,16 +153,48 @@ class OrderRepositoryImpl implements OrderRepository {
 		return completeOrder;
 	}
 
-	async updateStatus(id: string, status: OrderStatus): Promise<Order> {
-		const { data, error } = await supabase
+	async updateStatus(id: string, status: OrderStatus, trackingNumber?: string, notes?: string, updatedBy?: string): Promise<Order> {
+		const updateData: any = {
+			status,
+			updated_at: new Date().toISOString()
+		};
+
+		// Set shipping_date when status changes to 'shipped'
+		if (status === 'shipped') {
+			updateData.shipping_date = new Date().toISOString();
+		}
+
+		// Set delivery_date when status changes to 'delivered'
+		if (status === 'delivered') {
+			updateData.delivery_date = new Date().toISOString();
+		}
+
+		// Add tracking number if provided
+		if (trackingNumber) {
+			updateData.tracking_number = trackingNumber;
+		}
+
+		// Update order (don't use .single() on update, just check for errors)
+		const { error: updateError } = await supabase
 			.from('orders')
-			.update({ status, updated_at: new Date().toISOString() })
-			.eq('id', id)
-			.select()
-			.single();
+			.update(updateData)
+			.eq('id', id);
 
-		if (error) throw new Error(`Failed to update order status: ${error.message}`);
+		if (updateError) throw new Error(`Failed to update order status: ${updateError.message}`);
 
+		// Status history is automatically logged by trigger, but we can add notes if provided
+		if (notes) {
+			await supabase
+				.from('order_status_history')
+				.insert({
+					order_id: id,
+					status,
+					notes,
+					updated_by: updatedBy || null
+				});
+		}
+
+		// Fetch the updated order with all relationships
 		const order = await this.getById(id);
 		if (!order) throw new Error('Failed to retrieve updated order');
 		return order;
@@ -222,8 +262,8 @@ export class OrderService {
 		return order;
 	}
 
-	async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
-		return await this.repository.updateStatus(id, status);
+	async updateOrderStatus(id: string, status: OrderStatus, trackingNumber?: string, notes?: string, updatedBy?: string): Promise<Order> {
+		return await this.repository.updateStatus(id, status, trackingNumber, notes, updatedBy);
 	}
 }
 

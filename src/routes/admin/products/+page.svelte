@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
 
 	export let data: PageData;
@@ -10,6 +11,18 @@
 
 	let showCreateForm = false;
 	let searchInput = data.searchQuery || '';
+	let showPriceOptimization = false;
+	let priceOptimizations: any[] = [];
+	let loadingOptimizations = false;
+	
+	// AI Description Generation
+	let descriptionTextarea: HTMLTextAreaElement;
+	let generatingDescription = false;
+	let descriptionError: string | null = null;
+	let generatedDescription: string | null = null;
+	let generatedKeywords: string[] = [];
+	let descriptionVariations: string[] = [];
+	let showDescriptionModal = false;
 
 	function toggleCreateForm() {
 		showCreateForm = !showCreateForm;
@@ -28,6 +41,78 @@
 		searchInput = '';
 		goto('/admin/products');
 	}
+
+	async function loadPriceOptimizations() {
+		loadingOptimizations = true;
+		try {
+			const response = await fetch('/api/admin/ai-price-optimization');
+			if (response.ok) {
+				const data = await response.json();
+				priceOptimizations = data.optimizations || [];
+				showPriceOptimization = true;
+			}
+		} catch (error) {
+			console.error('Error loading price optimizations:', error);
+		} finally {
+			loadingOptimizations = false;
+		}
+	}
+
+	async function generateDescription() {
+		generatingDescription = true;
+		descriptionError = null;
+		generatedDescription = null;
+		generatedKeywords = [];
+		descriptionVariations = [];
+
+		try {
+			const nameInput = document.getElementById('name') as HTMLInputElement;
+			const brandInput = document.getElementById('brand') as HTMLInputElement;
+			const specificationsInput = document.getElementById('specifications') as HTMLTextAreaElement;
+			const priceInput = document.getElementById('price') as HTMLInputElement;
+			const categorySelect = document.getElementById('component_category_id') as HTMLSelectElement;
+
+			const selectedCategory = data.categories.find(c => c.id === categorySelect?.value);
+
+			const response = await fetch('/api/admin/ai-generate-description', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name: nameInput?.value || '',
+					brand: brandInput?.value || null,
+					specifications: specificationsInput?.value || null,
+					price: priceInput?.value ? parseFloat(priceInput.value) : undefined,
+					component_category_name: selectedCategory?.display_name || null
+				})
+			});
+
+			const result = await response.json();
+
+			if (result.error) {
+				descriptionError = result.error;
+			} else {
+				generatedDescription = result.description;
+				generatedKeywords = result.keywords || [];
+				descriptionVariations = result.variations || [];
+				showDescriptionModal = true;
+			}
+		} catch (error: any) {
+			descriptionError = error.message || 'Failed to generate description';
+		} finally {
+			generatingDescription = false;
+		}
+	}
+
+	function useDescription(description: string) {
+		if (descriptionTextarea) {
+			descriptionTextarea.value = description;
+			// Trigger input event to update form state
+			descriptionTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+		showDescriptionModal = false;
+	}
 </script>
 
 <svelte:head>
@@ -37,9 +122,29 @@
 <div class="max-w-7xl mx-auto p-8">
 	<div class="flex justify-between items-center mb-8">
 		<h1 class="m-0 text-3xl font-bold">Product Management</h1>
-		<button class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-indigo-700" on:click={toggleCreateForm}>
-			{showCreateForm ? 'Cancel' : '+ Add New Product'}
-		</button>
+		<div class="flex gap-3">
+			<button 
+				on:click={loadPriceOptimizations}
+				disabled={loadingOptimizations}
+				class="bg-purple-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+			>
+				{#if loadingOptimizations}
+					<svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+					Loading...
+				{:else}
+					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+					</svg>
+					AI Price Optimization
+				{/if}
+			</button>
+			<button class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-indigo-700" on:click={toggleCreateForm}>
+				{showCreateForm ? 'Cancel' : '+ Add New Product'}
+			</button>
+		</div>
 	</div>
 
 	{#if data.error}
@@ -64,8 +169,43 @@
 				</div>
 
 				<div class="mb-6">
-					<label for="description" class="block mb-2 font-medium">Description *</label>
-					<textarea id="description" name="description" required minlength="5" rows="4" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"></textarea>
+					<div class="flex items-center justify-between mb-2">
+						<label for="description" class="block font-medium">Description *</label>
+						<button
+							type="button"
+							on:click={generateDescription}
+							disabled={generatingDescription}
+							class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{#if generatingDescription}
+								<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								Generating...
+							{:else}
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+								</svg>
+								AI Generate Description
+							{/if}
+						</button>
+					</div>
+					{#if descriptionError}
+						<div class="mb-2 bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 text-sm">
+							{descriptionError}
+						</div>
+					{/if}
+					<textarea 
+						id="description" 
+						name="description" 
+						bind:this={descriptionTextarea}
+						required 
+						minlength="5" 
+						rows="4" 
+						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+					></textarea>
+					<small class="block mt-1 text-gray-400 text-sm">Click "AI Generate Description" to auto-generate an SEO-optimized description</small>
 				</div>
 
 				<div class="mb-6">
@@ -129,6 +269,75 @@
 					Create Product
 				</button>
 			</form>
+		</div>
+	{/if}
+
+	<!-- AI Price Optimization Panel -->
+	{#if showPriceOptimization}
+		<div class="mb-8 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border-2 border-purple-200 p-6">
+			<div class="flex items-center justify-between mb-6">
+				<div class="flex items-center gap-3">
+					<div class="bg-purple-600 p-3 rounded-lg">
+						<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+						</svg>
+					</div>
+					<h2 class="text-2xl font-bold text-gray-900">AI Price Optimization Recommendations</h2>
+				</div>
+				<button
+					on:click={() => showPriceOptimization = false}
+					class="text-gray-600 hover:text-gray-800"
+				>
+					<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+					</svg>
+				</button>
+			</div>
+
+			{#if priceOptimizations.length > 0}
+				<div class="space-y-4">
+					{#each priceOptimizations as opt}
+						<div class="bg-white rounded-lg p-5 border border-purple-100 shadow-sm">
+							<div class="flex items-start justify-between mb-3">
+								<div class="flex-1">
+									<h3 class="text-lg font-bold text-gray-900 mb-2">{opt.productName}</h3>
+									<div class="flex items-center gap-4 mb-2">
+										<div>
+											<p class="text-sm text-gray-600">Current Price</p>
+											<p class="text-xl font-semibold text-gray-900">Tk {opt.currentPrice.toFixed(2)}</p>
+										</div>
+										<div class="text-2xl text-gray-400">→</div>
+										<div>
+											<p class="text-sm text-gray-600">Suggested Price</p>
+											<p class="text-xl font-semibold {opt.priceChange > 0 ? 'text-green-600' : 'text-blue-600'}">
+												Tk {opt.suggestedPrice.toFixed(2)}
+											</p>
+										</div>
+										<div>
+											<p class="text-sm text-gray-600">Change</p>
+											<p class="text-lg font-semibold {opt.priceChange > 0 ? 'text-green-600' : 'text-blue-600'}">
+												{opt.priceChange > 0 ? '+' : ''}{opt.priceChange.toFixed(1)}%
+											</p>
+										</div>
+									</div>
+									<p class="text-sm text-gray-700 mb-2"><strong>Reason:</strong> {opt.reason}</p>
+									<p class="text-sm text-indigo-600"><strong>Expected Impact:</strong> {opt.expectedImpact}</p>
+								</div>
+								<div class="flex gap-2">
+									<a
+										href="/admin/products/{opt.productId}/edit"
+										class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors"
+									>
+										Update Price
+									</a>
+								</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-gray-600 text-center py-8">No price optimizations recommended at this time. All prices are well-optimized.</p>
+			{/if}
 		</div>
 	{/if}
 
@@ -220,4 +429,100 @@
 	</div>
 </div>
 
+<!-- AI Generated Description Modal -->
+{#if showDescriptionModal && generatedDescription}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="description-modal-title"
+		tabindex="-1"
+		on:click={() => (showDescriptionModal = false)}
+		on:keydown={(e) => e.key === 'Escape' && (showDescriptionModal = false)}
+	>
+		<div
+			class="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+			role="document"
+			on:click|stopPropagation
+			on:keydown|stopPropagation
+		>
+			<div class="p-6">
+				<div class="flex items-center justify-between mb-4">
+					<h2 id="description-modal-title" class="text-2xl font-bold text-gray-900">AI Generated Description</h2>
+					<button
+						type="button"
+						on:click={() => (showDescriptionModal = false)}
+						class="text-gray-400 hover:text-gray-600 transition-colors"
+						aria-label="Close"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+						</svg>
+					</button>
+				</div>
 
+				<!-- Main Description -->
+				<div class="mb-6">
+					<h3 class="text-lg font-semibold text-gray-900 mb-2">Generated Description</h3>
+					<div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-3">
+						<p class="text-gray-700 whitespace-pre-wrap">{generatedDescription}</p>
+					</div>
+					<button
+						type="button"
+						on:click={() => generatedDescription && useDescription(generatedDescription)}
+						class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+					>
+						Use This Description
+					</button>
+				</div>
+
+				<!-- Variations -->
+				{#if descriptionVariations && descriptionVariations.length > 0}
+					<div class="mb-6">
+						<h3 class="text-lg font-semibold text-gray-900 mb-3">Alternative Variations</h3>
+						<div class="space-y-3">
+							{#each descriptionVariations as variation, index}
+								<div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+									<div class="flex items-start justify-between gap-3">
+										<p class="text-gray-700 whitespace-pre-wrap flex-1">{variation}</p>
+										<button
+											type="button"
+											on:click={() => useDescription(variation)}
+											class="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors text-sm font-semibold whitespace-nowrap"
+										>
+											Use
+										</button>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<!-- Keywords -->
+				{#if generatedKeywords && generatedKeywords.length > 0}
+					<div class="mb-6">
+						<h3 class="text-lg font-semibold text-gray-900 mb-2">Suggested SEO Keywords</h3>
+						<div class="flex flex-wrap gap-2">
+							{#each generatedKeywords as keyword}
+								<span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
+									{keyword}
+								</span>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<div class="flex gap-3 pt-4 border-t border-gray-200">
+					<button
+						type="button"
+						on:click={() => (showDescriptionModal = false)}
+						class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+					>
+						Close
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}

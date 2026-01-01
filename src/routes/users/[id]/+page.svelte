@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.user.name} - MVC SvelteKit App</title>
+	<title>{data.user.name} - TinyTech</title>
 </svelte:head>
 
 <div class="max-w-3xl mx-auto p-8 bg-gray-50 min-h-screen">

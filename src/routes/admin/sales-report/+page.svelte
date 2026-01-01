@@ -1,9 +1,10 @@
 <!-- VIEW: Sales report page -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import type { PageData, ActionData } from './$types';
 	import { productService } from '$lib/services/ProductService';
-	import { onMount } from 'svelte';
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -14,16 +15,42 @@
 	let productId = '';
 	let products: Array<{ id: string; name: string }> = [];
 	let showFilters = false;
+	let aiAnalytics: any = null;
+	let loadingAnalytics = false;
 
 	onMount(async () => {
 		if (typeof window === 'undefined') return; // Only run on client
 		try {
 			const allProducts = await productService.getAllProducts();
 			products = allProducts.map((p) => ({ id: p.id, name: p.name }));
+			loadAIAnalytics();
 		} catch (error) {
 			console.error('Failed to load products:', error);
 		}
 	});
+
+	async function loadAIAnalytics() {
+		loadingAnalytics = true;
+		try {
+			const params = new URLSearchParams();
+			if (startDate) params.append('startDate', startDate);
+			if (endDate) params.append('endDate', endDate);
+			if (productId) params.append('productId', productId);
+
+			const response = await fetch(`/api/admin/ai-sales-analytics?${params.toString()}`);
+			if (response.ok) {
+				aiAnalytics = await response.json();
+			}
+		} catch (error) {
+			console.error('Error loading AI analytics:', error);
+		} finally {
+			loadingAnalytics = false;
+		}
+	}
+
+	$: if (startDate || endDate || productId) {
+		loadAIAnalytics();
+	}
 
 	function downloadCSV() {
 		const csv = form?.csvContent || '';
@@ -167,6 +194,70 @@
 			</p>
 		</div>
 	</div>
+
+	<!-- AI Analytics Section -->
+	{#if aiAnalytics}
+		<div class="mt-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200 p-6">
+			<div class="flex items-center gap-3 mb-6">
+				<div class="bg-indigo-600 p-3 rounded-lg">
+					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+					</svg>
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900">AI Sales Analytics</h2>
+			</div>
+
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+				<!-- Trend Analysis -->
+				<div class="bg-white rounded-lg p-5 border border-indigo-100">
+					<h3 class="text-lg font-bold text-gray-900 mb-3">Sales Trend</h3>
+					<div class="flex items-center gap-3">
+						<div class="text-3xl font-bold {aiAnalytics.trend === 'increasing' ? 'text-green-600' : aiAnalytics.trend === 'decreasing' ? 'text-red-600' : 'text-gray-600'}">
+							{aiAnalytics.trend === 'increasing' ? '↗' : aiAnalytics.trend === 'decreasing' ? '↘' : '→'}
+						</div>
+						<div>
+							<p class="text-xl font-bold text-gray-900 capitalize">{aiAnalytics.trend}</p>
+							<p class="text-sm text-gray-600">Strength: {aiAnalytics.trendStrength.toFixed(1)}%</p>
+						</div>
+					</div>
+				</div>
+
+				<!-- Anomalies -->
+				<div class="bg-white rounded-lg p-5 border border-indigo-100">
+					<h3 class="text-lg font-bold text-gray-900 mb-3">Anomaly Detection</h3>
+					{#if aiAnalytics.anomalies.length > 0}
+						<p class="text-2xl font-bold text-orange-600 mb-2">{aiAnalytics.anomalies.length}</p>
+						<p class="text-sm text-gray-600">Unusual patterns detected</p>
+						<div class="mt-3 space-y-2 max-h-32 overflow-y-auto">
+							{#each aiAnalytics.anomalies.slice(0, 3) as anomaly}
+								<div class="text-xs p-2 bg-gray-50 rounded border border-gray-200">
+									<p class="font-semibold">{anomaly.type === 'spike' ? '📈 Spike' : '📉 Drop'}</p>
+									<p class="text-gray-600">{anomaly.date}</p>
+									<p class="text-gray-500 text-xs">{anomaly.reason}</p>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-lg font-semibold text-green-600">No anomalies detected</p>
+						<p class="text-sm text-gray-600">Sales patterns are normal</p>
+					{/if}
+				</div>
+			</div>
+
+			<!-- Insights -->
+			<div class="bg-white rounded-lg p-5 border border-indigo-100">
+				<h3 class="text-lg font-bold text-gray-900 mb-3">AI Insights</h3>
+				<ul class="space-y-2">
+					{#each aiAnalytics.insights as insight}
+						<li class="flex items-start gap-2 text-sm text-gray-700">
+							<span class="text-indigo-600 mt-1">•</span>
+							<span>{insight}</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Sales Table -->
 	<div class="bg-white/5 rounded-lg border border-white/10 overflow-x-auto">

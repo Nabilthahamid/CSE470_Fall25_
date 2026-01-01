@@ -14,10 +14,14 @@ export interface Order {
 	shipping_cost?: number;
 	total_amount: number;
 	status: OrderStatus;
+	tracking_number?: string | null;
+	shipping_date?: string | null;
+	delivery_date?: string | null;
 	created_at?: string;
 	updated_at?: string;
 	// Joined data
 	items?: OrderItem[];
+	status_history?: OrderStatusHistory[];
 }
 
 export interface OrderItem {
@@ -31,7 +35,7 @@ export interface OrderItem {
 	created_at?: string;
 }
 
-export type OrderStatus = 'completed' | 'pending' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'completed';
 
 export interface CreateOrderDTO {
 	user_id?: string | null;
@@ -68,5 +72,15 @@ export interface OrderItemInput {
 	product_name: string;
 	quantity: number;
 	unit_price: number;
+	total_price: number;
+}
+
+export interface OrderStatusHistory {
+	id: string;
+	order_id: string;
+	status: OrderStatus;
+	notes?: string | null;
+	updated_by?: string | null;
+	created_at?: string;
 }
 
