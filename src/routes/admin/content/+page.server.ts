@@ -201,20 +201,53 @@ export const actions: Actions = {
 	updateFAQ: async ({ request }) => {
 		const formData = await request.formData();
 		const id = formData.get('id')?.toString() || '';
-		const faq: any = {};
+		
+		if (!id) {
+			return { error: 'FAQ ID is required' };
+		}
 
-		if (formData.get('question')) faq.question = formData.get('question')?.toString();
-		if (formData.get('answer')) faq.answer = formData.get('answer')?.toString();
-		if (formData.get('category')) faq.category = formData.get('category')?.toString() || null;
-		if (formData.get('order')) faq.order = parseInt(formData.get('order')?.toString() || '0');
-		if (formData.get('is_published') !== null) faq.is_published = formData.get('is_published')?.toString() === 'true';
+		// Get all form values
+		const question = formData.get('question')?.toString() || '';
+		const answer = formData.get('answer')?.toString() || '';
+		const category = formData.get('category')?.toString() || '';
+		const order = formData.get('order')?.toString() || '0';
+		
+		// Handle checkbox - check if it exists in formData (checked = 'on' or 'true', unchecked = null)
+		const isPublishedValue = formData.get('is_published');
+		const isPublished = isPublishedValue === 'on' || isPublishedValue === 'true' || isPublishedValue === true;
+
+		const faq: any = {
+			question: question.trim(),
+			answer: answer.trim(),
+			category: category.trim() === '' ? null : category.trim(),
+			order: parseInt(order) || 0,
+			is_published: isPublished
+		};
+
+		console.log('Updating FAQ:', { id, faq }); // Debug log
+
+		// Validate required fields
+		if (!faq.question || faq.question.trim() === '') {
+			return { error: 'Question is required' };
+		}
+		if (!faq.answer || faq.answer.trim() === '') {
+			return { error: 'Answer is required' };
+		}
 
 		try {
-			await contentService.updateFAQ(id, faq);
-			return { success: true };
-		} catch (error) {
+			const updatedFAQ = await contentService.updateFAQ(id, faq);
+			console.log('FAQ updated successfully:', updatedFAQ); // Debug log
+			return { success: 'FAQ updated successfully!' };
+		} catch (error: any) {
 			const { message } = handleError(error);
-			return { error: message };
+			console.error('Update FAQ error:', error);
+			console.error('Error details:', {
+				message: error.message,
+				code: error.code,
+				details: error.details,
+				hint: error.hint
+			});
+			return { error: message || 'Failed to update FAQ. Please check the console for details.' };
 		}
 	},
 

@@ -1,5 +1,5 @@
 // SERVICE: Content Management System (CMS)
-import { supabase } from '$lib/config/supabase';
+import { supabase, getSupabaseAdmin } from '$lib/config/supabase';
 import type {
 	HomepageContent,
 	Banner,
@@ -253,31 +253,43 @@ export class ContentService {
 	}
 
 	async createFAQ(faq: CreateFAQDTO): Promise<FAQ> {
-		const { data, error } = await supabase
+		// Use admin client to bypass RLS for admin operations
+		const { data, error } = await getSupabaseAdmin()
 			.from('faqs')
 			.insert({ ...faq, created_at: new Date().toISOString() })
 			.select()
 			.single();
 
-		if (error) throw new Error(`Failed to create FAQ: ${error.message}`);
+		if (error) {
+			console.error('FAQ create error:', error);
+			throw new Error(`Failed to create FAQ: ${error.message}`);
+		}
 		return data;
 	}
 
 	async updateFAQ(id: string, faq: UpdateFAQDTO): Promise<FAQ> {
-		const { data, error } = await supabase
+		// Use admin client to bypass RLS for admin operations
+		const { data, error } = await getSupabaseAdmin()
 			.from('faqs')
 			.update({ ...faq, updated_at: new Date().toISOString() })
 			.eq('id', id)
 			.select()
 			.single();
 
-		if (error) throw new Error(`Failed to update FAQ: ${error.message}`);
+		if (error) {
+			console.error('FAQ update error:', error);
+			throw new Error(`Failed to update FAQ: ${error.message}`);
+		}
 		return data;
 	}
 
 	async deleteFAQ(id: string): Promise<void> {
-		const { error } = await supabase.from('faqs').delete().eq('id', id);
-		if (error) throw new Error(`Failed to delete FAQ: ${error.message}`);
+		// Use admin client to bypass RLS for admin operations
+		const { error } = await getSupabaseAdmin().from('faqs').delete().eq('id', id);
+		if (error) {
+			console.error('FAQ delete error:', error);
+			throw new Error(`Failed to delete FAQ: ${error.message}`);
+		}
 	}
 }
 

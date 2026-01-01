@@ -135,14 +135,18 @@ class PCBuildRepositoryImpl implements PCBuildRepository {
 			}
 		}
 
-		// Create build
+		// Create build (all builds are public by default)
 		const { data: buildData, error: buildError } = await supabase
 			.from('pc_builds')
 			.insert({
 				user_id: userId,
 				name: input.name,
 				description: input.description || null,
-				total_price: totalPrice
+				total_price: totalPrice,
+				is_public: input.is_public !== undefined ? input.is_public : true, // Default to public
+				use_case: input.use_case || null,
+				tags: input.tags || null,
+				image_url: input.image_url || null
 			})
 			.select()
 			.single();
@@ -196,8 +200,14 @@ class PCBuildRepositoryImpl implements PCBuildRepository {
 		if (input.name !== undefined) updateData.name = input.name;
 		if (input.description !== undefined) updateData.description = input.description;
 		if (input.components) updateData.total_price = totalPrice;
+		if (input.is_public !== undefined) updateData.is_public = input.is_public;
+		if (input.use_case !== undefined) updateData.use_case = input.use_case;
+		if (input.tags !== undefined) updateData.tags = input.tags;
+		if (input.image_url !== undefined) updateData.image_url = input.image_url;
+		if (input.featured !== undefined) updateData.featured = input.featured;
 
 		if (Object.keys(updateData).length > 0) {
+			updateData.updated_at = new Date().toISOString();
 			const { error } = await supabase
 				.from('pc_builds')
 				.update(updateData)

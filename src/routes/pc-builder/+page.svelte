@@ -19,6 +19,14 @@
 	let currentCategory: ComponentCategory | null = null;
 	let showOverview = false;
 	
+	// Share to Community
+	let showShareModal = false;
+	let shareUseCase = 'gaming';
+	let shareTags: string[] = [];
+	let shareTagInput = '';
+	let shareImageUrl = '';
+	let savedBuildId: string | null = null;
+	
 	// AI Features
 	let showAIAssistant = false;
 	let aiChatMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
@@ -30,6 +38,13 @@
 	let prebuiltBuilds: any[] = [];
 	let prebuiltUseCase = 'gaming';
 	let prebuiltBudget = 50000;
+
+	// Energy Efficiency
+	let showEnergyModal = false;
+	let energyAnalysis: any = null;
+	let energyAlternatives: any = null;
+	let energyLoading = false;
+	let psuRecommendation: any = null;
 
 	// Calculate total price
 	$: totalPrice = Object.values(selectedComponents).reduce(
@@ -64,6 +79,132 @@
 
 	function handleSave() {
 		showSaveModal = true;
+	}
+
+	function handleShareToCommunity() {
+		// Check if build is already saved
+		if (savedBuildId) {
+			showShareModal = true;
+			return;
+		}
+
+		// If not saved, prompt user to save first
+		if (!buildName || buildName.trim() === '') {
+			alert('Please enter a build name and save the build first before sharing.');
+			showSaveModal = true;
+			return;
+		}
+
+		// If we have a name but haven't saved yet, show save modal first
+		// After saving, user can click share again
+		alert('Please save the build first, then click "Share to Community" again.');
+		showSaveModal = true;
+	}
+
+	// Handle successful build save - update savedBuildId and close modal
+	$: if (form?.success && form?.buildId) {
+		savedBuildId = form.buildId;
+		showSaveModal = false;
+		// If user wanted to share, show share modal now
+		if (savedBuildId) {
+			// User can now share if they click the button again
+		}
+	}
+
+	// Handle redirect after successful add to cart
+	$: if (form?.success && form?.redirect) {
+		setTimeout(() => {
+			goto(form.redirect);
+		}, 1500);
+	}
+
+	function addTag() {
+		if (shareTagInput.trim() && !shareTags.includes(shareTagInput.trim())) {
+			shareTags = [...shareTags, shareTagInput.trim()];
+			shareTagInput = '';
+		}
+	}
+
+	function removeTag(tag: string) {
+		shareTags = shareTags.filter(t => t !== tag);
+	}
+
+	async function shareBuild() {
+		if (!savedBuildId) return;
+
+		try {
+			const response = await fetch(`/api/community-builds/${savedBuildId}/share`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					use_case: shareUseCase,
+					tags: shareTags,
+					image_url: shareImageUrl || null
+				})
+			});
+
+			if (response.ok) {
+				alert('Build shared to community successfully!');
+				showShareModal = false;
+				goto(`/community-builds/${savedBuildId}`);
+			} else {
+				const error = await response.json();
+				alert(error.error || 'Failed to share build');
+			}
+		} catch (error) {
+			console.error('Share error:', error);
+			alert('Failed to share build');
+		}
+	}
+
+	// Energy Efficiency Functions
+	async function calculateEnergy() {
+		if (itemCount === 0) {
+			alert('Please add components to your build first');
+			return;
+		}
+
+		energyLoading = true;
+		showEnergyModal = true;
+
+		try {
+			const components = Object.entries(selectedComponents).map(([categoryId, comp]) => ({
+				product_id: comp.product.id,
+				component_category_id: categoryId
+			}));
+
+			const response = await fetch('/api/pc-builder/energy/calculate', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ components })
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				energyAnalysis = data.analysis;
+				psuRecommendation = data.psu_recommendation;
+
+				// Also get alternatives
+				const altResponse = await fetch('/api/pc-builder/energy/alternatives', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ components })
+				});
+
+				if (altResponse.ok) {
+					const altData = await altResponse.json();
+					energyAlternatives = altData;
+				}
+			} else {
+				const error = await response.json();
+				alert(error.error || 'Failed to calculate energy consumption');
+			}
+		} catch (error) {
+			console.error('Energy calculation error:', error);
+			alert('Failed to calculate energy consumption');
+		} finally {
+			energyLoading = false;
+		}
 	}
 
 	function handlePrint() {
@@ -288,10 +429,14 @@
 					<form 
 						method="POST" 
 						action="?/addToCart" 
-						use:enhance={({ result, update }) => {
-							return async () => {
-								// Always update to show success/error messages
-								await update();
+						use:enhance={({ update }) => {
+							return async ({ update: updateFn }) => {
+								// Update the page to show success/error messages
+								if (updateFn) {
+									await updateFn();
+								} else if (update) {
+									await update();
+								}
 							};
 						}}
 						class="inline"
@@ -322,6 +467,22 @@
 						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-semibold"
 					>
 						Save PC
+					</button>
+					<button
+						type="button"
+						on:click={calculateEnergy}
+						disabled={itemCount === 0}
+						class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-semibold"
+					>
+						⚡ Energy Calculator
+					</button>
+					<button
+						type="button"
+						on:click={handleShareToCommunity}
+						disabled={itemCount === 0}
+						class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-semibold"
+					>
+						Share to Community
 					</button>
 					<button
 						type="button"
@@ -794,6 +955,311 @@
 					</button>
 				</div>
 			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- Share to Community Modal -->
+{#if showShareModal}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="share-modal-title"
+		tabindex="-1"
+		on:click={() => (showShareModal = false)}
+		on:keydown={(e) => {
+			if (e.key === 'Escape') {
+				showShareModal = false;
+			}
+		}}
+	>
+		<div 
+			class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4" 
+			role="document"
+			on:click|stopPropagation
+			on:keydown|stopPropagation
+		>
+			<div class="p-6">
+				<h2 id="share-modal-title" class="text-2xl font-bold text-gray-900 mb-4">Share to Community</h2>
+				
+				<!-- Use Case -->
+				<div class="mb-4">
+					<label for="share-use-case" class="block mb-2 font-medium text-gray-900">Use Case *</label>
+					<select
+						id="share-use-case"
+						bind:value={shareUseCase}
+						class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+					>
+						<option value="gaming">Gaming</option>
+						<option value="workstation">Workstation</option>
+						<option value="streaming">Streaming</option>
+						<option value="editing">Video/Photo Editing</option>
+						<option value="office">Office Work</option>
+						<option value="budget">Budget Build</option>
+					</select>
+				</div>
+
+				<!-- Tags -->
+				<div class="mb-4">
+					<label for="share-tags" class="block mb-2 font-medium text-gray-900">Tags</label>
+					<div class="flex gap-2 mb-2">
+						<input
+							type="text"
+							id="share-tags"
+							bind:value={shareTagInput}
+							placeholder="Add a tag..."
+							class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+						/>
+						<button
+							type="button"
+							on:click={addTag}
+							class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+						>
+							Add
+						</button>
+					</div>
+					{#if shareTags.length > 0}
+						<div class="flex flex-wrap gap-2">
+							{#each shareTags as tag}
+								<span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm flex items-center gap-2">
+									{tag}
+									<button
+										type="button"
+										on:click={() => removeTag(tag)}
+										class="text-indigo-600 hover:text-indigo-800"
+									>
+										×
+									</button>
+								</span>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Image URL (Optional) -->
+				<div class="mb-4">
+					<label for="share-image" class="block mb-2 font-medium text-gray-900">Build Image URL (Optional)</label>
+					<input
+						type="url"
+						id="share-image"
+						bind:value={shareImageUrl}
+						placeholder="https://example.com/image.jpg"
+						class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+					/>
+				</div>
+
+				<!-- Actions -->
+				<div class="flex gap-3">
+					<button
+						type="button"
+						on:click={shareBuild}
+						class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+					>
+						Share to Community
+					</button>
+					<button
+						type="button"
+						on:click={() => (showShareModal = false)}
+						class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+					>
+						Cancel
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Energy Efficiency Modal -->
+{#if showEnergyModal}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="energy-modal-title"
+		tabindex="-1"
+		on:click={() => (showEnergyModal = false)}
+		on:keydown={(e) => {
+			if (e.key === 'Escape') {
+				showEnergyModal = false;
+			}
+		}}
+	>
+		<div 
+			class="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto" 
+			role="document"
+			on:click|stopPropagation
+			on:keydown|stopPropagation
+		>
+			<div class="p-6">
+				<div class="flex justify-between items-center mb-4">
+					<h2 id="energy-modal-title" class="text-2xl font-bold text-gray-900">⚡ Energy Efficiency Analysis</h2>
+					<button
+						type="button"
+						on:click={() => (showEnergyModal = false)}
+						class="text-gray-400 hover:text-gray-600"
+					>
+						<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+						</svg>
+					</button>
+				</div>
+
+				{#if energyLoading}
+					<div class="text-center py-12">
+						<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+						<p class="mt-4 text-gray-600">Calculating energy consumption...</p>
+					</div>
+				{:else if energyAnalysis}
+					<!-- Power Consumption Summary -->
+					<div class="bg-green-50 rounded-lg p-6 mb-6">
+						<h3 class="text-lg font-bold text-gray-900 mb-4">Power Consumption</h3>
+						<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+							<div>
+								<p class="text-sm text-gray-600">Idle Power</p>
+								<p class="text-2xl font-bold text-green-600">{energyAnalysis.total_idle_watts}W</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Load Power</p>
+								<p class="text-2xl font-bold text-orange-600">{energyAnalysis.total_load_watts}W</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Peak Power</p>
+								<p class="text-2xl font-bold text-red-600">{energyAnalysis.total_peak_watts}W</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Recommended PSU</p>
+								<p class="text-2xl font-bold text-blue-600">{energyAnalysis.recommended_psu_watts}W</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Electricity Costs -->
+					<div class="bg-blue-50 rounded-lg p-6 mb-6">
+						<h3 class="text-lg font-bold text-gray-900 mb-4">💰 Electricity Costs</h3>
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<div>
+								<p class="text-sm text-gray-600">Daily Cost</p>
+								<p class="text-2xl font-bold text-blue-600">৳{energyAnalysis.daily_cost.toFixed(2)}</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Monthly Cost</p>
+								<p class="text-2xl font-bold text-blue-600">৳{energyAnalysis.monthly_electricity_cost.toFixed(2)}</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Yearly Cost</p>
+								<p class="text-2xl font-bold text-blue-600">৳{energyAnalysis.yearly_electricity_cost.toFixed(2)}</p>
+							</div>
+						</div>
+						<p class="text-xs text-gray-500 mt-2">Based on 8 hours load, 16 hours idle per day at ৳6.5/kWh</p>
+					</div>
+
+					<!-- Carbon Footprint -->
+					<div class="bg-gray-50 rounded-lg p-6 mb-6">
+						<h3 class="text-lg font-bold text-gray-900 mb-2">🌱 Environmental Impact</h3>
+						<p class="text-2xl font-bold text-gray-700">{energyAnalysis.carbon_footprint_kg.toFixed(2)} kg CO₂/year</p>
+						<p class="text-sm text-gray-600 mt-2">Carbon footprint based on Bangladesh grid average</p>
+					</div>
+
+					<!-- PSU Recommendation -->
+					{#if psuRecommendation}
+						<div class="bg-purple-50 rounded-lg p-6 mb-6">
+							<h3 class="text-lg font-bold text-gray-900 mb-4">🔌 Power Supply Recommendation</h3>
+							<p class="text-gray-700 mb-2">
+								<strong>{psuRecommendation.recommended_watts}W {psuRecommendation.recommended_efficiency}</strong>
+							</p>
+							<p class="text-sm text-gray-600 mb-4">{psuRecommendation.reason}</p>
+							{#if psuRecommendation.options && psuRecommendation.options.length > 0}
+								<div class="space-y-2">
+									<p class="text-sm font-medium text-gray-700">Available Options:</p>
+									{#each psuRecommendation.options as option}
+										<div class="bg-white rounded p-3 flex justify-between items-center">
+											<span class="text-gray-700">{option.wattage}W {option.efficiency}</span>
+											{#if option.estimated_cost > 0}
+												<span class="font-bold text-purple-600">৳{option.estimated_cost.toFixed(2)}</span>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Component Breakdown -->
+					<div class="mb-6">
+						<h3 class="text-lg font-bold text-gray-900 mb-4">Component Power Breakdown</h3>
+						<div class="space-y-2">
+							{#each energyAnalysis.components as comp}
+								<div class="bg-gray-50 rounded p-4 flex justify-between items-center">
+									<div>
+										<p class="font-medium text-gray-900">{comp.product.name}</p>
+										<p class="text-sm text-gray-600">{comp.category}</p>
+									</div>
+									<div class="text-right">
+										<p class="text-sm text-gray-600">Idle: <span class="font-medium">{comp.idle_watts}W</span></p>
+										<p class="text-sm text-gray-600">Load: <span class="font-medium">{comp.load_watts}W</span></p>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Energy-Efficient Alternatives -->
+					{#if energyAlternatives && energyAlternatives.alternatives && energyAlternatives.alternatives.length > 0}
+						<div class="bg-yellow-50 rounded-lg p-6 mb-6">
+							<h3 class="text-lg font-bold text-gray-900 mb-4">💡 Energy-Efficient Alternatives</h3>
+							<p class="text-sm text-gray-600 mb-4">
+								Save up to <strong>৳{energyAlternatives.savings.yearly_savings_taka.toFixed(2)}/year</strong> by switching to these alternatives!
+							</p>
+							<div class="space-y-4">
+								{#each energyAlternatives.alternatives as alt}
+									<div class="bg-white rounded-lg p-4 border border-yellow-200">
+										<div class="flex justify-between items-start mb-2">
+											<div class="flex-1">
+												<p class="font-medium text-gray-900">Replace: {alt.original_product.name}</p>
+												<p class="text-sm text-gray-600">With: {alt.alternative_product.name}</p>
+											</div>
+											<div class="text-right ml-4">
+												<p class="text-sm font-medium text-green-600">-{alt.power_savings_watts}W</p>
+												<p class="text-xs text-gray-500">Save ৳{alt.monthly_savings_taka.toFixed(2)}/mo</p>
+											</div>
+										</div>
+										<div class="flex justify-between items-center mt-2">
+											<span class="text-xs px-2 py-1 bg-gray-100 rounded text-gray-600">
+												Performance Impact: {alt.performance_impact}
+											</span>
+											<span class="text-xs text-gray-500">{alt.reason}</span>
+										</div>
+									</div>
+								{/each}
+							</div>
+							{#if energyAlternatives.savings}
+								<div class="mt-4 p-4 bg-green-100 rounded-lg">
+									<p class="font-bold text-green-800">
+										Total Potential Savings: ৳{energyAlternatives.savings.yearly_savings_taka.toFixed(2)}/year
+									</p>
+									<p class="text-sm text-green-700">
+										Carbon Reduction: {energyAlternatives.savings.carbon_reduction_kg.toFixed(2)} kg CO₂/year
+									</p>
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Close Button -->
+					<div class="flex justify-end">
+						<button
+							type="button"
+							on:click={() => (showEnergyModal = false)}
+							class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+						>
+							Close
+						</button>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 {/if}

@@ -60,7 +60,11 @@ export const actions: Actions = {
 				components
 			});
 
-			return { success: `PC build "${name}" saved successfully!`, buildId: build.id };
+			return {
+				success: `PC build "${name}" saved successfully!`,
+				buildId: build.id,
+				data: { buildId: build.id }
+			};
 		} catch (err) {
 			const { message } = handleError(err);
 			return { error: message };
@@ -79,7 +83,7 @@ export const actions: Actions = {
 
 		try {
 			const components = JSON.parse(componentsJson);
-			
+
 			if (!Array.isArray(components) || components.length === 0) {
 				return { error: 'No components selected' };
 			}
@@ -112,13 +116,18 @@ export const actions: Actions = {
 
 			if (errors.length > 0) {
 				// Some items added, some failed
-				return { 
+				return {
 					error: `Some items could not be added: ${errors.join('; ')}`,
 					success: `${added.length} item(s) added to cart`
 				};
 			}
 
-			throw redirect(303, '/cart?success=PC build added to cart successfully');
+			// Return success message instead of redirecting immediately
+			// This allows the notification to show before redirect
+			return {
+				success: `PC build added to cart successfully! Redirecting to cart...`,
+				redirect: '/cart'
+			};
 		} catch (err) {
 			if (err && typeof err === 'object' && 'status' in err && err.status === 303) {
 				throw err; // Re-throw redirect
@@ -128,4 +137,3 @@ export const actions: Actions = {
 		}
 	}
 };
-

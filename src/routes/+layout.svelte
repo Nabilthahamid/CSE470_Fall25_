@@ -58,6 +58,7 @@
 						</span>
 					{/if}
 				</a>
+				<a href="/faq" class="text-white no-underline transition-colors hover:text-indigo-400">FAQ</a>
 				<a href="/profile" class="text-white no-underline transition-colors hover:text-indigo-400">Profile</a>
 				<form method="POST" action="/auth/logout" use:enhance class="inline">
 					<button type="submit" class="bg-red-600 text-white border-none px-4 py-2 rounded cursor-pointer text-sm transition-colors hover:bg-red-700">
@@ -78,6 +79,7 @@
 						</span>
 					{/if}
 				</a>
+				<a href="/faq" class="text-white no-underline transition-colors hover:text-indigo-400">FAQ</a>
 				<a href="/auth/login" class="text-white no-underline transition-colors hover:text-indigo-400">Login</a>
 				<a href="/auth/register" class="text-white no-underline transition-colors hover:text-indigo-400">Register</a>
 			{/if}

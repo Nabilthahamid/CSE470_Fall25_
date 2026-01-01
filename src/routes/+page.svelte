@@ -161,6 +161,15 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
 						</svg>
 					</a>
+					<a
+						href="/community-builds"
+						class="group inline-flex items-center gap-2 bg-purple-700 bg-opacity-30 backdrop-blur-sm border-2 border-white text-white px-8 py-4 rounded-xl no-underline font-bold text-lg transition-all hover:scale-105 hover:bg-opacity-50 hover:shadow-2xl"
+					>
+						<span>Community Builds</span>
+						<svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+						</svg>
+					</a>
 				</div>
 			</div>
 		</div>
@@ -972,7 +981,7 @@
 								aria-label="Facebook"
 							>
 								<svg class="w-5 h-5 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
-									<path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 7.775v2.119H4.062v3.47h5.484v8.385C15.612 23.027 20 18.062 20 12.073z"/>
+									<path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.313 0 2.462.431 3.242 1.119v2.119h-3.242v3.47h5.484v8.385C19.612 22.954 24 17.99 24 12z"/>
 								</svg>
 							</a>
 							<a

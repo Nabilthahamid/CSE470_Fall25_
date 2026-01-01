@@ -356,7 +356,8 @@ export class AIService {
 		// Check if OpenAI is available
 		const openaiApiKey = process.env.OPENAI_API_KEY;
 
-		if (!openaiApiKey) {
+		// Check if API key is valid (not empty and not a placeholder)
+		if (!openaiApiKey || openaiApiKey.includes('your_') || openaiApiKey.includes('here')) {
 			// Fallback to rule-based analysis
 			return this.analyzeComparison(products);
 		}
@@ -515,7 +516,8 @@ Important:
 	): Promise<string> {
 		const openaiApiKey = env.OPENAI_API_KEY;
 
-		if (!openaiApiKey) {
+		// Check if API key is valid (not empty and not a placeholder)
+		if (!openaiApiKey || openaiApiKey.includes('your_') || openaiApiKey.includes('here')) {
 			// Fallback to rule-based responses
 			return this.handleChatMessageRuleBased(message, userId);
 		}
@@ -611,7 +613,7 @@ Important guidelines:
 			// Get user orders if userId is provided
 			if (userId) {
 				try {
-					const sales = await saleService.getAll({ userId });
+					const sales = await saleService.getAllSales({ userId });
 					if (sales.length > 0) {
 						const recentOrders = sales.slice(0, 5).map((s) => ({
 							id: s.id,
@@ -651,7 +653,7 @@ Important guidelines:
 		) {
 			if (userId) {
 				try {
-					const sales = await saleService.getAll({ userId });
+					const sales = await saleService.getAllSales({ userId });
 					if (sales.length > 0) {
 						const recentOrder = sales[0];
 						return `Your most recent order (ID: ${recentOrder.id}) was placed on ${new Date(recentOrder.created_at).toLocaleDateString()}. Total: Tk ${recentOrder.total.toFixed(2)}. For detailed tracking, please check your profile or contact our support team.`;

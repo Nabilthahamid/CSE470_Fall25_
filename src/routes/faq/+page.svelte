@@ -24,6 +24,14 @@
 		</div>
 	{/if}
 
+	<!-- Debug Info (only show if there are FAQs but none published) -->
+	{#if data.totalFAQs > 0 && data.publishedCount === 0}
+		<div class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-6">
+			<p class="font-semibold">⚠️ Notice: {data.totalFAQs} FAQ(s) found in database, but none are published.</p>
+			<p class="text-sm mt-1">To make FAQs visible, go to <a href="/admin/content" class="underline font-semibold">Admin → Content</a> and set <code class="bg-yellow-100 px-1 rounded">is_published</code> to <code class="bg-yellow-100 px-1 rounded">true</code>.</p>
+		</div>
+	{/if}
+
 	{#if Object.keys(data.faqsByCategory).length > 0}
 		<!-- FAQs by Category -->
 		{#each Object.entries(data.faqsByCategory) as [category, faqs]}

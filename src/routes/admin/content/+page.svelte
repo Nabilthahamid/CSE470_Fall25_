@@ -192,7 +192,13 @@
 
 	{#if form?.success}
 		<div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-			Saved successfully!
+			{typeof form.success === 'string' ? form.success : 'Saved successfully!'}
+		</div>
+	{/if}
+
+	{#if form?.error}
+		<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+			<strong>Error:</strong> {form.error}
 		</div>
 	{/if}
 
@@ -620,7 +626,18 @@
 					<h3 class="text-xl font-bold text-gray-900 mb-4">
 						{editingFAQ ? 'Edit FAQ' : 'Create New FAQ'}
 					</h3>
-					<form method="POST" action={editingFAQ ? '?/updateFAQ' : '?/createFAQ'} use:enhance>
+					<form method="POST" action={editingFAQ ? '?/updateFAQ' : '?/createFAQ'} use:enhance={({ update }) => {
+						return async ({ update: updateFn }) => {
+							// Update the page to show new data and messages
+							if (updateFn) {
+								await updateFn();
+							} else if (update) {
+								await update();
+							}
+							// Reset form after update
+							resetFAQForm();
+						};
+					}}>
 						{#if editingFAQ}
 							<input type="hidden" name="id" value={editingFAQ.id} />
 						{/if}

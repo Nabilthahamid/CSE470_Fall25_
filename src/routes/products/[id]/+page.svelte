@@ -53,10 +53,22 @@
 	let loadingSummary = false;
 	let reviewSentiments: Record<string, any> = {};
 
+	// Multi-language support
+	type Language = 'en' | 'bn';
+	let currentLang: Language = 'en';
+	let translatedProduct: any = null;
+	let loadingTranslation = false;
+
 	onMount(async () => {
 		isInCompare = isInComparison(data.product.id);
 		loadReviewSummary();
 		loadReviewSentiments();
+		// Detect user's preferred language from browser
+		const browserLang = navigator.language || 'en';
+		if (browserLang.includes('bn') || browserLang.includes('ben')) {
+			currentLang = 'bn';
+			await loadTranslation('bn');
+		}
 	});
 
 	async function loadReviewSummary() {
@@ -92,6 +104,50 @@
 				console.error('Error analyzing sentiment:', error);
 			}
 		}
+	}
+
+	async function loadTranslation(lang: Language) {
+		if (lang === 'en') {
+			translatedProduct = null;
+			return;
+		}
+
+		loadingTranslation = true;
+		try {
+			const response = await fetch(`/api/products/${data.product.id}/translate?lang=${lang}`);
+			const result = await response.json();
+			
+			if (response.ok && result.translatedProduct) {
+				translatedProduct = result.translatedProduct;
+			} else if (result.needsApiKey) {
+				// Show user-friendly message if API keys are missing
+				showPopupMessage(
+					'Translation requires API configuration. Please set GEMINI_API_KEY or OPENAI_API_KEY in .env file.',
+					'error'
+				);
+				// Switch back to English
+				currentLang = 'en';
+				translatedProduct = null;
+			} else {
+				console.error('Failed to load translation:', result.error);
+				showPopupMessage('Translation unavailable. Showing original text.', 'error');
+				currentLang = 'en';
+				translatedProduct = null;
+			}
+		} catch (error) {
+			console.error('Error loading translation:', error);
+			showPopupMessage('Translation service error. Showing original text.', 'error');
+			currentLang = 'en';
+			translatedProduct = null;
+		} finally {
+			loadingTranslation = false;
+		}
+	}
+
+	async function switchLanguage(lang: Language) {
+		if (currentLang === lang) return;
+		currentLang = lang;
+		await loadTranslation(lang);
 	}
 
 	function showPopupMessage(message: string, type: 'success' | 'error' = 'success') {
@@ -274,7 +330,38 @@
 
 		<!-- Product Info Section -->
 		<div>
-			<h1 class="text-3xl md:text-4xl font-bold mb-3 text-gray-900">{data.product.name}</h1>
+			<!-- Language Toggle -->
+			<div class="mb-4 flex items-center gap-2">
+				<button
+					type="button"
+					on:click={() => switchLanguage('en')}
+					class="px-3 py-1.5 text-sm rounded-md font-medium transition-colors {currentLang === 'en'
+						? 'bg-indigo-600 text-white'
+						: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				>
+					English
+				</button>
+				<button
+					type="button"
+					on:click={() => switchLanguage('bn')}
+					class="px-3 py-1.5 text-sm rounded-md font-medium transition-colors {currentLang === 'bn'
+						? 'bg-indigo-600 text-white'
+						: 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+				>
+					বাংলা
+				</button>
+				{#if loadingTranslation}
+					<span class="text-sm text-gray-500 ml-2">Translating...</span>
+				{/if}
+			</div>
+
+			<h1 class="text-3xl md:text-4xl font-bold mb-3 text-gray-900">
+				{loadingTranslation
+					? 'Loading...'
+					: currentLang === 'bn' && translatedProduct?.translatedName
+						? translatedProduct.translatedName
+						: data.product.name}
+			</h1>
 
 			<!-- Rating Display -->
 			<div class="mb-4 flex items-center gap-2">
@@ -428,8 +515,27 @@
 
 			<!-- Description -->
 			<div class="mb-6">
-				<h3 class="font-semibold text-gray-900 mb-2">Description</h3>
-				<p class="text-gray-800">{data.product.description}</p>
+				<h3 class="font-semibold text-gray-900 mb-2">
+					{currentLang === 'bn' ? 'বিবরণ' : 'Description'}
+				</h3>
+				<p class="text-gray-800">
+					{loadingTranslation
+						? 'Loading translation...'
+						: currentLang === 'bn' && translatedProduct?.translatedDescription
+							? translatedProduct.translatedDescription
+							: data.product.description}
+				</p>
+				{#if currentLang === 'bn' && translatedProduct?.translatedSpecs}
+					<div class="mt-4">
+						<h4 class="font-semibold text-gray-900 mb-2">স্পেসিফিকেশন</h4>
+						<p class="text-gray-800 whitespace-pre-line">{translatedProduct.translatedSpecs}</p>
+					</div>
+				{:else if data.product.specifications}
+					<div class="mt-4">
+						<h4 class="font-semibold text-gray-900 mb-2">Specifications</h4>
+						<p class="text-gray-800 whitespace-pre-line">{data.product.specifications}</p>
+					</div>
+				{/if}
 			</div>
 
 			<!-- Contact Section -->

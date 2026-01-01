@@ -2,7 +2,9 @@
 
 ## API Key Configuration
 
-Add the following to your `.env` file:
+✅ **API Key Configured!** The Gemini API key has been added to your `.env` file.
+
+The following is set in your `.env` file:
 
 ```
 GEMINI_API_KEY=AIzaSyC4TyUjX4EfJALiL_8B7zjRVqte3uxPprk
