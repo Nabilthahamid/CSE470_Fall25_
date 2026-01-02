@@ -20,7 +20,6 @@
 	const widgetIds = [
 		'stats_cards',
 		'revenue_summary',
-		'notifications',
 		'admin_controls',
 		'quick_actions',
 		'ai_insights'
@@ -320,59 +319,6 @@
 					</div>
 				</div>
 			</div>
-		{/if}
-
-		<!-- Notifications Section -->
-		{#if widgetVisibility['notifications'] ?? true}
-			{#if data.unreadCount > 0}
-				<div class="bg-yellow-50 p-6 rounded-lg border border-yellow-200 mb-6">
-					<div class="flex justify-between items-center mb-4">
-						<h2 class="m-0 text-xl font-semibold text-gray-900">
-							🔔 Notifications ({data.unreadCount} unread)
-						</h2>
-						<form method="POST" action="?/markAllRead" use:enhance>
-							<button
-								type="submit"
-								class="bg-yellow-600 text-white border-none px-4 py-2 rounded cursor-pointer text-sm transition-colors hover:bg-yellow-700"
-							>
-								Mark All Read
-							</button>
-						</form>
-					</div>
-					<div class="space-y-3">
-						{#each data.notifications.slice(0, 5) as notification (notification.id)}
-							<div class="bg-white p-4 rounded border border-gray-200 flex justify-between items-start">
-								<div class="flex-1">
-									<h3 class="m-0 mb-1 font-semibold text-gray-900">{notification.title}</h3>
-									<p class="m-0 text-sm text-gray-600">{notification.message}</p>
-									{#if notification.product_name}
-										<p class="mt-2 text-xs text-gray-500">
-											Product: {notification.product_name}
-										</p>
-									{/if}
-									<p class="mt-1 text-xs text-gray-500">
-										{new Date(notification.created_at || '').toLocaleString()}
-									</p>
-								</div>
-								<form method="POST" action="?/markNotificationRead" use:enhance class="ml-4">
-									<input type="hidden" name="id" value={notification.id} />
-									<button
-										type="submit"
-										class="bg-gray-600 text-white border-none px-3 py-1 rounded cursor-pointer text-xs transition-colors hover:bg-gray-700"
-									>
-										Mark Read
-									</button>
-								</form>
-							</div>
-						{/each}
-					</div>
-					{#if data.notifications.length > 5}
-						<p class="mt-4 text-sm text-gray-600 text-center">
-							And {data.notifications.length - 5} more notifications...
-						</p>
-					{/if}
-				</div>
-			{/if}
 		{/if}
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">

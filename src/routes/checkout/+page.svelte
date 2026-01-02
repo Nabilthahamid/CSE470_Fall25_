@@ -20,6 +20,12 @@
 	let saveInfo = false;
 	let shippingMethod = 'inside_dhaka';
 	let paymentMethod = 'cod';
+	let couponCode = '';
+	let couponLoading = false;
+	let couponError = '';
+	let appliedCoupon: any = null;
+	let discountAmount = 0;
+	let freeShipping = false;
 
 	// Parse full name into first and last name if available from profile
 	function initializeFromProfile() {
@@ -44,8 +50,59 @@
 		{ value: 'outside_dhaka', label: 'Outside Dhaka', price: 100 }
 	];
 
-	$: shippingCost = shippingMethods.find((m) => m.value === shippingMethod)?.price || 0;
-	$: totalAmount = data.total + shippingCost;
+	async function applyCoupon() {
+		if (!couponCode.trim()) {
+			couponError = 'Please enter a coupon code';
+			return;
+		}
+
+		couponLoading = true;
+		couponError = '';
+		appliedCoupon = null;
+		discountAmount = 0;
+		freeShipping = false;
+
+		try {
+			const response = await fetch('/api/checkout/validate-coupon', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ code: couponCode.trim() })
+			});
+
+			const result = await response.json();
+
+			if (result.valid && result.discount) {
+				appliedCoupon = result.discount;
+				discountAmount = result.discount_amount;
+				freeShipping = result.discount.free_shipping || false;
+				couponError = '';
+			} else {
+				couponError = result.error || 'Invalid coupon code';
+				appliedCoupon = null;
+				discountAmount = 0;
+				freeShipping = false;
+			}
+		} catch (error) {
+			console.error('Coupon validation error:', error);
+			couponError = 'Failed to validate coupon. Please try again.';
+			appliedCoupon = null;
+			discountAmount = 0;
+			freeShipping = false;
+		} finally {
+			couponLoading = false;
+		}
+	}
+
+	function removeCoupon() {
+		couponCode = '';
+		appliedCoupon = null;
+		discountAmount = 0;
+		freeShipping = false;
+		couponError = '';
+	}
+
+	$: shippingCost = freeShipping ? 0 : (shippingMethods.find((m) => m.value === shippingMethod)?.price || 0);
+	$: totalAmount = data.total - discountAmount + shippingCost;
 </script>
 
 <svelte:head>
@@ -272,6 +329,64 @@
 					</div>
 				</div>
 
+				<!-- Coupon Code Section -->
+				<div class="bg-white p-6 rounded-lg border border-gray-200 mb-6">
+					<h2 class="text-xl font-semibold mb-4 m-0">Coupon Code</h2>
+					{#if appliedCoupon}
+						<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+							<div class="flex items-center justify-between">
+								<div>
+									<p class="font-semibold text-green-800 m-0">
+										✓ Coupon "{appliedCoupon.code}" applied
+									</p>
+									<p class="text-sm text-green-700 m-0 mt-1">
+										{#if appliedCoupon.free_shipping}
+											Free shipping applied
+										{:else if appliedCoupon.discount_type === 'percentage'}
+											{appliedCoupon.discount_value}% off
+										{:else}
+											৳{discountAmount.toFixed(2)} discount
+										{/if}
+									</p>
+								</div>
+								<button
+									type="button"
+									on:click={removeCoupon}
+									class="text-red-600 hover:text-red-700 text-sm font-medium"
+								>
+									Remove
+								</button>
+							</div>
+						</div>
+					{:else}
+						<div class="flex gap-2">
+							<input
+								type="text"
+								bind:value={couponCode}
+								placeholder="Enter coupon code"
+								class="flex-1 p-3 border-2 border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+								on:keydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										applyCoupon();
+									}
+								}}
+							/>
+							<button
+								type="button"
+								on:click={applyCoupon}
+								disabled={couponLoading || !couponCode.trim()}
+								class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-semibold"
+							>
+								{couponLoading ? 'Applying...' : 'Apply'}
+							</button>
+						</div>
+						{#if couponError}
+							<p class="text-red-600 text-sm mt-2 m-0">{couponError}</p>
+						{/if}
+					{/if}
+				</div>
+
 				<!-- Payment Section -->
 				<div class="bg-white p-6 rounded-lg border border-gray-200 mb-6">
 					<h2 class="text-xl font-semibold mb-2 m-0">Payment</h2>
@@ -338,6 +453,11 @@
 				<!-- Hidden inputs -->
 				<input type="hidden" name="shipping_cost" value={shippingCost} />
 				<input type="hidden" name="email_newsletter" value={emailNewsletter ? 'true' : 'false'} />
+				{#if appliedCoupon}
+					<input type="hidden" name="coupon_code" value={appliedCoupon.code} />
+					<input type="hidden" name="coupon_id" value={appliedCoupon.id} />
+					<input type="hidden" name="discount_amount" value={discountAmount} />
+				{/if}
 
 				<button
 					type="submit"
@@ -365,9 +485,21 @@
 						<span>Subtotal</span>
 						<span>৳{data.total.toFixed(2)}</span>
 					</div>
+					{#if discountAmount > 0}
+						<div class="flex justify-between text-sm text-green-600">
+							<span>Discount ({appliedCoupon?.code})</span>
+							<span>-৳{discountAmount.toFixed(2)}</span>
+						</div>
+					{/if}
 					<div class="flex justify-between text-sm">
 						<span>Shipping</span>
-						<span>৳{shippingCost.toFixed(2)}</span>
+						<span>
+							{#if freeShipping}
+								<span class="text-green-600">Free</span>
+							{:else}
+								৳{shippingCost.toFixed(2)}
+							{/if}
+						</span>
 					</div>
 					<div class="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
 						<span>Total</span>

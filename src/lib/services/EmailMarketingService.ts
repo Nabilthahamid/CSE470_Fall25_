@@ -6,6 +6,7 @@ import type {
 	EmailCampaign,
 	CreateNewsletterDTO,
 	CreateEmailSequenceDTO,
+	CreateEmailCampaignDTO,
 	EmailAnalytics
 } from '$lib/models/EmailMarketing';
 
@@ -148,6 +149,69 @@ export class EmailMarketingService {
 		} catch (error) {
 			return [];
 		}
+	}
+
+	/**
+	 * Get email campaign by ID
+	 */
+	async getCampaignById(id: string): Promise<EmailCampaign | null> {
+		const { data, error } = await supabase
+			.from('email_campaigns')
+			.select('*')
+			.eq('id', id)
+			.single();
+
+		if (error) {
+			if (error.code === 'PGRST116') return null;
+			throw new Error(`Failed to fetch campaign: ${error.message}`);
+		}
+		return data;
+	}
+
+	/**
+	 * Create email campaign
+	 */
+	async createCampaign(campaign: CreateEmailCampaignDTO): Promise<EmailCampaign> {
+		const { data, error } = await supabase
+			.from('email_campaigns')
+			.insert({
+				...campaign,
+				sent_count: 0,
+				opened_count: 0,
+				clicked_count: 0,
+				bounced_count: 0,
+				unsubscribed_count: 0,
+				status: campaign.status || 'draft',
+				created_at: new Date().toISOString()
+			})
+			.select()
+			.single();
+
+		if (error) throw new Error(`Failed to create campaign: ${error.message}`);
+		return data;
+	}
+
+	/**
+	 * Update email campaign
+	 */
+	async updateCampaign(id: string, campaign: Partial<CreateEmailCampaignDTO>): Promise<EmailCampaign> {
+		const { data, error } = await supabase
+			.from('email_campaigns')
+			.update({ ...campaign, updated_at: new Date().toISOString() })
+			.eq('id', id)
+			.select()
+			.single();
+
+		if (error) throw new Error(`Failed to update campaign: ${error.message}`);
+		return data;
+	}
+
+	/**
+	 * Delete email campaign
+	 */
+	async deleteCampaign(id: string): Promise<void> {
+		const { error } = await supabase.from('email_campaigns').delete().eq('id', id);
+		if (error) throw new Error(`Failed to delete campaign: ${error.message}`);
 	}
 
 	/**

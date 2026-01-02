@@ -1,5 +1,5 @@
 // SERVICE: Media Library Management
-import { supabase } from '$lib/config/supabase';
+import { supabase, getSupabaseAdmin } from '$lib/config/supabase';
 import { productService } from './ProductService';
 import type { MediaFile, MediaUsage, CreateMediaDTO, UpdateMediaDTO } from '$lib/models/Media';
 
@@ -44,7 +44,8 @@ export class MediaService {
 	 * Create media file record
 	 */
 	async createMedia(media: CreateMediaDTO): Promise<MediaFile> {
-		const { data, error } = await supabase
+		// Use admin client to bypass RLS for admin operations
+		const { data, error } = await getSupabaseAdmin()
 			.from('media_files')
 			.insert({ ...media, usage_count: 0, created_at: new Date().toISOString() })
 			.select()
@@ -58,7 +59,8 @@ export class MediaService {
 	 * Update media file
 	 */
 	async updateMedia(id: string, media: UpdateMediaDTO): Promise<MediaFile> {
-		const { data, error } = await supabase
+		// Use admin client to bypass RLS for admin operations
+		const { data, error } = await getSupabaseAdmin()
 			.from('media_files')
 			.update({ ...media, updated_at: new Date().toISOString() })
 			.eq('id', id)
@@ -73,7 +75,8 @@ export class MediaService {
 	 * Delete media file
 	 */
 	async deleteMedia(id: string): Promise<void> {
-		const { error } = await supabase.from('media_files').delete().eq('id', id);
+		// Use admin client to bypass RLS for admin operations
+		const { error } = await getSupabaseAdmin().from('media_files').delete().eq('id', id);
 		if (error) throw new Error(`Failed to delete media: ${error.message}`);
 	}
 
@@ -94,6 +97,103 @@ export class MediaService {
 			return data || [];
 		} catch (error) {
 			return [];
+		}
+	}
+
+	/**
+	 * Track media usage for a product
+	 */
+	async trackProductMediaUsage(productId: string, imageUrl: string, productName?: string): Promise<void> {
+		try {
+			const adminClient = getSupabaseAdmin();
+			// Find media file by URL
+			const { data: mediaFiles, error: findError } = await adminClient
+				.from('media_files')
+				.select('id')
+				.eq('file_url', imageUrl)
+				.limit(1);
+
+			// If table doesn't exist or other error, silently fail
+			if (findError) {
+				if (findError.code === '42P01') {
+					// Table doesn't exist, that's okay
+					return;
+				}
+				throw findError;
+			}
+
+			if (mediaFiles && mediaFiles.length > 0) {
+				const mediaId = mediaFiles[0].id;
+				await this.trackMediaUsage({
+					media_id: mediaId,
+					entity_type: 'product',
+					entity_id: productId,
+					entity_name: productName
+				});
+			}
+		} catch (error: any) {
+			// Don't fail if tracking fails - this is non-critical
+			if (error?.code !== '42P01') {
+				// Only log if it's not a "table doesn't exist" error
+				console.warn('Failed to track product media usage:', error?.message || error);
+			}
+		}
+	}
+
+	/**
+	 * Remove media usage for a product
+	 */
+	async removeProductMediaUsage(productId: string, imageUrl: string): Promise<void> {
+		try {
+			const adminClient = getSupabaseAdmin();
+			// Find media file by URL
+			const { data: mediaFiles } = await adminClient
+				.from('media_files')
+				.select('id')
+				.eq('file_url', imageUrl)
+				.limit(1);
+
+			if (mediaFiles && mediaFiles.length > 0) {
+				const mediaId = mediaFiles[0].id;
+				await adminClient
+					.from('media_usage')
+					.delete()
+					.eq('media_id', mediaId)
+					.eq('entity_type', 'product')
+					.eq('entity_id', productId);
+
+				// Update usage count
+				const { data: media } = await this.getMediaById(mediaId);
+				if (media) {
+					const usageCount = await this.getUsageCount(mediaId);
+					await adminClient
+						.from('media_files')
+						.update({ usage_count: usageCount })
+						.eq('id', mediaId);
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to remove product media usage:', error);
+		}
+	}
+
+	/**
+	 * Get usage count for a media file
+	 */
+	async getUsageCount(mediaId: string): Promise<number> {
+		try {
+			const { count, error } = await supabase
+				.from('media_usage')
+				.select('*', { count: 'exact', head: true })
+				.eq('media_id', mediaId);
+
+			if (error) {
+				if (error.code === '42P01') return 0;
+				throw error;
+			}
+			return count || 0;
+		} catch (error) {
+			return 0;
 		}
 	}
 

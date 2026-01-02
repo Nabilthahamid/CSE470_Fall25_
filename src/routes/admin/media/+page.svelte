@@ -1,12 +1,13 @@
-<!-- VIEW: Media Library Page -->
+	<!-- VIEW: Media Library Page -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
-	import { uploadImage } from '$lib/utils/storage';
 
 	export let data: PageData;
 	export let form: ActionData;
+	// params not used - suppress warning
 	export let params: Record<string, string> = {};
 
 	let showUploadForm = false;
@@ -15,18 +16,13 @@
 	let filterType: string = data.type || 'all';
 	let searchQuery = data.search || '';
 
-	async function handleFileUpload(event: Event) {
-		const target = event.target as HTMLInputElement;
-		const file = target.files?.[0];
-		if (!file) return;
-
-		try {
-			const fileUrl = await uploadImage(file, 'product-images');
-			// Reload page to show new media
-			window.location.reload();
-		} catch (error: any) {
-			alert('Upload failed: ' + error.message);
-		}
+	// Reset form on successful upload
+	$: if (form?.success) {
+		showUploadForm = false;
+		// Refresh data
+		setTimeout(() => {
+			invalidateAll();
+		}, 500);
 	}
 
 	function formatFileSize(bytes: number): string {
@@ -92,22 +88,38 @@
 	{#if showUploadForm}
 		<div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200 mb-6">
 			<h2 class="text-xl font-bold text-gray-900 mb-4">Upload New Media</h2>
-			<form method="POST" action="?/upload" use:enhance>
+			<form
+				method="POST"
+				action="?/upload"
+				enctype="multipart/form-data"
+				use:enhance={({ result }) => {
+					return async ({ update }) => {
+						if (result && result.type === 'success') {
+							// Refresh the page data
+							await invalidateAll();
+							// Close the form
+							showUploadForm = false;
+						}
+						await update();
+					};
+				}}
+			>
 				<div class="space-y-4">
 					<div>
-						<label class="block mb-2 font-medium">File *</label>
+						<label for="upload-file" class="block mb-2 font-medium">File *</label>
 						<input
+							id="upload-file"
 							type="file"
 							name="file"
 							required
 							accept="image/*,video/*,.pdf"
-							on:change={handleFileUpload}
 							class="w-full p-3 border-2 border-gray-300 rounded-lg"
 						/>
 					</div>
 					<div>
-						<label class="block mb-2 font-medium">Folder</label>
+						<label for="upload-folder" class="block mb-2 font-medium">Folder</label>
 						<input
+							id="upload-folder"
 							type="text"
 							name="folder"
 							placeholder="general"
@@ -115,19 +127,23 @@
 						/>
 					</div>
 					<div>
-						<label class="block mb-2 font-medium">Alt Text</label>
+						<label for="upload-alt" class="block mb-2 font-medium">Alt Text</label>
 						<input
+							id="upload-alt"
 							type="text"
 							name="alt_text"
+							placeholder="Optional alt text for accessibility"
 							class="w-full p-3 border-2 border-gray-300 rounded-lg"
 						/>
 					</div>
 					<div>
-						<label class="block mb-2 font-medium">Description</label>
+						<label for="upload-description" class="block mb-2 font-medium">Description</label>
 						<textarea
+							id="upload-description"
 							name="description"
-							rows="3"
+							placeholder="Optional description"
 							class="w-full p-3 border-2 border-gray-300 rounded-lg"
+							rows="3"
 						></textarea>
 					</div>
 					<div class="flex gap-3">
@@ -201,9 +217,19 @@
 	{#if viewMode === 'grid'}
 		<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
 			{#each data.media as media}
+				<!-- svelte-ignore a11y-click-events-have-key-events -->
+				<!-- svelte-ignore a11y-no-static-element-interactions -->
 				<div
 					class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer"
+					role="button"
+					tabindex="0"
 					on:click={() => (selectedMedia = media)}
+					on:keydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							selectedMedia = media;
+						}
+					}}
 				>
 					{#if media.file_type === 'image'}
 						<img src={media.file_url} alt={media.alt_text || media.filename} class="w-full h-32 object-cover" />
@@ -308,13 +334,27 @@
 
 	<!-- Media Detail Modal -->
 	{#if selectedMedia}
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div
 			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+			role="dialog"
+			aria-modal="true"
+			tabindex="-1"
 			on:click={() => (selectedMedia = null)}
+			on:keydown={(e) => {
+				if (e.key === 'Escape') {
+					selectedMedia = null;
+				}
+			}}
 		>
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
+			<!-- svelte-ignore a11y-no-static-element-interactions -->
 			<div
 				class="bg-white rounded-xl shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+				role="document"
 				on:click|stopPropagation
+				on:keydown|stopPropagation
 			>
 				<div class="flex justify-between items-center mb-4">
 					<h2 class="text-2xl font-bold text-gray-900">Media Details</h2>
@@ -355,8 +395,9 @@
 						<input type="hidden" name="id" value={selectedMedia.id} />
 						<div class="space-y-4">
 							<div>
-								<label class="block mb-2 font-medium">Alt Text</label>
+								<label for="media-alt-text" class="block mb-2 font-medium">Alt Text</label>
 								<input
+									id="media-alt-text"
 									type="text"
 									name="alt_text"
 									value={selectedMedia.alt_text || ''}
@@ -364,8 +405,9 @@
 								/>
 							</div>
 							<div>
-								<label class="block mb-2 font-medium">Description</label>
+								<label for="media-description" class="block mb-2 font-medium">Description</label>
 								<textarea
+									id="media-description"
 									name="description"
 									value={selectedMedia.description || ''}
 									rows="3"

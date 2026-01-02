@@ -8,7 +8,6 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params: Record<string, string> = {};
 
 	let selectedComponents: Record<string, { product: Product; category: ComponentCategory }> = {};
 	let hideUnconfigured = false;
@@ -245,36 +244,61 @@
 		aiLoading = true;
 
 		try {
-			// Extract budget and use case from message
-			const budgetMatch = userMessage.match(/(\d+)\s*(?:taka|tk|taka|bdt)/i);
-			const budget = budgetMatch ? parseFloat(budgetMatch[1]) : 50000;
-			
-			let useCase = 'gaming';
-			if (userMessage.toLowerCase().includes('work') || userMessage.toLowerCase().includes('office')) {
-				useCase = 'work';
-			} else if (userMessage.toLowerCase().includes('content') || userMessage.toLowerCase().includes('editing')) {
-				useCase = 'content-creation';
-			}
-
+			// Send user's question directly to the API - it will handle everything
 			const response = await fetch('/api/pc-builder/ai-suggest', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ budget, useCase, preferences: userMessage })
+				body: JSON.stringify({ 
+					preferences: userMessage 
+				})
 			});
 
 			if (response.ok) {
 				const data = await response.json();
-				let assistantMessage = data.explanation + '\n\nSuggested Components:\n';
-				data.suggestions.forEach((s: any) => {
-					assistantMessage += `• ${s.categoryName}: ${s.productName} - Tk ${s.price.toFixed(2)}\n`;
-					assistantMessage += `  Reason: ${s.reason}\n\n`;
-				});
-				assistantMessage += `\nTotal: Tk ${data.totalPrice.toFixed(2)}`;
+				let assistantMessage = '';
+
+				// Handle Gemini question responses (most common case)
+				if (data.isQuestion && data.answer) {
+					assistantMessage = data.answer;
+					
+					// Add product list if available
+					if (data.products && data.products.length > 0) {
+						assistantMessage += '\n\n**📦 Available Products in Our Store:**\n';
+						data.products.forEach((p: any, index: number) => {
+							assistantMessage += `${index + 1}. **${p.productName}** - Tk ${p.price.toFixed(2)}\n`;
+							if (p.description && p.description.length > 0) {
+								const shortDesc = p.description.length > 80 
+									? p.description.substring(0, 80) + '...' 
+									: p.description;
+								assistantMessage += `   ${shortDesc}\n`;
+							}
+							assistantMessage += '\n';
+						});
+					}
+				} 
+				// Handle full build suggestions (only when explicitly requested)
+				else if (data.suggestions && data.suggestions.length > 0) {
+					assistantMessage = data.explanation || 'I\'ve selected components for your build:\n\n';
+					assistantMessage += '**Suggested Components:**\n';
+					data.suggestions.forEach((s: any) => {
+						assistantMessage += `• **${s.categoryName}**: ${s.productName} - Tk ${s.price.toFixed(2)}\n`;
+						assistantMessage += `  Reason: ${s.reason}\n\n`;
+					});
+					assistantMessage += `\n**Total: Tk ${data.totalPrice.toFixed(2)}**`;
+				} 
+				// Fallback
+				else if (data.answer) {
+					assistantMessage = data.answer;
+				} else {
+					assistantMessage = 'I\'m here to help! Ask me anything about PC components, products, or building a PC.';
+				}
+				
 				aiChatMessages = [...aiChatMessages, { role: 'assistant', content: assistantMessage }];
 			} else {
+				const errorData = await response.json().catch(() => ({}));
 				aiChatMessages = [...aiChatMessages, { 
 					role: 'assistant', 
-					content: 'Sorry, I encountered an error. Please try again.' 
+					content: errorData.error || 'Sorry, I encountered an error. Please try again.' 
 				}];
 			}
 		} catch (error) {
@@ -416,10 +440,9 @@
 					<button
 						type="button"
 						on:click={() => (showOverview = !showOverview)}
-						class="relative px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
+						class="relative px-4 py-2 {showOverview ? 'bg-indigo-700' : 'bg-indigo-600'} text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold"
 					>
 						Overview
-						<span class="ml-2 px-2 py-0.5 bg-indigo-700 rounded text-xs">BETA</span>
 						{#if itemCount > 0}
 							<span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
 								{itemCount}
@@ -508,9 +531,9 @@
 			</div>
 		{/if}
 
-		<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+		<div class="grid grid-cols-1 {showOverview ? 'lg:grid-cols-3' : 'lg:grid-cols-1'} gap-6">
 			<!-- Main Content -->
-			<div class="lg:col-span-2 space-y-6">
+			<div class="{showOverview ? 'lg:col-span-2' : 'lg:col-span-1'} space-y-6">
 				<!-- Core Components -->
 				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
 					<h2 class="text-xl font-bold text-gray-900 mb-4">Core Components</h2>
@@ -676,9 +699,22 @@
 			</div>
 
 			<!-- Overview Sidebar -->
+			{#if showOverview}
 			<div class="lg:col-span-1">
 				<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-8">
-					<h2 class="text-xl font-bold text-gray-900 mb-4">Overview</h2>
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="text-xl font-bold text-gray-900">Overview</h2>
+						<button
+							type="button"
+							on:click={() => (showOverview = false)}
+							class="text-gray-400 hover:text-gray-600"
+							aria-label="Close overview"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+							</svg>
+						</button>
+					</div>
 					<div class="space-y-4">
 						<div class="flex justify-between items-center">
 							<span class="text-gray-700">Total Items:</span>
@@ -705,6 +741,7 @@
 					</div>
 				</div>
 			</div>
+			{/if}
 		</div>
 	</div>
 
@@ -789,6 +826,8 @@
 
 <!-- Product Selection Modal -->
 {#if showProductModal && currentCategory}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
 		role="dialog"
@@ -806,11 +845,14 @@
 			}
 		}}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div
 			class="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto"
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<div class="p-6">
 				<div class="flex justify-between items-center mb-4">
@@ -882,6 +924,8 @@
 
 <!-- Save Build Modal -->
 {#if showSaveModal}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
 		role="dialog"
@@ -895,11 +939,14 @@
 			}
 		}}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div 
 			class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4" 
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<form method="POST" action="?/saveBuild" use:enhance class="p-6">
 				<h2 id="save-modal-title" class="text-2xl font-bold text-gray-900 mb-4">Save PC Build</h2>
@@ -961,6 +1008,8 @@
 
 <!-- Share to Community Modal -->
 {#if showShareModal}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
 		role="dialog"
@@ -974,11 +1023,14 @@
 			}
 		}}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div 
 			class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4" 
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<div class="p-6">
 				<h2 id="share-modal-title" class="text-2xl font-bold text-gray-900 mb-4">Share to Community</h2>
@@ -1074,6 +1126,8 @@
 
 <!-- Energy Efficiency Modal -->
 {#if showEnergyModal}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
 		role="dialog"
@@ -1087,11 +1141,15 @@
 			}
 		}}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div 
 			class="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto" 
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<div class="p-6">
 				<div class="flex justify-between items-center mb-4">
@@ -1266,6 +1324,8 @@
 
 <!-- AI Assistant Modal -->
 {#if showAIAssistant}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div 
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
 		role="dialog"
@@ -1275,11 +1335,14 @@
 		on:click={() => showAIAssistant = false}
 		on:keydown={(e) => e.key === 'Escape' && (showAIAssistant = false)}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div 
 			class="bg-white rounded-xl shadow-2xl w-full max-w-2xl h-[600px] flex flex-col m-4" 
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
 				<div class="flex items-center gap-3">
@@ -1346,6 +1409,8 @@
 
 <!-- Optimize Build Modal -->
 {#if showOptimizeModal}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div 
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
 		role="dialog"
@@ -1355,11 +1420,14 @@
 		on:click={() => showOptimizeModal = false}
 		on:keydown={(e) => e.key === 'Escape' && (showOptimizeModal = false)}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div 
 			class="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-y-auto m-4" 
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<div class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
 				<h2 id="optimize-modal-title" class="text-xl font-bold">⚡ AI Build Optimization</h2>
@@ -1416,6 +1484,8 @@
 
 <!-- Pre-built Builds Modal -->
 {#if showPrebuiltModal}
+	<!-- svelte-ignore a11y-click-events-have-key-events -->
+	<!-- svelte-ignore a11y-no-static-element-interactions -->
 	<div 
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
 		role="dialog"
@@ -1425,11 +1495,14 @@
 		on:click={() => showPrebuiltModal = false}
 		on:keydown={(e) => e.key === 'Escape' && (showPrebuiltModal = false)}
 	>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div 
 			class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-y-auto m-4" 
 			role="document"
 			on:click|stopPropagation
 			on:keydown|stopPropagation
+			aria-label="Modal content"
 		>
 			<div class="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-6 py-4 rounded-t-xl flex items-center justify-between">
 				<h2 id="prebuilt-modal-title" class="text-xl font-bold">📦 AI Pre-built Configurations</h2>

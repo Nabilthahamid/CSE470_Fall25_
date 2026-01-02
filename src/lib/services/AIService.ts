@@ -1423,22 +1423,124 @@ Important guidelines:
 		const budgetPerCategory = requirements.budget / requiredCategories.length;
 		let remainingBudget = requirements.budget;
 
+		// Determine tier preference from preferences string
+		const tier = requirements.preferences?.toLowerCase() || 'mid-range';
+		const isBudgetTier = tier.includes('budget');
+		const isHighEndTier = tier.includes('high-end') || tier.includes('high end');
+
 		for (const category of requiredCategories) {
-			const categoryProducts = availableProducts.filter(
-				(p) => (p as any).component_category_id === category.id && p.stock > 0
+			const categoryNameLower = category.name.toLowerCase();
+			
+			// Step 1: Try exact category ID match (preferred method)
+			let categoryProducts = availableProducts.filter(
+				(p) => (p as any).component_category_id === category.id
 			);
 
-			if (categoryProducts.length === 0) continue;
+			// Step 2: If no products with category ID, try flexible name matching
+			if (categoryProducts.length === 0) {
+				categoryProducts = availableProducts.filter((p) => {
+					const productNameLower = (p.name || '').toLowerCase();
+					const productDescLower = ((p.description || '') + ' ' + (p.specifications || '')).toLowerCase();
+					
+					// Check if product name or description contains category name
+					const matchesName = productNameLower.includes(categoryNameLower) || 
+					                   categoryNameLower.includes(productNameLower.split(' ')[0]) ||
+					                   productDescLower.includes(categoryNameLower);
+					
+					// Also check for common aliases
+					const categoryAliases: Record<string, string[]> = {
+						'cpu': ['processor', 'cpu', 'central processing unit', 'intel', 'amd', 'ryzen', 'core i'],
+						'gpu': ['gpu', 'graphics', 'video card', 'graphics card', 'nvidia', 'geforce', 'radeon'],
+						'ram': ['ram', 'memory', 'ddr', 'random access memory'],
+						'motherboard': ['motherboard', 'mobo', 'mainboard', 'board'],
+						'storage': ['storage', 'ssd', 'hard drive', 'hdd', 'nvme', 'sata'],
+						'psu': ['psu', 'power supply', 'power', 'smps'],
+						'case': ['case', 'chassis', 'cabinet', 'tower'],
+						'cooling': ['cooling', 'cooler', 'fan', 'heatsink', 'thermal']
+					};
+					
+					let matchesAlias = false;
+					for (const [key, aliases] of Object.entries(categoryAliases)) {
+						if (categoryNameLower.includes(key) || key.includes(categoryNameLower)) {
+							matchesAlias = aliases.some(alias => 
+								productNameLower.includes(alias) || productDescLower.includes(alias)
+							);
+							if (matchesAlias) break;
+						}
+					}
+					
+					return matchesName || matchesAlias;
+				});
+			}
 
-			// Score products based on use case
+			// Step 3: Filter by stock (but be lenient - allow null/undefined)
+			categoryProducts = categoryProducts.filter(p => 
+				p.stock > 0 || p.stock === null || p.stock === undefined || p.stock === 0
+			);
+
+			// Step 4: If still no products, try without any stock filter
+			if (categoryProducts.length === 0) {
+				categoryProducts = availableProducts.filter(
+					(p) => (p as any).component_category_id === category.id
+				);
+				
+				// If still nothing, try name matching without stock filter
+				if (categoryProducts.length === 0) {
+					categoryProducts = availableProducts.filter((p) => {
+						const productNameLower = (p.name || '').toLowerCase();
+						return productNameLower.includes(categoryNameLower) || 
+						       categoryNameLower.includes(productNameLower.split(' ')[0]);
+					});
+				}
+			}
+
+			if (categoryProducts.length === 0) {
+				console.warn(`⚠️ No products found for category: ${category.name} (id: ${category.id})`);
+				console.warn(`   Total products available: ${availableProducts.length}`);
+				console.warn(`   Products with category IDs: ${availableProducts.filter(p => (p as any).component_category_id).length}`);
+				continue;
+			}
+
+			console.log(`✅ Found ${categoryProducts.length} products for ${category.name}`);
+
+			// Get price range for this category
+			const prices = categoryProducts.map(p => p.price).sort((a, b) => a - b);
+			const minPrice = prices[0] || 0;
+			const maxPrice = prices[prices.length - 1] || budgetPerCategory;
+			const midPrice = (minPrice + maxPrice) / 2;
+
+			// Score products based on use case and tier
 			const scored = categoryProducts.map((product) => {
 				const productText =
 					`${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
 				let score = 0;
 
-				// Budget fit score
-				const budgetFit = 1 - Math.abs(product.price - budgetPerCategory) / requirements.budget;
-				score += budgetFit * 0.4;
+				// Tier-based price scoring
+				if (isBudgetTier) {
+					// Budget tier: prefer cheaper products
+					const priceRatio = (maxPrice - product.price) / (maxPrice - minPrice || 1);
+					score += priceRatio * 0.5; // Higher score for cheaper products
+				} else if (isHighEndTier) {
+					// High-end tier: prefer more expensive, premium products
+					const priceRatio = (product.price - minPrice) / (maxPrice - minPrice || 1);
+					score += priceRatio * 0.5; // Higher score for more expensive products
+					// Bonus for premium keywords
+					if (productText.includes('premium') || productText.includes('pro') || 
+					    productText.includes('high-end') || productText.includes('flagship') ||
+					    productText.includes('top') || productText.includes('best')) {
+						score += 0.2;
+					}
+				} else {
+					// Mid-range: prefer products close to mid-price
+					const priceDistance = Math.abs(product.price - midPrice);
+					const maxDistance = Math.max(midPrice - minPrice, maxPrice - midPrice) || 1;
+					const priceFit = 1 - (priceDistance / maxDistance);
+					score += priceFit * 0.4;
+				}
+
+				// Budget fit score (ensure it fits within budget)
+				const budgetFit = 1 - Math.abs(product.price - budgetPerCategory) / (requirements.budget || 1);
+				score += budgetFit * 0.2;
 
 				// Use case matching
 				if (requirements.useCase === 'gaming') {
@@ -1520,6 +1622,623 @@ Important guidelines:
 		const explanation = `I've selected ${suggestions.length} components optimized for ${requirements.useCase} within your budget of Tk ${requirements.budget.toFixed(2)}. Total cost: Tk ${totalPrice.toFixed(2)}.`;
 
 		return { suggestions, totalPrice, explanation };
+	}
+
+	/**
+	 * Answer questions about products or categories using Gemini AI
+	 */
+	async answerQuestion(
+		question: string,
+		availableProducts: Product[],
+		categories: Array<{ id: string; name: string; is_required: boolean }>
+	): Promise<{
+		answer: string;
+		products?: Array<{
+			categoryId: string;
+			categoryName: string;
+			productId: string;
+			productName: string;
+			price: number;
+			description: string;
+		}>;
+	}> {
+		// Try to use Gemini AI first
+		const geminiApiKey = env.GEMINI_API_KEY;
+		if (geminiApiKey) {
+			try {
+				return await this.answerQuestionWithGemini(question, availableProducts, categories);
+			} catch (error) {
+				console.warn('Gemini API error, using fallback:', error);
+				// Fall through to rule-based answer
+			}
+		}
+
+		// Fallback to rule-based answer if Gemini is not available
+		const questionLower = question.toLowerCase();
+
+		// Map component names to category names (expanded)
+		const componentMap: Record<string, string[]> = {
+			'cpu': ['cpu', 'processor', 'central processing unit'],
+			'gpu': ['gpu', 'graphics', 'video card', 'graphics card', 'videocard'],
+			'ram': ['ram', 'memory', 'random access memory'],
+			'motherboard': ['motherboard', 'mobo', 'mainboard', 'mother board'],
+			'storage': ['storage', 'ssd', 'hard drive', 'hdd', 'solid state drive', 'hard disk'],
+			'psu': ['psu', 'power supply', 'power', 'power unit', 'smps'],
+			'case': ['case', 'chassis', 'cabinet', 'pc case', 'tower'],
+			'cooling': ['cooling', 'cooler', 'fan', 'heatsink', 'cpu cooler', 'thermal']
+		};
+
+		// Find which category the question is about
+		let targetCategory: { id: string; name: string } | null = null;
+		let matchedKey = '';
+
+		for (const [key, aliases] of Object.entries(componentMap)) {
+			if (aliases.some(alias => questionLower.includes(alias))) {
+				matchedKey = key;
+				targetCategory = categories.find(c => 
+					c.name.toLowerCase().includes(key) || 
+					c.name.toLowerCase() === key
+				) || null;
+				break;
+			}
+		}
+
+		// If no match found, try direct category name match
+		if (!targetCategory) {
+			for (const category of categories) {
+				if (questionLower.includes(category.name.toLowerCase()) || 
+				    category.name.toLowerCase().includes(questionLower.split(' ')[0])) {
+					targetCategory = category;
+					break;
+				}
+			}
+		}
+
+		// If we found a category, provide detailed information
+		if (targetCategory) {
+			// Very flexible product matching - same logic as suggestComponent
+			const categoryNameLower = targetCategory.name.toLowerCase();
+			
+			// Step 1: Try exact category ID match
+			let categoryProducts = availableProducts.filter(
+				(p) => (p as any).component_category_id === targetCategory.id
+			);
+
+			// Step 2: If no products, try name/description matching
+			if (categoryProducts.length === 0) {
+				categoryProducts = availableProducts.filter((p) => {
+					const productNameLower = (p.name || '').toLowerCase();
+					const productDescLower = ((p.description || '') + ' ' + (p.specifications || '')).toLowerCase();
+					return productNameLower.includes(categoryNameLower) || 
+					       categoryNameLower.includes(productNameLower.split(' ')[0]) ||
+					       productDescLower.includes(categoryNameLower);
+				});
+			}
+
+			// Step 3: Filter by stock (lenient)
+			categoryProducts = categoryProducts.filter(p => 
+				p.stock > 0 || p.stock === null || p.stock === undefined || p.stock === 0
+			);
+
+			// Step 4: If still no products, remove stock filter
+			if (categoryProducts.length === 0) {
+				categoryProducts = availableProducts.filter(
+					(p) => (p as any).component_category_id === targetCategory.id
+				);
+			}
+
+			if (categoryProducts.length === 0) {
+				return {
+					answer: `I found information about ${targetCategory.name}, but there are currently no products available in this category.`
+				};
+			}
+
+			// Calculate statistics
+			const prices = categoryProducts.map(p => p.price);
+			const minPrice = Math.min(...prices);
+			const maxPrice = Math.max(...prices);
+			const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+			const inStock = categoryProducts.length;
+
+			// Get top 5 products by price (for variety)
+			const sortedProducts = [...categoryProducts].sort((a, b) => a.price - b.price);
+			const topProducts = sortedProducts.slice(0, 5);
+
+			let answer = `**About ${targetCategory.name}:**\n\n`;
+			answer += `We have ${inStock} ${targetCategory.name} products available.\n`;
+			answer += `Price range: Tk ${minPrice.toFixed(2)} - Tk ${maxPrice.toFixed(2)}\n`;
+			answer += `Average price: Tk ${avgPrice.toFixed(2)}\n\n`;
+
+			// Add category-specific information
+			if (matchedKey === 'cpu') {
+				answer += `**CPU Information:**\n`;
+				answer += `The CPU (Central Processing Unit) is the brain of your computer. It processes all instructions and calculations. When choosing a CPU, consider:\n`;
+				answer += `- Core count: More cores = better multitasking\n`;
+				answer += `- Clock speed: Higher GHz = faster processing\n`;
+				answer += `- Compatibility: Must match your motherboard socket\n\n`;
+			} else if (matchedKey === 'gpu') {
+				answer += `**GPU Information:**\n`;
+				answer += `The GPU (Graphics Processing Unit) handles all graphics rendering. Essential for gaming and video editing. Key factors:\n`;
+				answer += `- VRAM: More memory = better for high-resolution gaming\n`;
+				answer += `- Performance tier: Entry, mid-range, or high-end\n`;
+				answer += `- Power requirements: Check your PSU can handle it\n\n`;
+			} else if (matchedKey === 'ram') {
+				answer += `**RAM Information:**\n`;
+				answer += `RAM (Random Access Memory) stores data your computer is actively using. Important considerations:\n`;
+				answer += `- Capacity: 8GB minimum, 16GB recommended for gaming, 32GB+ for content creation\n`;
+				answer += `- Speed: Higher MHz = faster data access\n`;
+				answer += `- Compatibility: Must match motherboard's supported speeds\n\n`;
+			} else if (matchedKey === 'motherboard') {
+				answer += `**Motherboard Information:**\n`;
+				answer += `The motherboard connects all components together. Key factors:\n`;
+				answer += `- Socket type: Must match your CPU\n`;
+				answer += `- Form factor: ATX, mATX, or ITX (affects case size)\n`;
+				answer += `- Features: USB ports, PCIe slots, RAM slots, etc.\n\n`;
+			} else if (matchedKey === 'storage') {
+				answer += `**Storage Information:**\n`;
+				answer += `Storage holds your operating system, programs, and files. Types:\n`;
+				answer += `- SSD: Fast, reliable, recommended for OS and programs\n`;
+				answer += `- HDD: Slower but cheaper, good for bulk storage\n`;
+				answer += `- Capacity: 256GB minimum, 500GB+ recommended\n\n`;
+			} else if (matchedKey === 'psu') {
+				answer += `**PSU Information:**\n`;
+				answer += `The Power Supply Unit provides electricity to all components. Important:\n`;
+				answer += `- Wattage: Must be enough for all components (use our Energy Calculator!)\n`;
+				answer += `- Efficiency rating: 80+ Bronze, Silver, Gold, or Platinum\n`;
+				answer += `- Modularity: Fully modular = easier cable management\n\n`;
+			} else if (matchedKey === 'case') {
+				answer += `**Case Information:**\n`;
+				answer += `The case houses all your components. Considerations:\n`;
+				answer += `- Form factor: Must fit your motherboard size\n`;
+				answer += `- Airflow: Good ventilation prevents overheating\n`;
+				answer += `- Features: USB ports, RGB lighting, cable management\n\n`;
+			} else if (matchedKey === 'cooling') {
+				answer += `**Cooling Information:**\n`;
+				answer += `Cooling keeps your components at safe temperatures. Options:\n`;
+				answer += `- Air cooling: CPU coolers and case fans\n`;
+				answer += `- Liquid cooling: AIO (All-In-One) or custom loops\n`;
+				answer += `- Essential for preventing thermal throttling\n\n`;
+			}
+
+			answer += `**Top ${targetCategory.name} Products:**\n`;
+
+			const products = topProducts.map((product) => ({
+				categoryId: targetCategory!.id,
+				categoryName: targetCategory!.name,
+				productId: product.id,
+				productName: product.name,
+				price: product.price,
+				description: product.description || 'No description available'
+			}));
+
+			return {
+				answer,
+				products
+			};
+		}
+
+		// If no specific category found, provide general help
+		return {
+			answer: `I can help you with:\n\n` +
+				`- **Component Questions**: Ask about any component like "tell me about CPU" or "what is RAM?"\n` +
+				`- **Product Suggestions**: Say "suggest some RAM" or "recommend a GPU"\n` +
+				`- **Full Builds**: Request "gaming PC for 50000 taka" or "workstation build"\n\n` +
+				`Available categories: ${categories.map(c => c.name).join(', ')}\n\n` +
+				`Try asking: "What is a CPU?", "Tell me about motherboards", or "Suggest some RAM for gaming"`
+		};
+	}
+
+	/**
+	 * Suggest a single component based on user request
+	 */
+	async suggestComponent(
+		componentName: string,
+		availableProducts: Product[],
+		categories: Array<{ id: string; name: string; is_required: boolean }>,
+		useCase?: string,
+		budget?: number
+	): Promise<{
+		suggestions: Array<{
+			categoryId: string;
+			categoryName: string;
+			productId: string;
+			productName: string;
+			price: number;
+			reason: string;
+		}>;
+		totalPrice: number;
+		explanation: string;
+	}> {
+		// Map component names to category names (expanded)
+		const componentMap: Record<string, string[]> = {
+			'cpu': ['cpu', 'processor', 'central processing unit'],
+			'gpu': ['gpu', 'graphics', 'video card', 'graphics card', 'videocard'],
+			'ram': ['ram', 'memory', 'random access memory'],
+			'motherboard': ['motherboard', 'mobo', 'mainboard', 'mother board'],
+			'storage': ['storage', 'ssd', 'hard drive', 'hdd', 'solid state drive', 'hard disk'],
+			'psu': ['psu', 'power supply', 'power', 'power unit', 'smps'],
+			'case': ['case', 'chassis', 'cabinet', 'pc case', 'tower'],
+			'cooling': ['cooling', 'cooler', 'fan', 'heatsink', 'cpu cooler', 'thermal']
+		};
+
+		// Find matching category
+		const lowerComponentName = componentName.toLowerCase();
+		let targetCategory: { id: string; name: string } | null = null;
+
+		for (const [key, aliases] of Object.entries(componentMap)) {
+			if (aliases.some(alias => lowerComponentName.includes(alias))) {
+				// Find category by name
+				targetCategory = categories.find(c => 
+					c.name.toLowerCase().includes(key) || 
+					c.name.toLowerCase() === key
+				) || null;
+				break;
+			}
+		}
+
+		// If no match found, try direct category name match
+		if (!targetCategory) {
+			targetCategory = categories.find(c => 
+				c.name.toLowerCase().includes(lowerComponentName) ||
+				lowerComponentName.includes(c.name.toLowerCase())
+			) || null;
+		}
+
+		if (!targetCategory) {
+			return {
+				suggestions: [],
+				totalPrice: 0,
+				explanation: `I couldn't find a category matching "${componentName}". Available categories: ${categories.map(c => c.name).join(', ')}`
+			};
+		}
+
+		// Get products for this category - very flexible matching for ALL categories
+		const categoryNameLower = targetCategory!.name.toLowerCase();
+		
+		// Step 1: Try exact category ID match (preferred)
+		let categoryProducts = availableProducts.filter(
+			(p) => (p as any).component_category_id === targetCategory!.id
+		);
+
+		// Step 2: If no products with category ID, try comprehensive matching
+		if (categoryProducts.length === 0) {
+			categoryProducts = availableProducts.filter((p) => {
+				const productNameLower = (p.name || '').toLowerCase();
+				const productDescLower = ((p.description || '') + ' ' + (p.specifications || '')).toLowerCase();
+				
+				// Direct name/description match
+				const matchesName = productNameLower.includes(categoryNameLower) || 
+				                   categoryNameLower.includes(productNameLower.split(' ')[0]) ||
+				                   productDescLower.includes(categoryNameLower);
+				
+				// Check for common aliases (works for any category)
+				const categoryAliases: Record<string, string[]> = {
+					'cpu': ['processor', 'cpu', 'central processing unit', 'intel', 'amd', 'ryzen', 'core i', 'xeon'],
+					'gpu': ['gpu', 'graphics', 'video card', 'graphics card', 'nvidia', 'geforce', 'radeon', 'rtx', 'gtx'],
+					'ram': ['ram', 'memory', 'ddr', 'random access memory', 'ddr4', 'ddr5'],
+					'motherboard': ['motherboard', 'mobo', 'mainboard', 'board', 'mb'],
+					'storage': ['storage', 'ssd', 'hard drive', 'hdd', 'nvme', 'sata', 'm.2'],
+					'psu': ['psu', 'power supply', 'power', 'smps', 'watt'],
+					'case': ['case', 'chassis', 'cabinet', 'tower', 'pc case'],
+					'cooling': ['cooling', 'cooler', 'fan', 'heatsink', 'thermal', 'aio', 'liquid cooling']
+				};
+				
+				let matchesAlias = false;
+				for (const [key, aliases] of Object.entries(categoryAliases)) {
+					if (categoryNameLower.includes(key) || key.includes(categoryNameLower)) {
+						matchesAlias = aliases.some(alias => 
+							productNameLower.includes(alias) || productDescLower.includes(alias)
+						);
+						if (matchesAlias) break;
+					}
+				}
+				
+				return matchesName || matchesAlias;
+			});
+		}
+
+		// Step 3: Filter by stock (very lenient - allow 0, null, undefined)
+		categoryProducts = categoryProducts.filter(p => 
+			p.stock > 0 || p.stock === null || p.stock === undefined || p.stock === 0
+		);
+
+		// Step 4: If still no products, remove stock filter completely
+		if (categoryProducts.length === 0) {
+			categoryProducts = availableProducts.filter(
+				(p) => (p as any).component_category_id === targetCategory!.id
+			);
+			
+			// Last resort: name matching without any filters
+			if (categoryProducts.length === 0) {
+				categoryProducts = availableProducts.filter((p) => {
+					const productNameLower = (p.name || '').toLowerCase();
+					return productNameLower.includes(categoryNameLower) || 
+					       categoryNameLower.includes(productNameLower.split(' ')[0]);
+				});
+			}
+		}
+
+		if (categoryProducts.length === 0) {
+			console.warn(`⚠️ No products found for ${targetCategory!.name} (id: ${targetCategory!.id})`);
+			console.warn(`   Total products available: ${availableProducts.length}`);
+			return {
+				suggestions: [],
+				totalPrice: 0,
+				explanation: `No products found in the ${targetCategory.name} category. Please ensure products are assigned to this category in the admin panel.`
+			};
+		}
+
+		console.log(`✅ Found ${categoryProducts.length} products for ${targetCategory!.name}`);
+
+		// Score products
+		const scored = categoryProducts.map((product) => {
+			const productText =
+				`${product.name} ${product.description} ${product.specifications || ''}`.toLowerCase();
+			let score = 0;
+
+			// Use case matching
+			if (useCase === 'gaming') {
+				if (
+					productText.includes('gaming') ||
+					productText.includes('performance') ||
+					productText.includes('rgb')
+				) {
+					score += 0.4;
+				}
+			} else if (useCase === 'work' || useCase === 'productivity') {
+				if (
+					productText.includes('professional') ||
+					productText.includes('business') ||
+					productText.includes('reliable') ||
+					productText.includes('efficient')
+				) {
+					score += 0.4;
+				}
+			} else if (useCase === 'content-creation') {
+				if (
+					productText.includes('video') ||
+					productText.includes('editing') ||
+					productText.includes('rendering') ||
+					productText.includes('high performance')
+				) {
+					score += 0.4;
+				}
+			}
+
+			// Budget consideration (if provided)
+			if (budget) {
+				// Prefer products that use a reasonable portion of budget
+				// For single component, use 10-30% of budget as ideal range
+				const idealMin = budget * 0.1;
+				const idealMax = budget * 0.3;
+				if (product.price >= idealMin && product.price <= idealMax) {
+					score += 0.3;
+				} else if (product.price <= budget) {
+					score += 0.1; // Still acceptable if within budget
+				}
+			}
+
+			// Quality indicators
+			if (productText.includes('premium') || productText.includes('pro') || 
+			    productText.includes('high-end') || productText.includes('flagship')) {
+				score += 0.2;
+			}
+
+			// Price value (prefer mid-range for best value)
+			const prices = categoryProducts.map(p => p.price).sort((a, b) => a - b);
+			const minPrice = prices[0];
+			const maxPrice = prices[prices.length - 1];
+			if (maxPrice > minPrice) {
+				const pricePosition = (product.price - minPrice) / (maxPrice - minPrice);
+				// Prefer products in the 30-70% price range (good value)
+				if (pricePosition >= 0.3 && pricePosition <= 0.7) {
+					score += 0.2;
+				}
+			}
+
+			return { product, score };
+		});
+
+		// Sort by score and pick top 3 suggestions
+		scored.sort((a, b) => b.score - a.score);
+		const topSuggestions = scored.slice(0, 3);
+
+		const suggestions = topSuggestions.map((s) => ({
+			categoryId: targetCategory!.id,
+			categoryName: targetCategory!.name,
+			productId: s.product.id,
+			productName: s.product.name,
+			price: s.product.price,
+			reason: `Best ${targetCategory.name.toLowerCase()} option${useCase ? ` for ${useCase}` : ''}`
+		}));
+
+		const totalPrice = suggestions[0]?.price || 0;
+		const explanation = useCase 
+			? `Here are my top ${targetCategory.name} recommendations for ${useCase}:`
+			: `Here are my top ${targetCategory.name} recommendations:`;
+
+		return { suggestions, totalPrice, explanation };
+	}
+
+	/**
+	 * Answer questions using Google Gemini AI
+	 */
+	private async answerQuestionWithGemini(
+		question: string,
+		availableProducts: Product[],
+		categories: Array<{ id: string; name: string; is_required: boolean }>
+	): Promise<{
+		answer: string;
+		products?: Array<{
+			categoryId: string;
+			categoryName: string;
+			productId: string;
+			productName: string;
+			price: number;
+			description: string;
+		}>;
+	}> {
+		const geminiApiKey = env.GEMINI_API_KEY;
+		if (!geminiApiKey) {
+			throw new Error('Gemini API key not configured');
+		}
+
+		const genAI = new GoogleGenerativeAI(geminiApiKey);
+		const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+		// Prepare context about available categories
+		const categoryList = categories.map(c => c.name).join(', ');
+		
+		// Group products by category for context - include all products (not just in stock)
+		const productsByCategory: Record<string, Product[]> = {};
+		categories.forEach(cat => {
+			const catProducts = availableProducts.filter(
+				(p) => (p as any).component_category_id === cat.id
+			);
+			if (catProducts.length > 0) {
+				productsByCategory[cat.name] = catProducts.slice(0, 15); // Show more products for better context
+			}
+		});
+
+		// Build product context
+		let productContext = '';
+		for (const [categoryName, products] of Object.entries(productsByCategory)) {
+			productContext += `\n${categoryName} (${products.length} products):\n`;
+			products.forEach(p => {
+				productContext += `- ${p.name}: Tk ${p.price.toFixed(2)}`;
+				if (p.description) {
+					productContext += ` - ${p.description.substring(0, 100)}`;
+				}
+				productContext += '\n';
+			});
+		}
+
+		// Create prompt for Gemini
+		const prompt = `You are a helpful PC building assistant for TinyTech, an e-commerce website selling PC components.
+
+Available Component Categories: ${categoryList}
+
+Available Products in Our Store:
+${productContext}
+
+User Question: "${question}"
+
+IMPORTANT INSTRUCTIONS:
+1. Answer the user's question directly and conversationally - DO NOT automatically generate a full PC build unless they explicitly ask for one
+2. If the question is about components or products, mention relevant products from our inventory with their prices
+3. Use friendly, natural language - talk like a helpful expert, not a robot
+4. If they ask about a specific component type (CPU, GPU, RAM, etc.), explain what it is and mention 3-5 relevant products we have
+5. Use Taka (Tk) as the currency format
+6. Format your response with markdown (use **bold** for emphasis, line breaks for readability)
+7. Be helpful and informative, but don't overwhelm with too much information
+8. If the question is vague or unclear, ask for clarification
+9. DO NOT generate a full PC build list unless the user explicitly asks for "build a PC" or "gaming PC for X taka"
+
+Answer the user's question naturally:`;
+
+		try {
+			const result = await model.generateContent(prompt);
+			const response = await result.response;
+			const text = response.text();
+
+			// Extract relevant products if the question mentions a specific category
+			const questionLower = question.toLowerCase();
+			let relevantProducts: Array<{
+				categoryId: string;
+				categoryName: string;
+				productId: string;
+				productName: string;
+				price: number;
+				description: string;
+			}> = [];
+
+			// Find relevant products based on question content
+			// Check all categories mentioned in the question
+			const mentionedCategories: string[] = [];
+			for (const category of categories) {
+				const categoryNameLower = category.name.toLowerCase();
+				if (questionLower.includes(categoryNameLower) || 
+				    categoryNameLower.includes(questionLower.split(' ')[0])) {
+					mentionedCategories.push(category.id);
+				}
+			}
+
+			// Also check for component aliases
+			const componentAliases: Record<string, string[]> = {
+				'cpu': ['processor', 'cpu', 'intel', 'amd', 'ryzen', 'core'],
+				'gpu': ['gpu', 'graphics', 'video card', 'nvidia', 'geforce', 'radeon'],
+				'ram': ['ram', 'memory', 'ddr'],
+				'motherboard': ['motherboard', 'mobo', 'mainboard'],
+				'storage': ['storage', 'ssd', 'hard drive', 'hdd', 'nvme'],
+				'psu': ['psu', 'power supply', 'power'],
+				'case': ['case', 'chassis', 'cabinet'],
+				'cooling': ['cooling', 'cooler', 'fan', 'heatsink']
+			};
+
+			for (const [key, aliases] of Object.entries(componentAliases)) {
+				if (aliases.some(alias => questionLower.includes(alias))) {
+					const matchingCategory = categories.find(c => 
+						c.name.toLowerCase().includes(key) || key.includes(c.name.toLowerCase())
+					);
+					if (matchingCategory && !mentionedCategories.includes(matchingCategory.id)) {
+						mentionedCategories.push(matchingCategory.id);
+					}
+				}
+			}
+
+			// Get products from all mentioned categories
+			for (const categoryId of mentionedCategories) {
+				const category = categories.find(c => c.id === categoryId);
+				if (!category) continue;
+
+				const catProducts = availableProducts
+					.filter(p => (p as any).component_category_id === categoryId)
+					.sort((a, b) => a.price - b.price)
+					.slice(0, 5);
+
+				const categoryProducts = catProducts.map(p => ({
+					categoryId: category.id,
+					categoryName: category.name,
+					productId: p.id,
+					productName: p.name,
+					price: p.price,
+					description: p.description || ''
+				}));
+
+				relevantProducts.push(...categoryProducts);
+			}
+
+			// If no specific category found, show top products from all categories
+			if (relevantProducts.length === 0) {
+				// Get a few products from each major category
+				const majorCategories = categories.slice(0, 4);
+				for (const category of majorCategories) {
+					const catProducts = availableProducts
+						.filter(p => (p as any).component_category_id === category.id)
+						.sort((a, b) => a.price - b.price)
+						.slice(0, 2);
+
+					const categoryProducts = catProducts.map(p => ({
+						categoryId: category.id,
+						categoryName: category.name,
+						productId: p.id,
+						productName: p.name,
+						price: p.price,
+						description: p.description || ''
+					}));
+
+					relevantProducts.push(...categoryProducts);
+				}
+			}
+
+			return {
+				answer: text,
+				products: relevantProducts.length > 0 ? relevantProducts : undefined
+			};
+		} catch (error: any) {
+			console.error('Error calling Gemini API:', error);
+			throw new Error(`Failed to get answer from Gemini: ${error.message}`);
+		}
 	}
 
 	/**
@@ -2458,7 +3177,7 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 		}
 
 		const genAI = new GoogleGenerativeAI(geminiApiKey);
-		const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+		const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 		const prompt = `You are an expert e-commerce product description writer. Generate a compelling, SEO-optimized product description for the following product.
 
@@ -2527,7 +3246,7 @@ Important: Return ONLY valid JSON, no additional text or markdown formatting.`;
 
 		try {
 			const genAI = new GoogleGenerativeAI(geminiApiKey);
-			const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+			const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 			const prompt = `Generate a professional executive summary for a sales report.
 
@@ -2609,7 +3328,7 @@ Recommendations:
 
 		try {
 			const genAI = new GoogleGenerativeAI(geminiApiKey);
-			const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+			const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 			const prompt = `Analyze customer behavior and provide insights.
 
@@ -2731,7 +3450,7 @@ Return ONLY valid JSON.`;
 
 		try {
 			const genAI = new GoogleGenerativeAI(geminiApiKey);
-			const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+			const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 			const prompt = `Generate marketing content for a product.
 

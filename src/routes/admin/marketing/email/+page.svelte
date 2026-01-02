@@ -5,11 +5,14 @@
 
 	export let data: PageData;
 	export let form: ActionData;
+	// params not used (URLSearchParams is used as local variable instead)
 	export let params: Record<string, string> = {};
 
 	let activeTab = data.activeTab || 'newsletters';
 	let showNewsletterForm = false;
 	let showSequenceForm = false;
+	let showCampaignForm = false;
+	let editingCampaign: any = null;
 	let startDate = data.startDate || '';
 	let endDate = data.endDate || '';
 
@@ -28,6 +31,15 @@
 	let sequenceTriggerDelay = 0;
 	let sequenceEmails: Array<{ order: number; subject: string; content: string; content_type: 'html' | 'text'; delay_hours: number }> = [];
 	let sequenceIsActive = true;
+
+	// Campaign form
+	let campaignName = '';
+	let campaignSubject = '';
+	let campaignContent = '';
+	let campaignContentType: 'html' | 'text' = 'html';
+	let campaignRecipientCount = 0;
+	let campaignStatus: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'cancelled' = 'draft';
+	let campaignStartedAt = '';
 
 	function addSequenceEmail() {
 		sequenceEmails.push({
@@ -72,6 +84,19 @@
 		if (endDate) params.set('endDate', endDate);
 		params.set('tab', activeTab);
 		window.location.href = `/admin/marketing/email?${params.toString()}`;
+	}
+
+	// Reset forms on successful submission
+	$: if (form?.success) {
+		if (showNewsletterForm) {
+			resetNewsletterForm();
+		}
+		if (showSequenceForm) {
+			resetSequenceForm();
+		}
+		if (showCampaignForm) {
+			resetCampaignForm();
+		}
 	}
 
 	function getStatusColor(status: string): string {
@@ -153,6 +178,12 @@
 				class="px-4 py-2 font-semibold border-b-2 transition-colors {activeTab === 'sequences' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-gray-900'}"
 			>
 				Email Sequences
+			</button>
+			<button
+				on:click={() => activeTab = 'campaigns'}
+				class="px-4 py-2 font-semibold border-b-2 transition-colors {activeTab === 'campaigns' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-600 hover:text-gray-900'}"
+			>
+				Email Campaigns
 			</button>
 			<button
 				on:click={() => activeTab = 'analytics'}
@@ -482,6 +513,180 @@
 						</div>
 					{:else}
 						<p class="text-gray-500 text-center py-8">No sequences found. Create your first sequence!</p>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Email Campaigns Tab -->
+	{#if activeTab === 'campaigns'}
+		<div class="space-y-6">
+			<div class="flex justify-between items-center">
+				<h2 class="text-2xl font-bold text-gray-900">Email Campaigns</h2>
+				<button
+					on:click={() => {
+						resetCampaignForm();
+						showCampaignForm = true;
+					}}
+					class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700"
+				>
+					+ Create Campaign
+				</button>
+			</div>
+
+			{#if showCampaignForm}
+				<div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+					<h3 class="text-xl font-bold text-gray-900 mb-4">
+						{editingCampaign ? 'Edit Email Campaign' : 'Create Email Campaign'}
+					</h3>
+					<form method="POST" action={editingCampaign ? "?/updateCampaign" : "?/createCampaign"} use:enhance>
+						{#if editingCampaign}
+							<input type="hidden" name="id" value={editingCampaign.id} />
+						{/if}
+						<div class="space-y-4">
+							<div>
+								<label for="campaign-name" class="block mb-2 font-medium">Campaign Name *</label>
+								<input
+									id="campaign-name"
+									type="text"
+									name="name"
+									bind:value={campaignName}
+									required
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div>
+								<label for="campaign-subject" class="block mb-2 font-medium">Subject *</label>
+								<input
+									id="campaign-subject"
+									type="text"
+									name="subject"
+									bind:value={campaignSubject}
+									required
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div>
+								<label for="campaign-content-type" class="block mb-2 font-medium">Content Type</label>
+								<select id="campaign-content-type" name="content_type" bind:value={campaignContentType} class="w-full p-3 border-2 border-gray-300 rounded-lg">
+									<option value="html">HTML</option>
+									<option value="text">Text</option>
+								</select>
+							</div>
+							<div>
+								<label for="campaign-content" class="block mb-2 font-medium">Content *</label>
+								<textarea
+									id="campaign-content"
+									name="content"
+									bind:value={campaignContent}
+									required
+									rows="8"
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								></textarea>
+							</div>
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<label for="campaign-recipient-count" class="block mb-2 font-medium">Recipient Count *</label>
+									<input
+										id="campaign-recipient-count"
+										type="number"
+										name="recipient_count"
+										bind:value={campaignRecipientCount}
+										required
+										min="0"
+										class="w-full p-3 border-2 border-gray-300 rounded-lg"
+									/>
+								</div>
+								<div>
+									<label for="campaign-status" class="block mb-2 font-medium">Status</label>
+									<select id="campaign-status" name="status" bind:value={campaignStatus} class="w-full p-3 border-2 border-gray-300 rounded-lg">
+										<option value="draft">Draft</option>
+										<option value="scheduled">Scheduled</option>
+										<option value="sending">Sending</option>
+										<option value="sent">Sent</option>
+										<option value="paused">Paused</option>
+										<option value="cancelled">Cancelled</option>
+									</select>
+								</div>
+							</div>
+							<div>
+								<label for="campaign-started-at" class="block mb-2 font-medium">Start Date/Time</label>
+								<input
+									id="campaign-started-at"
+									type="datetime-local"
+									name="started_at"
+									bind:value={campaignStartedAt}
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div class="flex gap-3">
+								<button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700">
+									{editingCampaign ? 'Update Campaign' : 'Create Campaign'}
+								</button>
+								<button type="button" on:click={resetCampaignForm} class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700">
+									Cancel
+								</button>
+							</div>
+						</div>
+					</form>
+				</div>
+			{/if}
+
+			<!-- Campaigns List -->
+			<div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+				<h3 class="text-xl font-bold text-gray-900 mb-4">All Email Campaigns</h3>
+				<div class="space-y-4">
+					{#each data.campaigns as campaign}
+						<div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+							<div class="flex justify-between items-start">
+								<div class="flex-1">
+									<h4 class="font-semibold text-gray-900 mb-1">{campaign.name}</h4>
+									<p class="text-sm text-gray-600 mb-2">Subject: {campaign.subject}</p>
+									<div class="flex flex-wrap gap-3 text-xs text-gray-600 mb-2">
+										<span>Recipients: {campaign.recipient_count}</span>
+										<span>Sent: {campaign.sent_count}</span>
+										<span>Opened: {campaign.opened_count}</span>
+										<span>Clicked: {campaign.clicked_count}</span>
+										<span>Bounced: {campaign.bounced_count}</span>
+										<span>Unsubscribed: {campaign.unsubscribed_count}</span>
+									</div>
+									<div class="flex items-center gap-2">
+										<span class="px-2 py-1 text-xs font-semibold rounded-full {getCampaignStatusColor(campaign.status)}">
+											{campaign.status}
+										</span>
+										{#if campaign.started_at}
+											<span class="text-xs text-gray-500">Started: {new Date(campaign.started_at).toLocaleString()}</span>
+										{/if}
+										{#if campaign.completed_at}
+											<span class="text-xs text-gray-500">Completed: {new Date(campaign.completed_at).toLocaleString()}</span>
+										{/if}
+									</div>
+								</div>
+								<div class="flex gap-2">
+									<button
+										on:click={() => editCampaign(campaign)}
+										class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+									>
+										Edit
+									</button>
+									<form method="POST" action="?/deleteCampaign" use:enhance class="inline">
+										<input type="hidden" name="id" value={campaign.id} />
+										<button
+											type="submit"
+											class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+											on:click={(e) => {
+												if (!confirm('Delete this email campaign?')) e.preventDefault();
+											}}
+										>
+											Delete
+										</button>
+									</form>
+								</div>
+							</div>
+						</div>
+					{:else}
+						<p class="text-gray-500 text-center py-8">No email campaigns found. Create your first campaign!</p>
 					{/each}
 				</div>
 			</div>

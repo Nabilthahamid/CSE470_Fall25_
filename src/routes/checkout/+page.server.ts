@@ -66,6 +66,9 @@ export const actions: Actions = {
 		const shipping_method = formData.get('shipping_method')?.toString() || 'inside_dhaka';
 		const payment_method = formData.get('payment_method')?.toString() || 'cod';
 		const shipping_cost = parseFloat(formData.get('shipping_cost')?.toString() || '0');
+		const coupon_code = formData.get('coupon_code')?.toString() || null;
+		const coupon_id = formData.get('coupon_id')?.toString() || null;
+		const discount_amount = parseFloat(formData.get('discount_amount')?.toString() || '0');
 
 		// Build full address
 		const fullAddress = [
@@ -98,10 +101,24 @@ export const actions: Actions = {
 					customer_country: customer_country || null,
 					shipping_method: shipping_method || null,
 					payment_method: payment_method || null,
-					shipping_cost: shipping_cost || 0
+					shipping_cost: shipping_cost || 0,
+					coupon_code: coupon_code || null,
+					coupon_id: coupon_id || null,
+					discount_amount: discount_amount || 0
 				},
 				userId
 			);
+
+			// Record discount usage if coupon was applied
+			if (coupon_id && discount_amount > 0) {
+				try {
+					const { discountService } = await import('$lib/services/DiscountService');
+					await discountService.recordUsage(coupon_id, order.id, userId || '', discount_amount);
+				} catch (discountError) {
+					console.error('Failed to record discount usage:', discountError);
+					// Don't fail the order if discount recording fails
+				}
+			}
 
 			// Save profile information if user checked "save_info" and is logged in
 			const saveInfo = formData.get('save_info')?.toString() === 'true';

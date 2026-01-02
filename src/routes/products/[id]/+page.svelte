@@ -461,23 +461,17 @@
 				{#if data.product.stock > 0}
 					<form 
 						method="POST" 
-						action="/cart/add" 
-						use:enhance={({ result }) => {
-							return async () => {
-								if (result.type === 'success') {
-									try {
-										const data = await result.json();
-										if (data.success) {
-														showPopupMessage('Added to cart successfully!', 'success');
-										} else {
-														showPopupMessage(data.error || 'Failed to add to cart', 'error');
-										}
-									} catch (e) {
-														showPopupMessage('Added to cart successfully!', 'success');
-									}
-								} else if (result.type === 'failure') {
-													showPopupMessage('Failed to add to cart. Please try again.', 'error');
+						action="/cart/add?redirect=/products/{data.product.id}" 
+						use:enhance={({ update }) => {
+							return async ({ update: updateFn }) => {
+								// The endpoint will redirect, so we just update the page
+								if (updateFn) {
+									await updateFn();
+								} else if (update) {
+									await update();
 								}
+								// Show success message
+								showPopupMessage('Added to cart successfully!', 'success');
 							};
 						}}
 						class="flex-1"
@@ -603,23 +597,17 @@
 							<p class="text-lg font-bold text-indigo-600 mb-2">Tk {relatedProduct.price.toFixed(2)}</p>
 							<form
 								method="POST"
-								action="/cart/add"
-								use:enhance={({ result }) => {
-									return async () => {
-										if (result.type === 'success') {
-											try {
-												const data = await result.json();
-												if (data.success) {
-														showPopupMessage('Added to cart successfully!', 'success');
-												} else {
-														showPopupMessage(data.error || 'Failed to add to cart', 'error');
-												}
-											} catch (e) {
-														showPopupMessage('Added to cart successfully!', 'success');
-											}
-										} else if (result.type === 'failure') {
-													showPopupMessage('Failed to add to cart. Please try again.', 'error');
+								action="/cart/add?redirect=/products/{data.product.id}"
+								use:enhance={({ update }) => {
+									return async ({ update: updateFn }) => {
+										// The endpoint will redirect, so we just update the page
+										if (updateFn) {
+											await updateFn();
+										} else if (update) {
+											await update();
 										}
+										// Show success message
+										showPopupMessage('Added to cart successfully!', 'success');
 									};
 								}}
 								on:submit|stopPropagation

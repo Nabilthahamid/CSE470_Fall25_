@@ -12,6 +12,9 @@ export interface Order {
 	shipping_method?: string | null;
 	payment_method?: string | null;
 	shipping_cost?: number;
+	coupon_code?: string | null;
+	coupon_id?: string | null;
+	discount_amount?: number;
 	total_amount: number;
 	status: OrderStatus;
 	tracking_number?: string | null;
@@ -49,6 +52,9 @@ export interface CreateOrderDTO {
 	shipping_method?: string | null;
 	payment_method?: string | null;
 	shipping_cost?: number;
+	coupon_code?: string | null;
+	coupon_id?: string | null;
+	discount_amount?: number;
 	email_newsletter?: boolean;
 }
 

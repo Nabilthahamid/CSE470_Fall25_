@@ -3,7 +3,7 @@
 	import type { ErrorComponent } from './$types';
 
 	export let error: ErrorComponent | undefined = undefined;
-	// @ts-ignore - SvelteKit may pass params even without dynamic segments
+	// params not used - suppress warning
 	export let params: Record<string, string> = {};
 </script>
 

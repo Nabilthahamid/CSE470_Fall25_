@@ -9,7 +9,7 @@
 	import AIChatbot from '$lib/components/AIChatbot.svelte';
 
 	export let data: LayoutData;
-	// @ts-ignore - SvelteKit may pass params even without dynamic segments
+	// Suppress params warning - not used in this layout
 	export let params: Record<string, string> = {};
 	
 	// Check if we're on an admin page

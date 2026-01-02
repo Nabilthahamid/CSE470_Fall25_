@@ -73,6 +73,16 @@ export interface CreateEmailSequenceDTO {
 	is_active: boolean;
 }
 
+export interface CreateEmailCampaignDTO {
+	name: string;
+	subject: string;
+	content: string;
+	content_type: 'html' | 'text';
+	recipient_count: number;
+	status?: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'cancelled';
+	started_at?: string;
+}
+
 export interface EmailAnalytics {
 	totalSent: number;
 	totalOpened: number;

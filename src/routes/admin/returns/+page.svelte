@@ -59,8 +59,9 @@
 	<div class="bg-white rounded-xl shadow-lg p-4 border border-gray-200 mb-6">
 		<div class="flex flex-wrap items-end gap-4">
 			<div>
-				<label class="block mb-2 text-sm font-medium">Status</label>
+				<label for="return-status-filter" class="block mb-2 text-sm font-medium">Status</label>
 				<select
+					id="return-status-filter"
 					class="p-2 border-2 border-gray-300 rounded-lg"
 					on:change={(e) => {
 						const status = e.currentTarget.value;
@@ -81,8 +82,9 @@
 				</select>
 			</div>
 			<div>
-				<label class="block mb-2 text-sm font-medium">Start Date</label>
+				<label for="return-start-date" class="block mb-2 text-sm font-medium">Start Date</label>
 				<input
+					id="return-start-date"
 					type="date"
 					value={data.filters.startDate || ''}
 					class="p-2 border-2 border-gray-300 rounded-lg"
@@ -98,8 +100,9 @@
 				/>
 			</div>
 			<div>
-				<label class="block mb-2 text-sm font-medium">End Date</label>
+				<label for="return-end-date" class="block mb-2 text-sm font-medium">End Date</label>
 				<input
+					id="return-end-date"
 					type="date"
 					value={data.filters.endDate || ''}
 					class="p-2 border-2 border-gray-300 rounded-lg"
@@ -310,21 +313,27 @@
 
 	<!-- Refund Modal -->
 	{#if showRefundModal && selectedReturn}
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<div
 			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
 			on:click={closeRefundModal}
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="refund-modal-title"
 		>
 			<div
 				class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4"
 				on:click|stopPropagation
 			>
-				<h2 class="text-2xl font-bold text-gray-900 mb-4">Process Refund</h2>
+				<h2 id="refund-modal-title" class="text-2xl font-bold text-gray-900 mb-4">Process Refund</h2>
 				<form method="POST" action="?/processRefund" use:enhance>
 					<input type="hidden" name="id" value={selectedReturn.id} />
 					<div class="space-y-4">
 						<div>
-							<label class="block mb-2 font-medium">Refund Amount *</label>
+							<label for="refund-amount" class="block mb-2 font-medium">Refund Amount *</label>
 							<input
+								id="refund-amount"
 								type="number"
 								name="refund_amount"
 								bind:value={refundAmount}
@@ -335,8 +344,9 @@
 							/>
 						</div>
 						<div>
-							<label class="block mb-2 font-medium">Refund Method *</label>
+							<label for="refund-method" class="block mb-2 font-medium">Refund Method *</label>
 							<select
+								id="refund-method"
 								name="refund_method"
 								bind:value={refundMethod}
 								required
@@ -349,8 +359,9 @@
 							</select>
 						</div>
 						<div>
-							<label class="block mb-2 font-medium">Admin Notes</label>
+							<label for="admin-notes" class="block mb-2 font-medium">Admin Notes</label>
 							<textarea
+								id="admin-notes"
 								name="admin_notes"
 								bind:value={adminNotes}
 								rows="3"

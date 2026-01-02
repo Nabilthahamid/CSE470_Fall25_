@@ -10,11 +10,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		requireAuth(locals.user);
 
-		const { budget, useCase, preferences } = await request.json();
-
-		if (!budget || !useCase) {
-			return json({ error: 'Budget and use case are required' }, { status: 400 });
-		}
+		const { preferences } = await request.json();
+		const userQuestion = preferences || '';
 
 		// Get available products and categories
 		const [products, categories] = await Promise.all([
@@ -22,14 +19,47 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			pcBuildService.getAllCategories()
 		]);
 
-		// Get AI suggestions
-		const suggestion = await aiService.suggestPCBuild(
-			{ budget: parseFloat(budget), useCase, preferences },
+		// Check if user explicitly wants a full PC build
+		const questionLower = userQuestion.toLowerCase();
+		const buildKeywords = ['build a pc', 'build pc', 'pc build', 'computer build', 'gaming pc for', 'workstation for', 'custom pc for'];
+		const isExplicitBuildRequest = buildKeywords.some(keyword => questionLower.includes(keyword));
+
+		// Extract budget and use case from question if it's a build request
+		if (isExplicitBuildRequest) {
+			const budgetMatch = userQuestion.match(/(\d+)\s*(?:taka|tk|taka|bdt)/i);
+			const budget = budgetMatch ? parseFloat(budgetMatch[1]) : 50000;
+			
+			let useCase = 'gaming';
+			if (questionLower.includes('work') || questionLower.includes('office')) {
+				useCase = 'work';
+			} else if (questionLower.includes('content') || questionLower.includes('editing')) {
+				useCase = 'content-creation';
+			} else if (questionLower.includes('gaming')) {
+				useCase = 'gaming';
+			}
+
+			// Generate full build
+			const suggestion = await aiService.suggestPCBuild(
+				{ budget, useCase, preferences: userQuestion },
+				products,
+				categories.map(c => ({ id: c.id, name: c.name, is_required: c.is_required }))
+			);
+
+			return json(suggestion);
+		}
+
+		// For ALL other queries, use Gemini to answer the question naturally
+		const answer = await aiService.answerQuestion(
+			userQuestion,
 			products,
 			categories.map(c => ({ id: c.id, name: c.name, is_required: c.is_required }))
 		);
 
-		return json(suggestion);
+		return json({
+			answer: answer.answer,
+			products: answer.products,
+			isQuestion: true
+		});
 	} catch (error: any) {
 		console.error('AI PC Builder error:', error);
 		return json(

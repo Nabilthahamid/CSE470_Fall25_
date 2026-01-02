@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 	import { generateSlug, generateMetaTitle, generateMetaDescription, generateSchemaMarkup } from '$lib/utils/seo';
+	import MediaPicker from '$lib/components/MediaPicker.svelte';
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -15,6 +16,8 @@
 	let generatedKeywords: string[] = [];
 	let descriptionVariations: string[] = [];
 	let showDescriptionModal = false;
+	let showMediaPicker = false;
+	let selectedImageUrl = data.product.image_url || '';
 
 	async function generateDescription() {
 		generatingDescription = true;
@@ -196,7 +199,17 @@
 			</div>
 
 			<div class="mb-6">
-				<label for="image_file" class="block mb-2 font-medium">Upload New Image (optional)</label>
+				<label class="block mb-2 font-medium">Product Image (optional)</label>
+				<div class="flex gap-3 mb-2">
+					<button
+						type="button"
+						on:click={() => showMediaPicker = true}
+						class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+					>
+						📁 Select from Media Library
+					</button>
+					<span class="text-gray-400 text-sm self-center">or</span>
+				</div>
 				<input 
 					type="file" 
 					id="image_file" 
@@ -204,7 +217,7 @@
 					accept=".png,.jpg,.jpeg,image/png,image/jpeg"
 					class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer"
 				/>
-				<small class="block mt-1 text-gray-400 text-sm">Upload a .png or .jpg image (max 5MB). This will replace the current image.</small>
+				<small class="block mt-1 text-gray-400 text-sm">Upload a .png or .jpg image (max 5MB). Images are automatically added to Media Library.</small>
 			</div>
 
 			<div class="mb-6">
@@ -213,11 +226,16 @@
 					type="url"
 					id="image_url"
 					name="image_url"
-					value={form?.image_url !== undefined ? form.image_url : (data.product.image_url || '')}
+					bind:value={selectedImageUrl}
 					placeholder="https://example.com/image.jpg"
 					class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
 				/>
 				<small class="block mt-1 text-gray-400 text-sm">Alternatively, enter a URL to an image</small>
+				{#if selectedImageUrl}
+					<div class="mt-2">
+						<img src={selectedImageUrl} alt="Selected" class="w-32 h-32 object-cover rounded-lg border border-white/10" />
+					</div>
+				{/if}
 			</div>
 
 			{#if data.product.image_url}
@@ -374,10 +392,19 @@
 									<span class="font-mono text-xs">{product.id.slice(0, 8)}</span> - {product.name}
 								</div>
 							{/each}
-						</div>
-					</div>
-				{/if}
-			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showMediaPicker}
+	<MediaPicker
+		multiple={false}
+		selectedUrls={selectedImageUrl ? [selectedImageUrl] : []}
+		onSelect={handleMediaSelect}
+		onClose={() => showMediaPicker = false}
+	/>
+{/if}
+</div>
 
 			<!-- Image Gallery Section -->
 			<div class="mb-8 p-6 bg-white/5 rounded-lg border border-white/10">

@@ -2,6 +2,7 @@
 import type { PageServerLoad } from './$types';
 import { requireAuth } from '$lib/utils/auth';
 import { orderService } from '$lib/services/OrderService';
+import { returnService } from '$lib/services/ReturnService';
 import { handleError } from '$lib/utils/errors';
 import { error } from '@sveltejs/kit';
 
@@ -16,8 +17,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			throw error(403, 'Access denied');
 		}
 
+		// Load return requests for this order
+		let returnRequests = [];
+		try {
+			returnRequests = await returnService.getAllReturns({ orderId: order.id });
+		} catch (err) {
+			// If table doesn't exist yet, return empty array
+			console.error('Error loading return requests:', err);
+		}
+
 		return {
 			order,
+			returnRequests,
 			user: locals.user
 		};
 	} catch (err: any) {

@@ -121,6 +121,62 @@ export const actions: Actions = {
 			const { message } = handleError(error);
 			return { error: message };
 		}
+	},
+
+	createCampaign: async ({ request }) => {
+		const formData = await request.formData();
+		const campaign = {
+			name: formData.get('name')?.toString() || '',
+			subject: formData.get('subject')?.toString() || '',
+			content: formData.get('content')?.toString() || '',
+			content_type: (formData.get('content_type')?.toString() || 'html') as 'html' | 'text',
+			recipient_count: parseInt(formData.get('recipient_count')?.toString() || '0'),
+			status: (formData.get('status')?.toString() || 'draft') as any,
+			started_at: formData.get('started_at')?.toString() || undefined
+		};
+
+		try {
+			await emailMarketingService.createCampaign(campaign);
+			return { success: true };
+		} catch (error) {
+			const { message } = handleError(error);
+			return { error: message };
+		}
+	},
+
+	updateCampaign: async ({ request }) => {
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString() || '';
+		const campaign = {
+			name: formData.get('name')?.toString() || '',
+			subject: formData.get('subject')?.toString() || '',
+			content: formData.get('content')?.toString() || '',
+			content_type: (formData.get('content_type')?.toString() || 'html') as 'html' | 'text',
+			recipient_count: parseInt(formData.get('recipient_count')?.toString() || '0'),
+			status: (formData.get('status')?.toString() || 'draft') as any,
+			started_at: formData.get('started_at')?.toString() || undefined
+		};
+
+		try {
+			await emailMarketingService.updateCampaign(id, campaign);
+			return { success: true };
+		} catch (error) {
+			const { message } = handleError(error);
+			return { error: message };
+		}
+	},
+
+	deleteCampaign: async ({ request }) => {
+		const formData = await request.formData();
+		const id = formData.get('id')?.toString() || '';
+
+		try {
+			await emailMarketingService.deleteCampaign(id);
+			return { success: true };
+		} catch (error) {
+			const { message } = handleError(error);
+			return { error: message };
+		}
 	}
 };
 

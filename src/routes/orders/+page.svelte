@@ -4,7 +4,8 @@
 	import { goto } from '$app/navigation';
 
 	export let data: PageData;
-	export let params: Record<string, string> = {};
+	// params not used - suppress warning
+	// export let params: Record<string, string> = {};
 
 	let searchOrderId = '';
 
@@ -129,10 +130,18 @@
 						<h4 class="font-semibold text-gray-900 mb-4">Order Items</h4>
 						<div class="space-y-3">
 							{#each order.items || [] as item}
+								{@const itemReturn = (order.returnRequests || []).find((r) => r.product_id === item.product_id)}
 								<div class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
 									<div class="flex-1">
 										<p class="font-medium text-gray-900">{item.product_name}</p>
 										<p class="text-sm text-gray-600">Quantity: {item.quantity} × Tk {item.unit_price.toFixed(2)}</p>
+										{#if itemReturn}
+											<div class="mt-1">
+												<span class="px-2 py-1 rounded text-xs font-semibold {itemReturn.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : itemReturn.status === 'approved' ? 'bg-blue-100 text-blue-800' : itemReturn.status === 'refunded' ? 'bg-green-100 text-green-800' : itemReturn.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+													Return: {itemReturn.status.charAt(0).toUpperCase() + itemReturn.status.slice(1)}
+												</span>
+											</div>
+										{/if}
 									</div>
 									<p class="font-semibold text-gray-900">Tk {item.total_price.toFixed(2)}</p>
 								</div>

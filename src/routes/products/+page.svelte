@@ -13,7 +13,8 @@
 	} from '$lib/utils/comparison';
 
 	export let data: PageData;
-	export let params: Record<string, string> = {};
+	// params not used - suppress warning
+	// export let params: Record<string, string> = {};
 
 	let searchInput = data.searchQuery || '';
 	let showPopup = false;
@@ -362,7 +363,7 @@
 										action="/cart/add" 
 										use:enhance={({ result }) => {
 											return async () => {
-												if (result.type === 'success') {
+												if (result && result.type === 'success') {
 													try {
 														const data = await result.json();
 														if (data.success) {
@@ -373,7 +374,7 @@
 													} catch (e) {
 														showPopupMessage('Added to cart successfully!', 'success');
 													}
-												} else if (result.type === 'failure') {
+												} else if (result && result.type === 'failure') {
 													showPopupMessage('Failed to add to cart. Please try again.', 'error');
 												}
 											};

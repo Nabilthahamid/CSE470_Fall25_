@@ -4,12 +4,15 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
+	import MediaPicker from '$lib/components/MediaPicker.svelte';
 
 	export let data: PageData;
 	export let form: ActionData;
 	export let params: Record<string, string> = {};
 
 	let showCreateForm = false;
+	let showMediaPicker = false;
+	let selectedImageUrl = '';
 	let searchInput = data.searchQuery || '';
 	let showPriceOptimization = false;
 	let priceOptimizations: any[] = [];
@@ -36,6 +39,21 @@
 
 	function toggleCreateForm() {
 		showCreateForm = !showCreateForm;
+		if (!showCreateForm) {
+			selectedImageUrl = '';
+		}
+	}
+
+	function handleMediaSelect(urls: string[]) {
+		if (urls.length > 0) {
+			selectedImageUrl = urls[0];
+			// Also set the image_url input value
+			const imageUrlInput = document.getElementById('image_url') as HTMLInputElement;
+			if (imageUrlInput) {
+				imageUrlInput.value = urls[0];
+			}
+		}
+		showMediaPicker = false;
 	}
 
 	function applyFilters() {
@@ -167,63 +185,90 @@
 	<title>Product Management - Admin Dashboard</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto">
-	<div class="flex justify-between items-center mb-8">
-		<h1 class="m-0 text-3xl font-bold">Product Management</h1>
-		<div class="flex gap-3">
-			<button 
-				on:click={loadPriceOptimizations}
-				disabled={loadingOptimizations}
-				class="bg-purple-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-			>
-				{#if loadingOptimizations}
-					<svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-					</svg>
-					Loading...
-				{:else}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<!-- Header Section -->
+	<div class="mb-8">
+		<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+			<div>
+				<h1 class="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+					Product Management
+				</h1>
+				<p class="text-gray-500 text-sm">Manage your product catalog efficiently</p>
+			</div>
+			<div class="flex flex-wrap gap-3">
+				<button 
+					on:click={loadPriceOptimizations}
+					disabled={loadingOptimizations}
+					class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl cursor-pointer text-sm font-semibold transition-all hover:from-purple-700 hover:to-indigo-700 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+				>
+					{#if loadingOptimizations}
+						<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						Loading...
+					{:else}
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+						</svg>
+						AI Price Optimization
+					{/if}
+				</button>
+				<button 
+					class="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl cursor-pointer text-sm font-semibold transition-all hover:from-indigo-700 hover:to-blue-700 hover:shadow-lg flex items-center gap-2" 
+					on:click={toggleCreateForm}
+				>
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
 					</svg>
-					AI Price Optimization
-				{/if}
-			</button>
-			<button class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-indigo-700" on:click={toggleCreateForm}>
-				{showCreateForm ? 'Cancel' : '+ Add New Product'}
-			</button>
+					{showCreateForm ? 'Cancel' : 'Add New Product'}
+				</button>
+			</div>
 		</div>
 	</div>
 
 	{#if data.error}
-		<div class="bg-red-50 text-red-700 p-4 rounded-lg mb-4 border border-red-200">
-			{data.error}
+		<div class="bg-red-50 text-red-700 p-4 rounded-xl mb-6 border-2 border-red-200 shadow-md flex items-center gap-3">
+			<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+			</svg>
+			<span class="font-semibold">{data.error}</span>
 		</div>
 	{/if}
 
 	{#if form?.error}
-		<div class="bg-red-50 text-red-700 p-4 rounded-lg mb-4 border border-red-200">
-			{form.error}
+		<div class="bg-red-50 text-red-700 p-4 rounded-xl mb-6 border-2 border-red-200 shadow-md flex items-center gap-3">
+			<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+			</svg>
+			<span class="font-semibold">{form.error}</span>
 		</div>
 	{/if}
 
 	{#if showCreateForm}
-		<div class="bg-white/5 p-8 rounded-lg mb-8 border border-white/10">
-			<h2 class="mb-6 text-2xl font-semibold">Create New Product</h2>
+		<div class="bg-white rounded-xl shadow-xl border border-gray-200 p-8 mb-8">
+			<div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+				<div class="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+					<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+					</svg>
+				</div>
+				<h2 class="text-2xl font-bold text-gray-900">Create New Product</h2>
+			</div>
 			<form method="POST" action="?/create" use:enhance enctype="multipart/form-data">
 				<div class="mb-6">
-					<label for="name" class="block mb-2 font-medium">Product Name *</label>
-					<input type="text" id="name" name="name" required minlength="2" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
+					<label for="name" class="block mb-2 font-semibold text-gray-700">Product Name *</label>
+					<input type="text" id="name" name="name" required minlength="2" class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" />
 				</div>
 
 				<div class="mb-6">
 					<div class="flex items-center justify-between mb-2">
-						<label for="description" class="block font-medium">Description *</label>
+						<label for="description" class="block font-semibold text-gray-700">Description *</label>
 						<button
 							type="button"
 							on:click={generateDescription}
 							disabled={generatingDescription}
-							class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+							class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-semibold text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
 						>
 							{#if generatingDescription}
 								<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -251,71 +296,99 @@
 						required 
 						minlength="5" 
 						rows="4" 
-						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+						class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all resize-none"
 					></textarea>
-					<small class="block mt-1 text-gray-400 text-sm">Click "AI Generate Description" to auto-generate an SEO-optimized description</small>
+					<small class="block mt-1.5 text-gray-500 text-sm">Click "AI Generate Description" to auto-generate an SEO-optimized description</small>
+				</div>
+
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+					<div>
+						<label for="component_category_id" class="block mb-2 font-semibold text-gray-700">Component Category (optional)</label>
+						<select id="component_category_id" name="component_category_id" class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all">
+							<option value="">None (Regular Product)</option>
+							{#each data.categories as category}
+								<option value={category.id}>{category.display_name}</option>
+							{/each}
+						</select>
+						<small class="block mt-1.5 text-gray-500 text-sm">Select a category if this is a PC component</small>
+					</div>
+
+					<div>
+						<label for="brand" class="block mb-2 font-semibold text-gray-700">Brand (optional)</label>
+						<input type="text" id="brand" name="brand" placeholder="e.g., Intel, AMD, Samsung" class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" />
+					</div>
 				</div>
 
 				<div class="mb-6">
-					<label for="component_category_id" class="block mb-2 font-medium">Component Category (optional)</label>
-					<select id="component_category_id" name="component_category_id" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500">
-						<option value="">None (Regular Product)</option>
-						{#each data.categories as category}
-							<option value={category.id}>{category.display_name}</option>
-						{/each}
-					</select>
-					<small class="block mt-1 text-gray-400 text-sm">Select a category if this is a PC component</small>
+					<label for="specifications" class="block mb-2 font-semibold text-gray-700">Specifications (optional)</label>
+					<textarea id="specifications" name="specifications" rows="4" placeholder="Enter product specifications (e.g., CPU: Intel i7, RAM: 16GB, Storage: 512GB SSD)" class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all resize-none"></textarea>
+					<small class="block mt-1.5 text-gray-500 text-sm">Add detailed specifications for this product</small>
 				</div>
 
 				<div class="mb-6">
-					<label for="brand" class="block mb-2 font-medium">Brand (optional)</label>
-					<input type="text" id="brand" name="brand" placeholder="e.g., Intel, AMD, Samsung" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
-				</div>
-
-				<div class="mb-6">
-					<label for="specifications" class="block mb-2 font-medium">Specifications (optional)</label>
-					<textarea id="specifications" name="specifications" rows="4" placeholder="Enter product specifications (e.g., CPU: Intel i7, RAM: 16GB, Storage: 512GB SSD)" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"></textarea>
-					<small class="block mt-1 text-gray-400 text-sm">Add detailed specifications for this product</small>
-				</div>
-
-				<div class="mb-6">
-					<label for="image_file" class="block mb-2 font-medium">Product Image (optional)</label>
+					<label class="block mb-2 font-semibold text-gray-700">Product Image (optional)</label>
+					<div class="flex gap-3 mb-3">
+						<button
+							type="button"
+							on:click={() => showMediaPicker = true}
+							class="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 text-sm font-semibold transition-all hover:shadow-lg flex items-center gap-2"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+							</svg>
+							Select from Media Library
+						</button>
+						<span class="text-gray-500 text-sm self-center">or</span>
+					</div>
 					<input 
 						type="file" 
 						id="image_file" 
 						name="image_file" 
 						accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-						class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer"
+						class="w-full p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer"
 					/>
-					<small class="block mt-1 text-gray-400 text-sm">Upload a .png or .jpg image (max 5MB)</small>
+					<small class="block mt-1.5 text-gray-500 text-sm">Upload a .png or .jpg image (max 5MB). Images are automatically added to Media Library.</small>
 				</div>
 
 				<div class="mb-6">
-					<label for="image_url" class="block mb-2 font-medium">Or Image URL (optional)</label>
-					<input type="url" id="image_url" name="image_url" placeholder="https://example.com/image.jpg" class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
-					<small class="block mt-1 text-gray-400 text-sm">Alternatively, enter a URL to an image</small>
+					<label for="image_url" class="block mb-2 font-semibold text-gray-700">Or Image URL (optional)</label>
+					<input type="url" id="image_url" name="image_url" bind:value={selectedImageUrl} placeholder="https://example.com/image.jpg" class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" />
+					<small class="block mt-1.5 text-gray-500 text-sm">Alternatively, enter a URL to an image</small>
+					{#if selectedImageUrl}
+						<div class="mt-3">
+							<img src={selectedImageUrl} alt="Selected" class="w-32 h-32 object-cover rounded-xl border-2 border-gray-200 shadow-md" />
+						</div>
+					{/if}
 				</div>
 
-				<div class="grid grid-cols-3 gap-4 mb-6">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 					<div>
-						<label for="cost_price" class="block mb-2 font-medium">Cost Price *</label>
-						<input type="number" id="cost_price" name="cost_price" step="0.01" min="0" required class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
+						<label for="cost_price" class="block mb-2 font-semibold text-gray-700">Cost Price *</label>
+						<input type="number" id="cost_price" name="cost_price" step="0.01" min="0" required class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" />
 					</div>
 
 					<div>
-						<label for="price" class="block mb-2 font-medium">Selling Price *</label>
-						<input type="number" id="price" name="price" step="0.01" min="0" required class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
+						<label for="price" class="block mb-2 font-semibold text-gray-700">Selling Price *</label>
+						<input type="number" id="price" name="price" step="0.01" min="0" required class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" />
 					</div>
 
 					<div>
-						<label for="stock" class="block mb-2 font-medium">Stock *</label>
-						<input type="number" id="stock" name="stock" min="0" required class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500" />
+						<label for="stock" class="block mb-2 font-semibold text-gray-700">Stock *</label>
+						<input type="number" id="stock" name="stock" min="0" required class="w-full p-3.5 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all" />
 					</div>
 				</div>
 
-				<button type="submit" class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-indigo-700">
-					Create Product
-				</button>
+				<div class="flex gap-3 pt-4 border-t border-gray-200">
+					<button type="submit" class="px-8 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl cursor-pointer text-base font-semibold transition-all hover:from-indigo-700 hover:to-blue-700 hover:shadow-lg flex items-center gap-2">
+						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+						</svg>
+						Create Product
+					</button>
+					<button type="button" on:click={toggleCreateForm} class="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl cursor-pointer text-base font-semibold transition-all hover:bg-gray-300">
+						Cancel
+					</button>
+				</div>
 			</form>
 		</div>
 	{/if}
@@ -391,13 +464,20 @@
 
 	<div class="mt-8">
 		<!-- Advanced Search & Filter Panel -->
-		<div class="bg-white/5 rounded-lg border border-white/10 p-6 mb-6">
+		<div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 mb-6">
 			<div class="flex items-center justify-between mb-4">
-				<h2 class="text-xl font-semibold">Search & Filter Products</h2>
+				<div class="flex items-center gap-3">
+					<div class="p-2 bg-indigo-100 rounded-lg">
+						<svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+						</svg>
+					</div>
+					<h2 class="text-xl font-bold text-gray-900">Search & Filter Products</h2>
+				</div>
 				<button
 					type="button"
 					on:click={() => showFilters = !showFilters}
-					class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+					class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-semibold"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
@@ -408,31 +488,38 @@
 
 			<!-- Basic Search -->
 			<div class="mb-4">
-				<label for="search" class="block mb-2 font-medium text-sm">Search</label>
+				<label for="search" class="block mb-2 font-semibold text-gray-700 text-sm">Search</label>
 				<div class="flex gap-2">
-					<input
-						type="text"
-						id="search"
-						bind:value={searchInput}
-						placeholder="Search by name or description..."
-						class="flex-1 p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
-						on:keydown={(e) => {
-							if (e.key === 'Enter') {
-								handleSearch();
-							}
-						}}
-					/>
+					<div class="flex-1 relative">
+						<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+							<svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+							</svg>
+						</div>
+						<input
+							type="text"
+							id="search"
+							bind:value={searchInput}
+							placeholder="Search by name or description..."
+							class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
+							on:keydown={(e) => {
+								if (e.key === 'Enter') {
+									handleSearch();
+								}
+							}}
+						/>
+					</div>
 					<button
 						type="button"
 						on:click={handleSearch}
-						class="bg-indigo-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-indigo-700"
+						class="px-6 py-3 bg-indigo-600 text-white rounded-xl cursor-pointer text-base font-semibold transition-all hover:bg-indigo-700 hover:shadow-lg"
 					>
 						Search
 					</button>
 					<button
 						type="button"
 						on:click={clearFilters}
-						class="bg-gray-600 text-white border-none px-6 py-3 rounded-lg cursor-pointer text-base transition-colors hover:bg-gray-700"
+						class="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl cursor-pointer text-base font-semibold transition-all hover:bg-gray-300"
 					>
 						Clear All
 					</button>
@@ -441,14 +528,14 @@
 
 			<!-- Advanced Filters (Collapsible) -->
 			{#if showFilters}
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-white/10">
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
 					<!-- Category Filter -->
 					<div>
-						<label for="filterCategory" class="block mb-2 font-medium text-sm">Category</label>
+						<label for="filterCategory" class="block mb-2 font-semibold text-gray-700 text-sm">Category</label>
 						<select
 							id="filterCategory"
 							bind:value={filterCategory}
-							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							class="w-full p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 						>
 							<option value="">All Categories</option>
 							{#each data.categories as category}
@@ -459,11 +546,11 @@
 
 					<!-- Brand Filter -->
 					<div>
-						<label for="filterBrand" class="block mb-2 font-medium text-sm">Brand</label>
+						<label for="filterBrand" class="block mb-2 font-semibold text-gray-700 text-sm">Brand</label>
 						<select
 							id="filterBrand"
 							bind:value={filterBrand}
-							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							class="w-full p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 						>
 							<option value="">All Brands</option>
 							{#each data.brands as brand}
@@ -474,11 +561,11 @@
 
 					<!-- Stock Status Filter -->
 					<div>
-						<label for="filterStockStatus" class="block mb-2 font-medium text-sm">Stock Status</label>
+						<label for="filterStockStatus" class="block mb-2 font-semibold text-gray-700 text-sm">Stock Status</label>
 						<select
 							id="filterStockStatus"
 							bind:value={filterStockStatus}
-							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							class="w-full p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 						>
 							<option value="all">All</option>
 							<option value="in_stock">In Stock</option>
@@ -489,7 +576,7 @@
 
 					<!-- Price Range -->
 					<div>
-						<label class="block mb-2 font-medium text-sm">Price Range</label>
+						<label class="block mb-2 font-semibold text-gray-700 text-sm">Price Range</label>
 						<div class="flex gap-2">
 							<input
 								type="number"
@@ -497,7 +584,7 @@
 								placeholder="Min"
 								step="0.01"
 								min="0"
-								class="flex-1 p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+								class="flex-1 p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 							/>
 							<input
 								type="number"
@@ -505,78 +592,127 @@
 								placeholder="Max"
 								step="0.01"
 								min="0"
-								class="flex-1 p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+								class="flex-1 p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 							/>
 						</div>
 					</div>
 
 					<!-- Date Range -->
 					<div>
-						<label for="filterStartDate" class="block mb-2 font-medium text-sm">Created From</label>
+						<label for="filterStartDate" class="block mb-2 font-semibold text-gray-700 text-sm">Created From</label>
 						<input
 							type="date"
 							id="filterStartDate"
 							bind:value={filterStartDate}
-							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							class="w-full p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 						/>
 					</div>
 
 					<div>
-						<label for="filterEndDate" class="block mb-2 font-medium text-sm">Created To</label>
+						<label for="filterEndDate" class="block mb-2 font-semibold text-gray-700 text-sm">Created To</label>
 						<input
 							type="date"
 							id="filterEndDate"
 							bind:value={filterEndDate}
-							class="w-full p-3 border-2 border-white/10 rounded-lg bg-white/5 text-base box-border focus:outline-none focus:border-indigo-500"
+							class="w-full p-3 border-2 border-gray-300 rounded-xl bg-gray-50 text-base box-border focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
 						/>
 					</div>
 				</div>
 			{/if}
 		</div>
 
-		<h2 class="mb-6 text-2xl font-semibold">
-			{#if data.searchQuery || data.filters?.categoryId || data.filters?.brand || data.filters?.stockStatus !== 'all' || data.filters?.minPrice || data.filters?.maxPrice || data.filters?.startDate || data.filters?.endDate}
-				Filtered Results ({data.products.length})
-			{:else}
-				All Products ({data.products.length})
-			{/if}
-		</h2>
+		<!-- Products Header -->
+		<div class="flex items-center justify-between mb-6">
+			<h2 class="text-2xl font-bold text-gray-900">
+				{#if data.searchQuery || data.filters?.categoryId || data.filters?.brand || data.filters?.stockStatus !== 'all' || data.filters?.minPrice || data.filters?.maxPrice || data.filters?.startDate || data.filters?.endDate}
+					Filtered Results
+				{:else}
+					All Products
+				{/if}
+			</h2>
+			<div class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+				{data.products.length} {data.products.length === 1 ? 'Product' : 'Products'}
+			</div>
+		</div>
 
 		{#if data.products.length === 0}
-			<p class="text-center p-8 text-gray-400">
-				{#if data.searchQuery}
-					No products found matching "{data.searchQuery}". Try a different search term.
-				{:else}
-					No products found. Create your first product!
+			<div class="bg-white rounded-xl shadow-lg border border-gray-200 p-12 text-center">
+				<svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+				</svg>
+				<p class="text-gray-600 text-lg font-semibold mb-2">
+					{#if data.searchQuery}
+						No products found matching "{data.searchQuery}"
+					{:else}
+						No products found
+					{/if}
+				</p>
+				<p class="text-gray-500 text-sm mb-4">
+					{#if data.searchQuery}
+						Try a different search term or clear filters
+					{:else}
+						Create your first product to get started!
+					{/if}
+				</p>
+				{#if !showCreateForm}
+					<button 
+						on:click={toggleCreateForm}
+						class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all hover:shadow-lg"
+					>
+						Create Product
+					</button>
 				{/if}
-			</p>
+			</div>
 		{:else}
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{#each data.products as product (product.id)}
-					<div class="bg-white/5 p-6 rounded-lg border border-white/10">
+					<div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
 						{#if product.image_url}
-							<img src={product.image_url} alt={product.name} class="w-full h-48 object-cover rounded-lg mb-4" on:error={(e) => { e.currentTarget.style.display = 'none'; }} />
+							<div class="relative h-48 bg-gray-100 overflow-hidden">
+								<img src={product.image_url} alt={product.name} class="w-full h-full object-cover" on:error={(e) => { e.currentTarget.style.display = 'none'; }} />
+								<div class="absolute top-3 right-3">
+									<span class="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-gray-700 shadow-md">
+										${product.price.toFixed(2)}
+									</span>
+								</div>
+							</div>
+						{:else}
+							<div class="h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+								<svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+								</svg>
+							</div>
 						{/if}
-						<h3 class="m-0 mb-2 text-xl font-semibold">{product.name}</h3>
-						<p class="text-gray-400 my-2 text-sm line-clamp-2">{product.description}</p>
-						<div class="my-4">
-							<p class="my-2"><strong>Price:</strong> ${product.price.toFixed(2)}</p>
-							<p class="my-2"><strong>Stock:</strong> {product.stock}</p>
-						</div>
-						<div class="flex gap-2 mt-4">
-							<a href="/admin/products/{product.id}/edit" class="bg-green-600 text-white px-4 py-2 rounded no-underline text-sm transition-colors hover:bg-green-700">
-								Edit
-							</a>
-							<form method="POST" action="?/delete" use:enhance class="inline">
-								<input type="hidden" name="id" value={product.id} />
-								<button 
-									type="submit" 
-									class="bg-red-600 text-white border-none px-4 py-2 rounded cursor-pointer text-sm transition-colors hover:bg-red-700"
-									on:click={(e) => { if (!confirm('Are you sure?')) { e.preventDefault(); } }}
-								>
-									Delete
-								</button>
-							</form>
+						<div class="p-5">
+							<h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{product.name}</h3>
+							<p class="text-gray-600 text-sm mb-4 line-clamp-2">{product.description}</p>
+							<div class="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+								<div>
+									<p class="text-xs text-gray-500 mb-1">Stock</p>
+									<p class="text-sm font-semibold {product.stock && product.stock > 10 ? 'text-green-600' : product.stock && product.stock > 0 ? 'text-yellow-600' : 'text-red-600'}">
+										{product.stock ?? 'N/A'} {product.stock && product.stock > 0 ? 'units' : 'unit'}
+									</p>
+								</div>
+								<div class="text-right">
+									<p class="text-xs text-gray-500 mb-1">Price</p>
+									<p class="text-lg font-bold text-indigo-600">${product.price.toFixed(2)}</p>
+								</div>
+							</div>
+							<div class="flex gap-2">
+								<a href="/admin/products/{product.id}/edit" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg no-underline text-sm font-semibold transition-all hover:bg-indigo-700 hover:shadow-md text-center">
+									Edit
+								</a>
+								<form method="POST" action="?/delete" use:enhance class="flex-1">
+									<input type="hidden" name="id" value={product.id} />
+									<button 
+										type="submit" 
+										class="w-full px-4 py-2.5 bg-gray-600 text-white rounded-lg border-none cursor-pointer text-sm font-semibold transition-all hover:bg-gray-700 hover:shadow-md"
+										on:click={(e) => { if (!confirm('Are you sure you want to delete this product?')) { e.preventDefault(); } }}
+									>
+										Delete
+									</button>
+								</form>
+							</div>
 						</div>
 					</div>
 				{/each}
@@ -584,6 +720,15 @@
 		{/if}
 	</div>
 </div>
+
+{#if showMediaPicker}
+	<MediaPicker
+		multiple={false}
+		selectedUrls={selectedImageUrl ? [selectedImageUrl] : []}
+		onSelect={handleMediaSelect}
+		onClose={() => showMediaPicker = false}
+	/>
+{/if}
 
 <!-- AI Generated Description Modal -->
 {#if showDescriptionModal && generatedDescription}

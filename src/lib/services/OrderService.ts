@@ -86,9 +86,11 @@ class OrderRepositoryImpl implements OrderRepository {
 	}
 
 	async create(orderData: CreateOrderDTO, items: OrderItemInput[]): Promise<Order> {
-		// Calculate total (including shipping cost)
+		// Calculate total (including shipping cost and discount)
 		const subtotal = items.reduce((sum, item) => sum + item.total_price, 0);
-		const totalAmount = subtotal + (orderData.shipping_cost || 0);
+		const discountAmount = orderData.discount_amount || 0;
+		const shippingCost = orderData.shipping_cost || 0;
+		const totalAmount = subtotal - discountAmount + shippingCost;
 
 		// Create order
 		const { data: order, error: orderError } = await supabase
@@ -104,7 +106,10 @@ class OrderRepositoryImpl implements OrderRepository {
 				customer_country: orderData.customer_country || null,
 				shipping_method: orderData.shipping_method || null,
 				payment_method: orderData.payment_method || null,
-				shipping_cost: orderData.shipping_cost || 0,
+				shipping_cost: shippingCost,
+				coupon_code: orderData.coupon_code || null,
+				coupon_id: orderData.coupon_id || null,
+				discount_amount: discountAmount,
 				total_amount: totalAmount,
 				status: 'pending'
 			})

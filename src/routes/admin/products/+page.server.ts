@@ -7,7 +7,12 @@ import { pcBuildService } from '$lib/services/PCBuildService';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	requireAdmin(locals.user);
+	try {
+		requireAdmin(locals.user);
+	} catch (authError) {
+		// If auth fails, it will redirect - let it propagate
+		throw authError;
+	}
 
 	try {
 		// Get all filter parameters
@@ -23,18 +28,25 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		// Check if any filters are applied
 		const hasFilters = searchQuery || categoryId || brand || stockStatus !== 'all' || minPrice !== undefined || maxPrice !== undefined || startDate || endDate;
 
-		const products = hasFilters
-			? await productService.filterProducts({
-					search: searchQuery || undefined,
-					categoryId: categoryId || undefined,
-					brand: brand || undefined,
-					stockStatus: stockStatus as any,
-					minPrice,
-					maxPrice,
-					startDate: startDate || undefined,
-					endDate: endDate || undefined
-				})
-			: await productService.getAllProducts();
+		let products: any[] = [];
+		try {
+			products = hasFilters
+				? await productService.filterProducts({
+						search: searchQuery || undefined,
+						categoryId: categoryId || undefined,
+						brand: brand || undefined,
+						stockStatus: stockStatus as any,
+						minPrice,
+						maxPrice,
+						startDate: startDate || undefined,
+						endDate: endDate || undefined
+					})
+				: await productService.getAllProducts();
+		} catch (productError: any) {
+			console.error('Error loading products:', productError);
+			// If products table doesn't exist or other error, continue with empty array
+			products = [];
+		}
 		
 		// Load component categories (handle gracefully if table doesn't exist)
 		let categories = [];
@@ -48,11 +60,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		// Get unique brands for filter dropdown
 		let brands: string[] = [];
 		try {
-			const allProducts = await productService.getAllProducts();
-			brands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))] as string[];
+			// Use the already loaded products if available, otherwise fetch
+			const allProducts = products.length > 0 ? products : await productService.getAllProducts();
+			brands = [...new Set(allProducts.map((p: any) => p.brand).filter(Boolean))] as string[];
 			brands.sort();
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Error loading brands:', error);
+			// Continue with empty brands array
+			brands = [];
 		}
 		
 		return {
@@ -71,8 +86,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			},
 			error: null
 		};
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error in products page load:', error);
 		const { message } = handleError(error);
+		// Return safe defaults instead of throwing
 		return {
 			products: [],
 			categories: [],
@@ -87,7 +104,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 				startDate: '',
 				endDate: ''
 			},
-			error: message
+			error: message || 'Failed to load products'
 		};
 	}
 };
@@ -127,7 +144,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await productService.createProduct({ 
+			const product = await productService.createProduct({ 
 				name, 
 				description, 
 				price, 
@@ -138,6 +155,22 @@ export const actions: Actions = {
 				brand: brand || null,
 				specifications: specifications || null
 			});
+
+			// Track media usage if image was uploaded
+			if (finalImageUrl) {
+				try {
+					const { mediaService } = await import('$lib/services/MediaService');
+					// Only track if media_files table exists
+					await mediaService.trackProductMediaUsage(product.id, finalImageUrl, name).catch((err) => {
+						// Silently fail if table doesn't exist or other errors
+						console.warn('Media tracking failed (non-critical):', err.message);
+					});
+				} catch (error: any) {
+					// Silently fail if import fails or service doesn't exist
+					console.warn('Media service not available (non-critical):', error?.message || error);
+				}
+			}
+
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

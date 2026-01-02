@@ -7,7 +7,8 @@
 
 	export let data: PageData;
 	export let form: ActionData;
-	export let params: Record<string, string> = {};
+	// params not used - suppress warning
+	// export let params: Record<string, string> = {};
 
 	let activeTab = data?.activeTab || 'homepage';
 	let showBannerForm = false;

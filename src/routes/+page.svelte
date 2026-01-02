@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 	import {
 		addToComparison,
@@ -11,7 +12,6 @@
 	} from '$lib/utils/comparison';
 
 	export let data: PageData;
-	export let params: Record<string, string> = {};
 
 	let showPopup = false;
 	let popupMessage = '';
@@ -304,8 +304,10 @@
 
 	<!-- Popup Modal -->
 	{#if showPopup}
-		<div 
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-static-element-interactions -->
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="popup-title"
@@ -313,6 +315,8 @@
 			on:click={closePopup} 
 			on:keydown={(e) => e.key === 'Escape' && closePopup()}
 		>
+			<!-- svelte-ignore a11y-click-events-have-key-events -->
+			<!-- svelte-ignore a11y-no-static-element-interactions -->
 			<div 
 				class="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all" 
 				role="document"
@@ -482,22 +486,19 @@
 											{#if product.stock > 0}
 												<form 
 													method="POST" 
-													action="/cart/add" 
-													use:enhance={({ result }) => {
-														return async () => {
-															if (result.type === 'success') {
-																try {
-																	const data = await result.json();
-																	if (data.success) {
-																		showPopupMessage('Added to cart successfully!', 'success');
-																	} else {
-																		showPopupMessage(data.error || 'Failed to add to cart', 'error');
-																	}
-																} catch (e) {
-																	showPopupMessage('Added to cart successfully!', 'success');
-																}
-															} else if (result.type === 'failure') {
-																showPopupMessage('Failed to add to cart. Please try again.', 'error');
+													action="/cart/add?redirect={encodeURIComponent($page.url.pathname)}" 
+													use:enhance={({ update }) => {
+														return async ({ update: updateFn }) => {
+															// The endpoint will redirect, so we just update the page
+															if (updateFn) {
+																await updateFn();
+															} else if (update) {
+																await update();
+															}
+															// Show success message (will be handled by URL params)
+															const urlParams = new URLSearchParams($page.url.search);
+															if (urlParams.get('success')) {
+																showPopupMessage(urlParams.get('success') || 'Added to cart successfully!', 'success');
 															}
 														};
 													}}
@@ -622,22 +623,19 @@
 										{#if product.stock > 0}
 											<form 
 												method="POST" 
-												action="/cart/add" 
-												use:enhance={({ result }) => {
-													return async () => {
-														if (result.type === 'success') {
-															try {
-																const data = await result.json();
-																if (data.success) {
-																	showPopupMessage('Added to cart successfully!', 'success');
-																} else {
-																	showPopupMessage(data.error || 'Failed to add to cart', 'error');
-																}
-															} catch (e) {
-																showPopupMessage('Added to cart successfully!', 'success');
-															}
-														} else if (result.type === 'failure') {
-															showPopupMessage('Failed to add to cart. Please try again.', 'error');
+													action="/cart/add?redirect={encodeURIComponent($page.url.pathname)}"
+												use:enhance={({ update }) => {
+													return async ({ update: updateFn }) => {
+														// The endpoint will redirect, so we just update the page
+														if (updateFn) {
+															await updateFn();
+														} else if (update) {
+															await update();
+														}
+														// Show success message (will be handled by URL params)
+														const urlParams = new URLSearchParams($page.url.search);
+														if (urlParams.get('success')) {
+															showPopupMessage(urlParams.get('success') || 'Added to cart successfully!', 'success');
 														}
 													};
 												}}

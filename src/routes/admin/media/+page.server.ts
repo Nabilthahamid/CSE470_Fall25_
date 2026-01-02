@@ -58,8 +58,8 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Upload to storage
-			const fileUrl = await uploadImage(file, 'product-images');
+			// Upload to storage (addToLibrary=false since we'll create the record manually)
+			const fileUrl = await uploadImage(file, 'product-images', false);
 
 			// Determine file type
 			const mimeType = file.type;
