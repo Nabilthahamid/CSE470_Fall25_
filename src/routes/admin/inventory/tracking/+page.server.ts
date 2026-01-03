@@ -1,7 +1,7 @@
 // CONTROLLER: Inventory Tracking Page
 import type { PageServerLoad } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { inventoryService } from '$lib/services/InventoryService';
+import { getStockMovementHistory, getInventoryValuation, getABCAnalysis, getDeadStock, getStockAgingReport } from '$lib/utils/inventory';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -12,11 +12,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const daysThreshold = parseInt(url.searchParams.get('daysThreshold') || '90');
 
 		const [movementHistory, valuation, abcAnalysis, deadStock, stockAging] = await Promise.all([
-			inventoryService.getStockMovementHistory(productId),
-			inventoryService.getInventoryValuation(),
-			inventoryService.getABCAnalysis(),
-			inventoryService.getDeadStock(daysThreshold),
-			inventoryService.getStockAgingReport()
+			getStockMovementHistory(productId),
+			getInventoryValuation(),
+			getABCAnalysis(),
+			getDeadStock(daysThreshold),
+			getStockAgingReport()
 		]);
 
 		return {

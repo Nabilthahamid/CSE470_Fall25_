@@ -1,7 +1,7 @@
 // API: Review Sentiment Analysis endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
+import { analyzeReviewSentiment } from '$lib/utils/ai';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Rating is required' }, { status: 400 });
 		}
 
-		const analysis = await aiService.analyzeReviewSentiment({ rating, comment });
+		const analysis = await analyzeReviewSentiment({ rating, comment });
 
 		return json(analysis);
 	} catch (error: any) {

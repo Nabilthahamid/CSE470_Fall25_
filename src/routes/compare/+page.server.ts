@@ -1,7 +1,7 @@
 // CONTROLLER: Product comparison page
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { productService } from '$lib/services/ProductService';
+// ProductService removed - not used in this file
 import { handleError } from '$lib/utils/errors';
 import { getComparisonProducts } from '$lib/utils/comparison';
 

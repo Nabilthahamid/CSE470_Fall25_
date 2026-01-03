@@ -3,9 +3,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
+	import { toast } from '$lib/stores/toast';
 
 	export let data: PageData;
-	export let params: Record<string, string> = {};
+	// Accept params prop from SvelteKit (even if unused)
+	export let params: Record<string, string> = {} as any;
 
 	let selectedProducts = new Set<string>();
 	let selectAll = false;
@@ -14,6 +16,7 @@
 	// Price update
 	let priceUpdateType: 'percentage' | 'fixed' = 'percentage';
 	let priceValue = 0;
+	let updatingPrices = false;
 
 	// Stock update
 	let stockUpdateType: 'set' | 'add' | 'subtract' = 'set';
@@ -40,27 +43,47 @@
 		if (selectAll) {
 			selectedProducts = new Set(data.products.map(p => p.id));
 		} else {
-			selectedProducts.clear();
+			selectedProducts = new Set();
 		}
 	}
 
 	function toggleProduct(id: string) {
-		if (selectedProducts.has(id)) {
-			selectedProducts.delete(id);
+		const newSet = new Set(selectedProducts);
+		if (newSet.has(id)) {
+			newSet.delete(id);
 		} else {
-			selectedProducts.add(id);
+			newSet.add(id);
 		}
+		selectedProducts = newSet;
 		selectAll = selectedProducts.size === data.products.length;
 	}
 
 	async function handleBulkPriceUpdate() {
 		if (selectedProducts.size === 0) {
-			alert('Please select at least one product');
+			toast.error('Please select at least one product');
+			return;
+		}
+
+		if (priceValue === 0 && priceUpdateType === 'fixed') {
+			toast.error('Please enter a value greater than 0');
+			return;
+		}
+
+		if (isNaN(priceValue)) {
+			toast.error('Please enter a valid number');
+			return;
+		}
+
+		const numericValue = priceValue;
+
+		if (priceUpdateType === 'percentage' && (numericValue < -100 || numericValue > 1000)) {
+			toast.error('Percentage must be between -100 and 1000');
 			return;
 		}
 
 		if (!confirm(`Update price for ${selectedProducts.size} products?`)) return;
 
+		updatingPrices = true;
 		try {
 			const response = await fetch('/api/admin/bulk-operations', {
 				method: 'POST',
@@ -70,20 +93,30 @@
 					data: {
 						productIds: Array.from(selectedProducts),
 						updateType: priceUpdateType,
-						value: priceValue
+						value: numericValue
 					}
 				})
 			});
 
 			const result = await response.json();
 			if (result.success) {
-				alert(`Successfully updated ${result.updated} products`);
-				goto('/admin/inventory/bulk-operations');
+				toast.success(`Successfully updated ${result.updated} products`);
+				// Reset form
+				priceValue = 0;
+				selectedProducts = new Set();
+				selectAll = false;
+				// Reload page to show updated prices
+				setTimeout(() => {
+					goto('/admin/inventory/bulk-operations', { invalidateAll: true });
+				}, 1000);
 			} else {
-				alert(result.error || 'Failed to update prices');
+				toast.error(result.error || 'Failed to update prices');
 			}
 		} catch (error: any) {
-			alert('Error: ' + error.message);
+			console.error('Error updating prices:', error);
+			toast.error('Error: ' + (error.message || 'Failed to update prices'));
+		} finally {
+			updatingPrices = false;
 		}
 	}
 
@@ -377,15 +410,17 @@
 						type="number"
 						bind:value={priceValue}
 						step={priceUpdateType === 'percentage' ? '1' : '0.01'}
-						class="w-full p-3 border-2 border-gray-300 rounded-lg"
+						placeholder={priceUpdateType === 'percentage' ? 'Enter percentage (e.g., 7 for 7%)' : 'Enter amount (e.g., 10 for Tk 10)'}
+						class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-indigo-500"
+						required
 					/>
 				</div>
 				<button
 					on:click={handleBulkPriceUpdate}
-					disabled={selectedProducts.size === 0}
-					class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					disabled={selectedProducts.size === 0 || updatingPrices}
+					class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 				>
-					Update Prices
+					{updatingPrices ? 'Updating...' : 'Update Prices'}
 				</button>
 			</div>
 		</div>

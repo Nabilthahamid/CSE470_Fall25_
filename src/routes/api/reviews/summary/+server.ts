@@ -1,8 +1,7 @@
 // API: Review Summary endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { reviewService } from '$lib/services/ReviewService';
+import { ReviewModel } from '$lib/models/ReviewModel';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
@@ -12,11 +11,24 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: 'Product ID is required' }, { status: 400 });
 		}
 
-		const reviews = await reviewService.getReviewsByProduct(productId);
+		const reviewsModels = await ReviewModel.getByProduct(productId);
+		const reviews = reviewsModels.map(r => r.toJSON());
 
-		const summary = await aiService.generateReviewSummary(
-			reviews.map(r => ({ rating: r.rating, comment: r.comment }))
-		);
+		// Generate simple summary from reviews
+		const avgRating = reviews.length > 0 
+			? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+			: 0;
+		const totalReviews = reviews.length;
+		const positiveReviews = reviews.filter(r => r.rating >= 4).length;
+		const negativeReviews = reviews.filter(r => r.rating <= 2).length;
+
+		const summary = {
+			averageRating: avgRating,
+			totalReviews,
+			positiveReviews,
+			negativeReviews,
+			summary: `Based on ${totalReviews} reviews, this product has an average rating of ${avgRating.toFixed(1)}/5.`
+		};
 
 		return json(summary);
 	} catch (error: any) {

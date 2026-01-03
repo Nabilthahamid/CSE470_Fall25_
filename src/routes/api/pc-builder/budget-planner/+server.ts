@@ -1,8 +1,8 @@
 // API: PC Builder Budget Planner
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { pcBuildService } from '$lib/services/PCBuildService';
-import { productService } from '$lib/services/ProductService';
+import { getAllCategories } from '$lib/utils/pc-builder';
+import { ProductModel } from '$lib/models/ProductModel';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -13,8 +13,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Get all categories and products
-		const categories = await pcBuildService.getAllCategories();
-		const allProducts = await productService.getAllProducts();
+		const categories = await getAllCategories();
+		const allProductsModels = await ProductModel.getAll();
+		const allProducts = allProductsModels.map(p => p.toJSON());
 
 		// Budget allocation based on use case
 		const allocations: Record<string, Record<string, number>> = {

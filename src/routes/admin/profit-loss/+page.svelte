@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
-	import { productService } from '$lib/services/ProductService';
 	import { onMount } from 'svelte';
 
 	export let data: PageData;
@@ -18,8 +17,11 @@
 	onMount(async () => {
 		if (typeof window === 'undefined') return; // Only run on client
 		try {
-			const allProducts = await productService.getAllProducts();
-			products = allProducts.map((p) => ({ id: p.id, name: p.name }));
+			const response = await fetch('/api/admin/quick-search?q=');
+			if (response.ok) {
+				const data = await response.json();
+				products = data.products.map((p: any) => ({ id: p.id, name: p.name }));
+			}
 		} catch (error) {
 			console.error('Failed to load products:', error);
 		}

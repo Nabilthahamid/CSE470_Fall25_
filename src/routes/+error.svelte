@@ -3,8 +3,6 @@
 	import type { ErrorComponent } from './$types';
 
 	export let error: ErrorComponent | undefined = undefined;
-	// params not used - suppress warning
-	export let params: Record<string, string> = {};
 </script>
 
 <svelte:head>

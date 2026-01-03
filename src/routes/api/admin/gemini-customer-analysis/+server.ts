@@ -2,8 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { aiService } from '$lib/services/AIService';
-import { orderService } from '$lib/services/OrderService';
+import { OrderModel } from '$lib/models/OrderModel';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	requireAdmin(locals.user);
@@ -16,7 +15,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Fetch user orders
-		const orders = await orderService.getAllOrders({ userId });
+		const ordersModels = await OrderModel.getByUser(userId);
+		const orders = ordersModels.map(o => o.toJSON());
 
 		if (orders.length === 0) {
 			return json({
@@ -53,15 +53,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.sort((a, b) => categoryCounts[b] - categoryCounts[a])
 			.slice(0, 5);
 
-		// Analyze with Gemini
-		const analysis = await aiService.analyzeCustomerBehavior({
-			totalOrders,
-			totalSpent,
-			averageOrderValue,
-			lastOrderDate: orders[0].created_at,
-			orderFrequency,
-			preferredCategories
-		});
+		// Basic customer analysis (AI service removed)
+		const analysis = {
+			insights: `Customer has made ${totalOrders} orders with total spending of ${totalSpent.toFixed(2)}. Average order value: ${averageOrderValue.toFixed(2)}.`,
+			recommendations: ['Continue engaging with personalized offers'],
+			segment: totalSpent > 10000 ? 'VIP' : totalSpent > 5000 ? 'Premium' : 'Regular'
+		};
 
 		return json({ ...analysis, error: null });
 	} catch (error: any) {

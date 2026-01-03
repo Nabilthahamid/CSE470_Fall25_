@@ -2,7 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { productService } from '$lib/services/ProductService';
+import { ProductModel } from '$lib/models/ProductModel';
 import { supabase } from '$lib/config/supabase';
 import { handleError } from '$lib/utils/errors';
 
@@ -33,7 +33,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				const products = await Promise.all(
 					productIds.map(async (id: string) => {
-						const product = await productService.getProductById(id);
+						const productModel = await ProductModel.getById(id);
+						if (!productModel) throw new Error(`Product ${id} not found`);
+						const product = productModel.toJSON();
 						let newPrice = product.price;
 
 						if (updateType === 'percentage') {
@@ -42,7 +44,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							newPrice = product.price + value;
 						}
 
-						return productService.updateProduct(id, { price: Math.max(0, newPrice) });
+						await productModel.update({ price: Math.max(0, newPrice) });
+						return productModel.toJSON();
 					})
 				);
 
@@ -56,7 +59,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				const products = await Promise.all(
 					productIds.map(async (id: string) => {
-						const product = await productService.getProductById(id);
+						const productModel = await ProductModel.getById(id);
+						if (!productModel) throw new Error(`Product ${id} not found`);
+						const product = productModel.toJSON();
 						let newStock = product.stock;
 
 						if (updateType === 'set') {
@@ -67,7 +72,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							newStock = product.stock - value;
 						}
 
-						return productService.updateProduct(id, { stock: Math.max(0, newStock) });
+						await productModel.update({ stock: Math.max(0, newStock) });
+						return productModel.toJSON();
 					})
 				);
 
@@ -90,13 +96,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			case 'bulk_delete': {
 				const { productIds } = operationData;
 
-				await Promise.all(productIds.map((id: string) => productService.deleteProduct(id)));
+				await Promise.all(
+					productIds.map(async (id: string) => {
+						const productModel = await ProductModel.getById(id);
+						if (productModel) {
+							await productModel.delete();
+						}
+					})
+				);
 
 				return json({ success: true, deleted: productIds.length });
 			}
 
 			case 'export_products': {
-				const products = await productService.getAllProducts();
+				const productsModels = await ProductModel.getAll();
+				const products = productsModels.map(p => p.toJSON());
 				const csv = convertToCSV(products);
 				return new Response(csv, {
 					headers: {
@@ -217,20 +231,23 @@ async function importProducts(products: any[]): Promise<{ success: number; faile
 		try {
 			if (product.id) {
 				// Update existing
-				await productService.updateProduct(product.id, {
-					name: product.name,
-					description: product.description,
-					price: product.price,
-					cost_price: product.cost_price,
-					stock: product.stock,
-					brand: product.brand || null,
-					component_category_id: product.component_category_id || null,
-					image_url: product.image_url || null,
-					specifications: product.specifications || null
-				});
+				const productModel = await ProductModel.getById(product.id);
+				if (productModel) {
+					await productModel.update({
+						name: product.name,
+						description: product.description,
+						price: product.price,
+						cost_price: product.cost_price,
+						stock: product.stock,
+						brand: product.brand || null,
+						component_category_id: product.component_category_id || null,
+						image_url: product.image_url || null,
+						specifications: product.specifications || null
+					});
+				}
 			} else {
 				// Create new
-				await productService.createProduct({
+				await ProductModel.create({
 					name: product.name,
 					description: product.description || '',
 					price: product.price,

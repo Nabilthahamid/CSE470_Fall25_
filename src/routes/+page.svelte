@@ -486,19 +486,13 @@
 											{#if product.stock > 0}
 												<form 
 													method="POST" 
-													action="/cart/add?redirect={encodeURIComponent($page.url.pathname)}" 
+													action="/cart?/add" 
 													use:enhance={({ update }) => {
 														return async ({ update: updateFn }) => {
-															// The endpoint will redirect, so we just update the page
 															if (updateFn) {
 																await updateFn();
 															} else if (update) {
 																await update();
-															}
-															// Show success message (will be handled by URL params)
-															const urlParams = new URLSearchParams($page.url.search);
-															if (urlParams.get('success')) {
-																showPopupMessage(urlParams.get('success') || 'Added to cart successfully!', 'success');
 															}
 														};
 													}}
@@ -506,6 +500,7 @@
 												>
 													<input type="hidden" name="product_id" value={product.id} />
 													<input type="hidden" name="quantity" value="1" />
+													<input type="hidden" name="redirect" value={$page.url.pathname} />
 													<button
 														type="submit"
 														class="w-full bg-white border-2 border-blue-600 text-blue-600 px-4 py-3 rounded-lg cursor-pointer text-sm font-bold hover:bg-blue-50 hover:shadow-md transition-all duration-300"
@@ -623,19 +618,13 @@
 										{#if product.stock > 0}
 											<form 
 												method="POST" 
-													action="/cart/add?redirect={encodeURIComponent($page.url.pathname)}"
+												action="/cart?/add"
 												use:enhance={({ update }) => {
 													return async ({ update: updateFn }) => {
-														// The endpoint will redirect, so we just update the page
 														if (updateFn) {
 															await updateFn();
 														} else if (update) {
 															await update();
-														}
-														// Show success message (will be handled by URL params)
-														const urlParams = new URLSearchParams($page.url.search);
-														if (urlParams.get('success')) {
-															showPopupMessage(urlParams.get('success') || 'Added to cart successfully!', 'success');
 														}
 													};
 												}}

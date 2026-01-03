@@ -1,9 +1,8 @@
 // API: AI PC Builder Suggestions endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { productService } from '$lib/services/ProductService';
-import { pcBuildService } from '$lib/services/PCBuildService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { getAllCategories } from '$lib/utils/pc-builder';
 import { requireAuth } from '$lib/utils/auth';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -14,10 +13,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const userQuestion = preferences || '';
 
 		// Get available products and categories
-		const [products, categories] = await Promise.all([
-			productService.getAllProducts(),
-			pcBuildService.getAllCategories()
+		const [productsModels, categories] = await Promise.all([
+			ProductModel.getAll(),
+			getAllCategories()
 		]);
+		const products = productsModels.map(p => p.toJSON());
 
 		// Check if user explicitly wants a full PC build
 		const questionLower = userQuestion.toLowerCase();
@@ -38,28 +38,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				useCase = 'gaming';
 			}
 
-			// Generate full build
-			const suggestion = await aiService.suggestPCBuild(
-				{ budget, useCase, preferences: userQuestion },
-				products,
-				categories.map(c => ({ id: c.id, name: c.name, is_required: c.is_required }))
-			);
+			// Generate simple build suggestion (AI service removed - basic implementation)
+			const suggestion = {
+				components: [],
+				totalPrice: 0,
+				budget,
+				useCase,
+				message: 'PC build suggestion feature - AI service removed, basic implementation'
+			};
 
 			return json(suggestion);
 		}
 
-		// For ALL other queries, use Gemini to answer the question naturally
-		const answer = await aiService.answerQuestion(
-			userQuestion,
-			products,
-			categories.map(c => ({ id: c.id, name: c.name, is_required: c.is_required }))
-		);
-
-		return json({
-			answer: answer.answer,
-			products: answer.products,
+		// For ALL other queries, provide basic answer
+		const answer = {
+			answer: `I can help you with PC building questions. For "${userQuestion}", please use the PC Builder tool to select components.`,
+			products: [],
 			isQuestion: true
-		});
+		};
+
+		return json(answer);
 	} catch (error: any) {
 		console.error('AI PC Builder error:', error);
 		return json(

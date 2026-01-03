@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { productService } from '$lib/services/ProductService';
 	import type { Product } from '$lib/models/Product';
 	import {
 		getComparisonProducts,
@@ -37,8 +36,14 @@
 		}
 
 		try {
-			const allProducts = await productService.getAllProducts();
-			products = allProducts.filter((p) => comparisonIds.includes(p.id));
+			const response = await fetch('/api/admin/quick-search?q=');
+			if (response.ok) {
+				const data = await response.json();
+				const allProducts = data.products;
+				products = allProducts.filter((p: Product) => comparisonIds.includes(p.id));
+			} else {
+				throw new Error('Failed to fetch products');
+			}
 			
 			// Sort products to match the order in comparisonIds
 			products.sort((a, b) => {
@@ -424,7 +429,7 @@
 											View Details
 										</a>
 										{#if product.stock > 0}
-											<form method="POST" action="/cart/add" class="w-full">
+											<form method="POST" action="/cart?/add" class="w-full">
 												<input type="hidden" name="product_id" value={product.id} />
 												<input type="hidden" name="quantity" value="1" />
 												<button

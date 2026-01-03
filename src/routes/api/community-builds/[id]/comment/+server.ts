@@ -1,7 +1,7 @@
 // API: Add comment to build
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 import { requireAuth } from '$lib/utils/auth';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ error: 'Comment is required' }, { status: 400 });
 		}
 
-		const newComment = await communityBuildService.addComment(
+		const newComment = await CommunityBuildModel.addComment(
 			params.id,
 			locals.user.id,
 			comment

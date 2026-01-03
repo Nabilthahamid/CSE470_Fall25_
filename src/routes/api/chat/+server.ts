@@ -1,7 +1,7 @@
 // API: Chat endpoint for AI chatbot
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
+import { handleChatMessage } from '$lib/utils/ai';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -14,14 +14,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Use userId from request or from session
 		const effectiveUserId = userId || locals.user?.id || null;
 
-		// Get AI response
-		const response = await aiService.handleChatMessage(
+		// Get AI response with product suggestions
+		const result = await handleChatMessage(
 			message.trim(),
 			effectiveUserId,
 			conversationHistory || []
 		);
 
-		return json({ response });
+		return json({ 
+			response: result.response,
+			products: result.products || []
+		});
 	} catch (error) {
 		console.error('Chat API error:', error);
 		return json(

@@ -1,8 +1,8 @@
 // API: Order Risk Scoring endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { orderService } from '$lib/services/OrderService';
+import { scoreOrderRisk } from '$lib/utils/ai';
+import { OrderModel } from '$lib/models/OrderModel';
 import { requireAdmin } from '$lib/utils/auth';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -13,17 +13,18 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		if (orderId) {
 			// Get risk score for a specific order
-			const order = await orderService.getOrderById(orderId);
-			if (!order) {
+			const orderModel = await OrderModel.getById(orderId);
+			if (!orderModel) {
 				return json({ error: 'Order not found' }, { status: 404 });
 			}
-			const riskScore = await aiService.scoreOrderRisk(order);
+			const riskScore = await scoreOrderRisk(orderModel.toJSON());
 			return json(riskScore);
 		} else {
 			// Get risk scores for all orders
-			const orders = await orderService.getAllOrders();
+			const ordersModels = await OrderModel.getAll();
+			const orders = ordersModels.map(o => o.toJSON());
 			const riskScores = await Promise.all(
-				orders.map(order => aiService.scoreOrderRisk(order))
+				orders.map(order => scoreOrderRisk(order))
 			);
 			return json({ riskScores });
 		}

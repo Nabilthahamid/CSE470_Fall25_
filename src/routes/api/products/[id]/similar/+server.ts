@@ -1,7 +1,7 @@
 // API: Similar products endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { userRecommendationService } from '$lib/services/UserRecommendationService';
+import { getSimilarProductRecommendations } from '$lib/utils/recommendations';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -12,10 +12,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			return json({ error: 'Product ID is required' }, { status: 400 });
 		}
 
-		const similarProducts = await userRecommendationService.getSimilarProductRecommendations(
-			productId,
-			limit
-		);
+		const similarProducts = await getSimilarProductRecommendations(productId, limit);
 
 		return json({ similarProducts });
 	} catch (error: any) {

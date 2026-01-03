@@ -1,7 +1,7 @@
 // API: Share build to community
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 import { requireAuth } from '$lib/utils/auth';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		const { use_case, tags, image_url } = await request.json();
 
-		const build = await communityBuildService.shareBuild(params.id, locals.user.id, {
+		const build = await CommunityBuildModel.shareBuild(params.id, locals.user.id, {
 			use_case,
 			tags,
 			image_url

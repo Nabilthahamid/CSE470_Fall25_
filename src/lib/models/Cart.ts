@@ -14,6 +14,7 @@ export interface CartItem {
 		price: number;
 		image_url?: string | null;
 		stock: number;
+		brand?: string;
 	};
 }
 

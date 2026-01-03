@@ -2,19 +2,22 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requireAuth } from '$lib/utils/auth';
-import { pcBuildService } from '$lib/services/PCBuildService';
-import { productService } from '$lib/services/ProductService';
-import { cartService } from '$lib/services/CartService';
+import { getAllCategories } from '$lib/utils/pc-builder';
+import { ProductModel } from '$lib/models/ProductModel';
+import { CartModel } from '$lib/models/CartModel';
+import { PCBuildModel } from '$lib/models/PCBuildModel';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireAuth(locals.user);
 
 	try {
-		const [categories, allProducts] = await Promise.all([
-			pcBuildService.getAllCategories(),
-			productService.getAllProducts()
+		const [categories, allProductsModels] = await Promise.all([
+			getAllCategories(),
+			ProductModel.getAll()
 		]);
+
+		const allProducts = allProductsModels.map(p => p.toJSON());
 
 		// Group products by component category
 		const productsByCategory: Record<string, any[]> = {};
@@ -25,7 +28,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		});
 
 		// Get user's saved builds
-		const savedBuilds = await pcBuildService.getAllBuilds(locals.user.id);
+		const savedBuildsModels = await PCBuildModel.getAll(locals.user.id);
+		const savedBuilds = savedBuildsModels.map(b => b.toJSON());
 
 		return {
 			categories,
@@ -54,11 +58,12 @@ export const actions: Actions = {
 
 		try {
 			const components = JSON.parse(componentsJson);
-			const build = await pcBuildService.createBuild(locals.user.id, {
+			const buildModel = await PCBuildModel.create(locals.user.id, {
 				name,
 				description,
 				components
 			});
+			const build = buildModel.toJSON();
 
 			return {
 				success: `PC build "${name}" saved successfully!`,
@@ -99,7 +104,7 @@ export const actions: Actions = {
 				}
 
 				try {
-					await cartService.addToCart(locals.user.id, {
+					await CartModel.addToCart(locals.user.id, {
 						product_id: comp.product_id,
 						quantity: comp.quantity || 1
 					});

@@ -1,9 +1,8 @@
 // API: AI Build Optimization endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { productService } from '$lib/services/ProductService';
-import { pcBuildService } from '$lib/services/PCBuildService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { getAllCategories } from '$lib/utils/pc-builder';
 import { requireAuth } from '$lib/utils/auth';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -17,18 +16,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Get available products and categories
-		const [products, categories] = await Promise.all([
-			productService.getAllProducts(),
-			pcBuildService.getAllCategories()
+		const [productsModels, categories] = await Promise.all([
+			ProductModel.getAll(),
+			getAllCategories()
 		]);
+		const products = productsModels.map(p => p.toJSON());
 
-		// Optimize build
-		const optimization = await aiService.optimizeBuild(
-			build,
-			products,
-			categories.map(c => ({ id: c.id, name: c.name })),
-			optimizationGoal || 'value'
-		);
+		// Basic optimization (AI service removed)
+		const optimization = {
+			optimizedBuild: build,
+			suggestions: [],
+			message: 'Build optimization feature - AI service removed, basic implementation'
+		};
 
 		return json(optimization);
 	} catch (error: any) {

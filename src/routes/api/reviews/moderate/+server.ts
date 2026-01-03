@@ -1,7 +1,7 @@
 // API: Review Moderation endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
+import { moderateReview } from '$lib/utils/ai';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Rating is required' }, { status: 400 });
 		}
 
-		const moderation = await aiService.moderateReview({ rating, comment, user_id });
+		const moderation = await moderateReview({ rating, comment, user_id });
 
 		return json(moderation);
 	} catch (error: any) {

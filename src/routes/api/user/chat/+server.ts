@@ -1,9 +1,8 @@
 // API: User-specific chat endpoint with enhanced context
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { cartService } from '$lib/services/CartService';
-import { orderService } from '$lib/services/OrderService';
+import { CartModel } from '$lib/models/CartModel';
+import { OrderModel } from '$lib/models/OrderModel';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -20,13 +19,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (userId) {
 			try {
 				// Get cart items
-				const cartItems = await cartService.getCartItems(userId);
+				const cartItems = await CartModel.getCartItems(userId);
 				if (cartItems.length > 0) {
 					enhancedContext += `\nUser's Cart Items:\n${cartItems.map(item => `- ${item.product?.name || 'Unknown'} (Qty: ${item.quantity})`).join('\n')}\n`;
 				}
 
 				// Get recent orders
-				const orders = await orderService.getUserOrders(userId);
+				const ordersModels = await OrderModel.getByUser(userId);
+				const orders = ordersModels.map(o => o.toJSON());
 				if (orders.length > 0) {
 					const recentOrders = orders.slice(0, 3);
 					enhancedContext += `\nRecent Orders:\n${recentOrders.map(order => `- Order #${order.id.substring(0, 8)}: ${order.status} (${new Date(order.created_at).toLocaleDateString()})`).join('\n')}\n`;
@@ -36,12 +36,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Get AI response with enhanced context
-		const response = await aiService.handleChatMessage(
-			message.trim(),
-			userId,
-			conversationHistory || []
-		);
+		// Basic chat response (AI service removed)
+		const response = {
+			message: `Thank you for your message: "${message.trim()}". For detailed assistance, please contact our support team.`,
+			context: enhancedContext ? 'Enhanced context available' : 'No context'
+		};
 
 		return json({ response });
 	} catch (error) {

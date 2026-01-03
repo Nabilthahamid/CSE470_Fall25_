@@ -7,10 +7,9 @@
 	import type { LayoutData } from './$types';
 	import { getComparisonCount } from '$lib/utils/comparison';
 	import AIChatbot from '$lib/components/AIChatbot.svelte';
+	import ToastNotification from '$lib/components/ToastNotification.svelte';
 
 	export let data: LayoutData;
-	// Suppress params warning - not used in this layout
-	export let params: Record<string, string> = {};
 	
 	// Check if we're on an admin page
 	$: isAdminPage = $page.url.pathname.startsWith('/admin');
@@ -90,6 +89,12 @@
 <main class="w-full min-h-screen">
 	<slot />
 </main>
+
+<!-- Toast Notifications - Show on all pages -->
+<ToastNotification />
+
+<!-- Toast Notifications - Show on all pages -->
+<ToastNotification />
 
 <!-- AI Chatbot - Show on all pages except admin -->
 {#if !isAdminPage}

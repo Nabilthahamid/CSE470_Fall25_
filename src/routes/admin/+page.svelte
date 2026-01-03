@@ -596,7 +596,7 @@
 							</div>
 						</div>
 						{#if aiInsights.stockRecommendations && aiInsights.stockRecommendations.length > 0}
-							<div class="space-y-3 max-h-64 overflow-y-auto">
+							<div class="space-y-3">
 								{#each aiInsights.stockRecommendations.slice(0, 5) as rec}
 									<div class="p-4 bg-gradient-to-br from-gray-50 to-white rounded-lg border-2 border-gray-200 hover:border-orange-300 transition-all shadow-sm hover:shadow-md">
 										<p class="font-bold text-sm text-gray-900 mb-1">{rec.productName}</p>

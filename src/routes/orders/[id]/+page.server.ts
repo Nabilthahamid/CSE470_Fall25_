@@ -1,40 +1,30 @@
-// CONTROLLER: Single order tracking page
-import type { PageServerLoad } from './$types';
-import { requireAuth } from '$lib/utils/auth';
-import { orderService } from '$lib/services/OrderService';
-import { returnService } from '$lib/services/ReturnService';
-import { handleError } from '$lib/utils/errors';
+// VIEW: Single order tracking page - thin wrapper that calls controller
 import { error } from '@sveltejs/kit';
+import type { PageServerLoad } from './$types';
+import { PublicOrderController } from '$lib/controllers';
+import { ReturnModel } from '$lib/models/ReturnModel';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
-	requireAuth(locals.user);
+export const load: PageServerLoad = async (event) => {
+	const controller = new PublicOrderController(event);
+	const result = await controller.loadOrderDetails(event.params.id);
 
-	try {
-		const order = await orderService.getOrderById(params.id);
-
-		// Check if order belongs to user (unless admin)
-		if (order.user_id && order.user_id !== locals.user.id && locals.user.role !== 'admin') {
-			throw error(403, 'Access denied');
-		}
-
-		// Load return requests for this order
-		let returnRequests = [];
-		try {
-			returnRequests = await returnService.getAllReturns({ orderId: order.id });
-		} catch (err) {
-			// If table doesn't exist yet, return empty array
-			console.error('Error loading return requests:', err);
-		}
-
-		return {
-			order,
-			returnRequests,
-			user: locals.user
-		};
-	} catch (err: any) {
-		if (err.status === 403) throw err;
-		const { message } = handleError(err);
-		throw error(404, message || 'Order not found');
+	if (result.error || !result.order) {
+		throw error(404, result.error || 'Order not found');
 	}
+
+	// Load return requests for this order
+	let returnRequests = [];
+	try {
+		const returnModels = await ReturnModel.getAll({ orderId: result.order.id });
+		returnRequests = returnModels.map((r) => r.toJSON());
+	} catch (err) {
+		console.error('Error loading return requests:', err);
+	}
+
+	return {
+		order: result.order,
+		returnRequests,
+		user: controller.getUser()
+	};
 };
 

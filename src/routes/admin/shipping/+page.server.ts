@@ -1,7 +1,7 @@
 // CONTROLLER: Shipping Management Page
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { shippingService } from '$lib/services/ShippingService';
+import { getAllProviders, getAllZones, createProvider, updateProvider, deleteProvider, createZone, updateZone, deleteZone, calculateShippingRates } from '$lib/utils/shipping';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -11,8 +11,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const activeTab = url.searchParams.get('tab') || 'providers';
 
 		const [providers, zones] = await Promise.all([
-			shippingService.getAllProviders(),
-			shippingService.getAllZones()
+			getAllProviders(),
+			getAllZones()
 		]);
 
 		return {
@@ -49,7 +49,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await shippingService.createProvider(provider);
+			await createProvider(provider);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -98,7 +98,7 @@ export const actions: Actions = {
 		if (daysMax) provider.estimated_days_max = parseInt(daysMax);
 
 		try {
-			await shippingService.updateProvider(id, provider);
+			await updateProvider(id, provider);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -111,7 +111,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await shippingService.deleteProvider(id);
+			await deleteProvider(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -138,7 +138,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await shippingService.createZone(zone);
+			await createZone(zone);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -190,7 +190,7 @@ export const actions: Actions = {
 		if (daysMax) zone.estimated_days_max = parseInt(daysMax);
 
 		try {
-			await shippingService.updateZone(id, zone);
+			await updateZone(id, zone);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -203,7 +203,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await shippingService.deleteZone(id);
+			await deleteZone(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -225,7 +225,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			const rates = await shippingService.calculateShippingRates(calculation);
+			const rates = await calculateShippingRates(calculation);
 			return { success: true, rates };
 		} catch (error) {
 			const { message } = handleError(error);

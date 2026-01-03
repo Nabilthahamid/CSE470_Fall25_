@@ -37,6 +37,8 @@
 	let prebuiltBuilds: any[] = [];
 	let prebuiltUseCase = 'gaming';
 	let prebuiltBudget = 50000;
+	let prebuiltLoading = false;
+	let prebuiltError: string | null = null;
 
 	// Energy Efficiency
 	let showEnergyModal = false;
@@ -343,7 +345,8 @@
 	}
 
 	async function loadPrebuiltBuilds() {
-		showPrebuiltModal = true;
+		prebuiltLoading = true;
+		prebuiltError = null;
 		prebuiltBuilds = [];
 
 		try {
@@ -353,12 +356,24 @@
 				body: JSON.stringify({ useCase: prebuiltUseCase, budget: prebuiltBudget })
 			});
 
+			const data = await response.json();
+
 			if (response.ok) {
-				const data = await response.json();
 				prebuiltBuilds = data.builds || [];
+				if (prebuiltBuilds.length === 0) {
+					prebuiltError = 'No builds could be generated. Please try adjusting your budget or use case.';
+				}
+				showPrebuiltModal = true;
+			} else {
+				prebuiltError = data.error || 'Failed to generate builds. Please try again.';
+				showPrebuiltModal = true;
 			}
 		} catch (error) {
 			console.error('Pre-built builds error:', error);
+			prebuiltError = 'Network error. Please check your connection and try again.';
+			showPrebuiltModal = true;
+		} finally {
+			prebuiltLoading = false;
 		}
 	}
 
@@ -432,7 +447,7 @@
 					{/if}
 					<button
 						type="button"
-						on:click={loadPrebuiltBuilds}
+						on:click={() => showPrebuiltModal = true}
 						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
 					>
 						📦 Pre-built Builds
@@ -1527,32 +1542,136 @@
 					/>
 					<button
 						on:click={loadPrebuiltBuilds}
-						class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+						disabled={prebuiltLoading}
+						class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
 					>
-						Generate Builds
+						{#if prebuiltLoading}
+							<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+								<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							</svg>
+							Generating...
+						{:else}
+							Generate Builds
+						{/if}
 					</button>
 				</div>
-				{#if prebuiltBuilds.length > 0}
+				{#if prebuiltLoading}
+					<div class="text-center py-12">
+						<div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+						<p class="text-gray-600">Generating AI-recommended configurations...</p>
+					</div>
+				{:else if prebuiltError}
+					<div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+						<p class="text-red-700 font-semibold mb-2">⚠️ Error</p>
+						<p class="text-red-600">{prebuiltError}</p>
+					</div>
+				{:else if prebuiltBuilds.length > 0}
 					<div class="space-y-6">
 						{#each prebuiltBuilds as build}
-							<div class="border border-gray-200 rounded-lg p-5">
-								<h3 class="text-xl font-bold text-gray-900 mb-2">{build.name}</h3>
-								<p class="text-gray-600 mb-4">{build.description}</p>
-								<div class="mb-4">
-									<h4 class="font-semibold text-gray-900 mb-2">Components:</h4>
-									<ul class="space-y-2">
-										{#each build.components as comp}
-											<li class="text-sm text-gray-700">
-												• {comp.productName} - Tk {comp.price.toFixed(2)}
-											</li>
-										{/each}
-									</ul>
+							<div class="border-2 rounded-lg p-5 hover:shadow-md transition-shadow {build.isBest ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200'}">
+								<div class="flex items-start justify-between mb-3">
+									<div class="flex-1">
+										<div class="flex items-center gap-2 mb-2">
+											<h3 class="text-xl font-bold text-gray-900">{build.name}</h3>
+											{#if build.isBest}
+												<span class="px-3 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full">
+													⭐ BEST CHOICE
+												</span>
+											{/if}
+										</div>
+										<p class="text-gray-600 mb-2">{build.description}</p>
+										{#if build.aiDescription}
+											<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+												<p class="text-sm text-gray-700 italic">"{build.aiDescription}"</p>
+											</div>
+										{/if}
+										{#if build.whyBest && build.isBest}
+											<div class="bg-yellow-100 border border-yellow-300 rounded-lg p-3 mb-3">
+												<p class="text-sm font-semibold text-yellow-900 mb-1">Why this is the best:</p>
+												<p class="text-sm text-yellow-800">{build.whyBest}</p>
+											</div>
+										{/if}
+									</div>
 								</div>
-								<div class="flex items-center justify-between">
-									<p class="text-lg font-bold text-blue-600">Total: Tk {build.totalPrice.toFixed(2)}</p>
+
+								<!-- Power Consumption Summary -->
+								{#if build.totalPowerConsumption}
+									<div class="bg-gray-50 rounded-lg p-3 mb-4">
+										<p class="text-sm font-semibold text-gray-900 mb-2">⚡ Power Consumption:</p>
+										<div class="grid grid-cols-3 gap-2 text-xs">
+											<div>
+												<span class="text-gray-600">Idle:</span>
+												<span class="font-semibold text-gray-900 ml-1">{build.totalPowerConsumption.idleWatts}W</span>
+											</div>
+											<div>
+												<span class="text-gray-600">Load:</span>
+												<span class="font-semibold text-orange-600 ml-1">{build.totalPowerConsumption.loadWatts}W</span>
+											</div>
+											<div>
+												<span class="text-gray-600">Peak:</span>
+												<span class="font-semibold text-red-600 ml-1">{build.totalPowerConsumption.peakWatts}W</span>
+											</div>
+										</div>
+									</div>
+								{/if}
+
+								<div class="mb-4">
+									<h4 class="font-semibold text-gray-900 mb-3">Components:</h4>
+									<div class="space-y-3">
+										{#each build.components as comp}
+											<div class="border border-gray-200 rounded-lg p-3 bg-white">
+												<div class="flex items-start gap-3">
+													{#if comp.imageUrl}
+														<img
+															src={comp.imageUrl}
+															alt={comp.productName}
+															class="w-16 h-16 object-cover rounded border border-gray-200 flex-shrink-0"
+														/>
+													{/if}
+													<div class="flex-1 min-w-0">
+														<div class="flex items-center gap-2 mb-1">
+															<span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+																{comp.categoryName}
+															</span>
+															{#if comp.brand}
+																<span class="text-xs text-gray-500">{comp.brand}</span>
+															{/if}
+														</div>
+														<p class="font-semibold text-gray-900 text-sm mb-1">{comp.productName}</p>
+														{#if comp.productDetails}
+															<p class="text-xs text-gray-600 mb-2 italic">{comp.productDetails}</p>
+														{:else if comp.description}
+															<p class="text-xs text-gray-600 mb-2 line-clamp-2">{comp.description}</p>
+														{/if}
+														<div class="flex items-center gap-4 text-xs">
+															<span class="font-bold text-blue-600">Tk {comp.price.toFixed(2)}</span>
+															{#if comp.powerConsumption}
+																<span class="text-gray-500">
+																	⚡ {comp.powerConsumption.idleWatts}W idle / {comp.powerConsumption.loadWatts}W load
+																</span>
+															{/if}
+														</div>
+													</div>
+												</div>
+											</div>
+										{/each}
+									</div>
+								</div>
+
+								<div class="flex items-center justify-between pt-4 border-t border-gray-200">
+									<div>
+										<p class="text-sm text-gray-600 mb-1">Total Price:</p>
+										<p class="text-2xl font-bold text-blue-600">Tk {build.totalPrice.toFixed(2)}</p>
+										{#if build.totalPowerConsumption}
+											<p class="text-xs text-gray-500 mt-1">
+												Total Power: {build.totalPowerConsumption.loadWatts}W (load)
+											</p>
+										{/if}
+									</div>
 									<button
 										on:click={() => applyPrebuiltBuild(build)}
-										class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+										class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md hover:shadow-lg"
 									>
 										Use This Build
 									</button>

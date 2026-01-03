@@ -1,7 +1,7 @@
 // API: AI Product Description Generator endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
+// AI service removed - basic implementation
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check admin authentication
@@ -21,17 +21,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Product name is required' }, { status: 400 });
 		}
 
-		const result = await aiService.generateProductDescription({
-			name,
-			brand: brand || null,
-			specifications: specifications || null,
-			price: price || undefined,
-			component_category_name: component_category_name || null
-		});
+		// Basic description generation (AI service removed)
+		const description = `${name}${brand ? ` by ${brand}` : ''}${specifications ? `. ${specifications}` : ''}${price ? `. Price: ${price}` : ''}`;
+		const shortDescription = `${name}${brand ? ` by ${brand}` : ''}`;
 
 		return json({
 			success: true,
-			...result
+			description,
+			shortDescription,
+			keywords: [name, brand, component_category_name].filter(Boolean)
 		});
 	} catch (error: any) {
 		console.error('Error generating product description:', error);

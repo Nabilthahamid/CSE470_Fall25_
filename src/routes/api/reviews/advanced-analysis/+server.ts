@@ -1,8 +1,7 @@
 // API: Advanced review analysis
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { reviewService } from '$lib/services/ReviewService';
-import { aiService } from '$lib/services/AIService';
+import { ReviewModel } from '$lib/models/ReviewModel';
 
 export interface AdvancedReviewAnalysis {
 	sentimentTimeline: Array<{ date: string; averageSentiment: number; reviewCount: number }>;
@@ -27,7 +26,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: 'Product ID is required' }, { status: 400 });
 		}
 
-		const reviews = await reviewService.getReviewsByProduct(productId);
+		const reviewsModels = await ReviewModel.getByProduct(productId);
+		const reviews = reviewsModels.map(r => r.toJSON());
 
 		if (reviews.length === 0) {
 			return json({

@@ -1,6 +1,6 @@
 // CONTROLLER: Checkout success page
 import type { PageServerLoad } from './$types';
-import { orderService } from '$lib/services/OrderService';
+import { OrderModel } from '$lib/models/OrderModel';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -14,9 +14,15 @@ export const load: PageServerLoad = async ({ url }) => {
 	}
 
 	try {
-		const order = await orderService.getOrderById(orderId);
+		const orderModel = await OrderModel.getById(orderId);
+		if (!orderModel) {
+			return {
+				order: null,
+				error: 'Order not found'
+			};
+		}
 		return {
-			order,
+			order: orderModel.toJSON(),
 			error: null
 		};
 	} catch (error) {

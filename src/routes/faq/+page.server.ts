@@ -1,11 +1,11 @@
 // CONTROLLER: FAQ Page
 import type { PageServerLoad } from './$types';
-import { contentService } from '$lib/services/ContentService';
+import { getAllFAQs } from '$lib/utils/content';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async () => {
 	try {
-		const faqs = await contentService.getAllFAQs();
+		const faqs = await getAllFAQs();
 		
 		// Debug: Log all FAQs to see what we're getting
 		console.log('All FAQs from database:', faqs);

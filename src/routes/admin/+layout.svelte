@@ -4,8 +4,8 @@
 	import QuickActionsPanel from '$lib/components/QuickActionsPanel.svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
-	// @ts-ignore - SvelteKit may pass params even without dynamic segments
-	export let params: Record<string, string> = {};
+	// Accept params prop from SvelteKit (even if unused)
+	export let params: Record<string, string> = {} as any;
 
 	let sidebarCollapsed = false;
 

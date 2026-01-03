@@ -1,11 +1,11 @@
 // API: Get comments for a build
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
-		const comments = await communityBuildService.getComments(params.id);
+		const comments = await CommunityBuildModel.getComments(params.id);
 
 		return json({ comments, count: comments.length });
 	} catch (error: any) {

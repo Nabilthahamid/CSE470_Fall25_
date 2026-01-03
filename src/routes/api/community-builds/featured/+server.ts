@@ -1,12 +1,12 @@
 // API: Get featured builds
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		const limit = parseInt(url.searchParams.get('limit') || '6');
-		const builds = await communityBuildService.getFeaturedBuilds(limit);
+		const builds = await CommunityBuildModel.getFeaturedBuilds(limit);
 
 		return json({ builds, count: builds.length });
 	} catch (error: any) {

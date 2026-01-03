@@ -1,20 +1,22 @@
 // CONTROLLER: Promotional Campaigns Page
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { campaignService } from '$lib/services/CampaignService';
-import { discountService } from '$lib/services/DiscountService';
-import { productService } from '$lib/services/ProductService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { CampaignModel } from '$lib/models/CampaignModel';
+import { getAllDiscounts } from '$lib/utils/discount';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	requireAdmin(locals.user);
 
 	try {
-		const [campaigns, discounts, products] = await Promise.all([
-			campaignService.getAllCampaigns(),
-			discountService.getAllDiscounts(),
-			productService.getAllProducts()
+		const [campaignsModels, discounts, productsModels] = await Promise.all([
+			CampaignModel.getAll(),
+			getAllDiscounts(),
+			ProductModel.getAll()
 		]);
+		const campaigns = campaignsModels.map(c => c.toJSON());
+		const products = productsModels.map(p => p.toJSON());
 
 		return {
 			campaigns,
@@ -56,7 +58,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await campaignService.createCampaign(campaign);
+			await CampaignModel.create(campaign);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -110,7 +112,7 @@ export const actions: Actions = {
 		if (imageUrl !== null) campaign.image_url = imageUrl || undefined;
 
 		try {
-			await campaignService.updateCampaign(id, campaign);
+			await CampaignModel.update(id, campaign);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -123,7 +125,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await campaignService.deleteCampaign(id);
+			await CampaignModel.delete(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

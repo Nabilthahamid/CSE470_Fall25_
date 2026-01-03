@@ -2,8 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { aiService } from '$lib/services/AIService';
-import { productService } from '$lib/services/ProductService';
+import { ProductModel } from '$lib/models/ProductModel';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	requireAdmin(locals.user);
@@ -16,15 +15,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Fetch product
-		const product = await productService.getProductById(productId);
+		const productModel = await ProductModel.getById(productId);
+		if (!productModel) {
+			return json({ error: 'Product not found' }, { status: 404 });
+		}
+		const product = productModel.toJSON();
 
-		// Generate marketing content
-		const content = await aiService.generateMarketingContent({
-			name: product.name,
-			price: product.price,
-			category: product.component_category_name || undefined,
-			stock: product.stock
-		});
+		// Basic marketing content (AI service removed)
+		const content = {
+			headline: `Discover ${product.name}`,
+			description: `${product.name}${product.description ? ` - ${product.description}` : ''}`,
+			callToAction: `Buy now for ${product.price}`
+		};
 
 		return json({ content, error: null });
 	} catch (error: any) {

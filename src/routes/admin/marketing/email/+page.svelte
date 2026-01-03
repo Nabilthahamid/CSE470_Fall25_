@@ -6,7 +6,7 @@
 	export let data: PageData;
 	export let form: ActionData;
 	// params not used (URLSearchParams is used as local variable instead)
-	export let params: Record<string, string> = {};
+	export const params: Record<string, string> = {};
 
 	let activeTab = data.activeTab || 'newsletters';
 	let showNewsletterForm = false;
@@ -76,6 +76,34 @@
 		sequenceEmails = [];
 		sequenceIsActive = true;
 		showSequenceForm = false;
+	}
+
+	function resetCampaignForm() {
+		editingCampaign = null;
+		campaignName = '';
+		campaignSubject = '';
+		campaignContent = '';
+		campaignContentType = 'html';
+		campaignRecipientCount = 0;
+		campaignStatus = 'draft';
+		campaignStartedAt = '';
+		showCampaignForm = false;
+	}
+
+	function editCampaign(campaign: any) {
+		editingCampaign = campaign;
+		campaignName = campaign.name;
+		campaignSubject = campaign.subject;
+		campaignContent = campaign.content;
+		campaignContentType = campaign.content_type || 'html';
+		campaignRecipientCount = campaign.recipient_count || 0;
+		campaignStatus = campaign.status || 'draft';
+		campaignStartedAt = campaign.started_at || '';
+		showCampaignForm = true;
+	}
+
+	function getCampaignStatusColor(status: string): string {
+		return getStatusColor(status);
 	}
 
 	function applyDateFilter() {

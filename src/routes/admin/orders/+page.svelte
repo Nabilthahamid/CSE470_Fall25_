@@ -427,8 +427,7 @@
 								Update Status
 							</button>
 							<a
-								href="/orders/{order.id}"
-								target="_blank"
+								href="/admin/orders/{order.id}"
 								class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold text-sm"
 							>
 								View Details

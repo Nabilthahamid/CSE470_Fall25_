@@ -300,11 +300,11 @@
 					<h2 class="text-xl font-bold text-gray-900 mb-4">Return Details</h2>
 					<div class="space-y-4">
 						{#each returnRequests as returnRequest}
+							{@const item = data.order.items ? data.order.items.find((i) => i.product_id === returnRequest.product_id) : null}
 							<div class="bg-white border-2 border-gray-200 rounded-lg p-4">
 								<div class="flex items-start justify-between mb-3">
 									<div class="flex-1">
 										<div class="flex items-center gap-3 mb-2">
-											{@const item = data.order.items?.find((i: any) => i.product_id === returnRequest.product_id)}
 											<h3 class="font-semibold text-gray-900">{item?.product_name || 'Product'}</h3>
 											<span class="px-3 py-1 rounded-lg text-sm font-semibold {getReturnStatusColor(returnRequest.status)}">
 												{returnRequest.status.charAt(0).toUpperCase() + returnRequest.status.slice(1)}

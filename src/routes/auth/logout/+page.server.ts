@@ -1,12 +1,11 @@
-// CONTROLLER: Logout action - clears session cookie
-import { redirect } from '@sveltejs/kit';
+// VIEW: Logout page - thin wrapper that calls controller
 import type { Actions } from './$types';
+import { AuthController } from '$lib/controllers';
 
 export const actions: Actions = {
-	default: async ({ cookies }) => {
-		// Clear session cookie
-		cookies.delete('session_token', { path: '/' });
-		throw redirect(302, '/auth/login');
+	default: async (event) => {
+		const controller = new AuthController(event);
+		return await controller.logout();
 	}
 };
 

@@ -2,8 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { aiService } from '$lib/services/AIService';
-import { saleService } from '$lib/services/SaleService';
+import { SaleModel } from '$lib/models/SaleModel';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	requireAdmin(locals.user);
@@ -12,7 +11,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { startDate, endDate } = await request.json();
 
 		// Fetch sales data
-		const sales = await saleService.getAllSales();
+		const salesModels = await SaleModel.getAll();
+		const sales = salesModels.map(s => s.toJSON());
 		
 		// Filter by date range if provided
 		let filteredSales = sales;
@@ -67,13 +67,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			? `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate).toLocaleDateString()}`
 			: 'All Time';
 
-		const summary = await aiService.generateSalesReportSummary({
-			totalRevenue,
-			totalOrders,
-			period,
-			topProducts,
-			trends
-		});
+		// Basic summary generation (AI service removed)
+		const summary = `Sales Report Summary for ${period}:\n\nTotal Revenue: ${totalRevenue.toFixed(2)}\nTotal Orders: ${totalOrders}\n\nTop Products:\n${topProducts.map((p, i) => `${i + 1}. ${p.name} - ${p.quantity} units, ${p.revenue.toFixed(2)} revenue`).join('\n')}\n\nTrends: ${trends}`;
 
 		return json({ summary, error: null });
 	} catch (error: any) {

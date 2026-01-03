@@ -1,12 +1,12 @@
 // API: Get specific community build
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	try {
 		const userId = locals.user?.id;
-		const build = await communityBuildService.getBuildById(params.id, userId);
+		const build = await CommunityBuildModel.getBuildById(params.id, userId);
 
 		if (!build) {
 			return json({ error: 'Build not found' }, { status: 404 });

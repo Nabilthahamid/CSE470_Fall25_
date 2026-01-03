@@ -1,7 +1,7 @@
 // API: Rate a build
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 import { requireAuth } from '$lib/utils/auth';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
 		}
 
-		const buildRating = await communityBuildService.rateBuild(
+		const buildRating = await CommunityBuildModel.rateBuild(
 			params.id,
 			locals.user.id,
 			rating

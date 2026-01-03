@@ -1,8 +1,7 @@
 // API: Smart search with AI intent understanding
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { productService } from '$lib/services/ProductService';
-import { aiService } from '$lib/services/AIService';
+import { ProductModel } from '$lib/models/ProductModel';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -13,7 +12,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Get all products for semantic search
-		const allProducts = await productService.getAllProducts();
+		const allProductsModels = await ProductModel.getAll();
+		const allProducts = allProductsModels.map(p => p.toJSON());
 
 		// Extract intent and keywords from query
 		const lowerQuery = query.toLowerCase();
@@ -49,7 +49,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Perform search
-		let results = await productService.searchProducts(query);
+		let results = await ProductModel.search(query);
+		results = results.map(r => r.toJSON());
 
 		// Apply filters
 		if (filters.maxPrice) {

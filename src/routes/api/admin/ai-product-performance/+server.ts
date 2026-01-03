@@ -1,10 +1,9 @@
 // API: Product Performance Analysis endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { productService } from '$lib/services/ProductService';
-import { saleService } from '$lib/services/SaleService';
-import { reviewService } from '$lib/services/ReviewService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { SaleModel } from '$lib/models/SaleModel';
+import { ReviewModel } from '$lib/models/ReviewModel';
 import { requireAdmin } from '$lib/utils/auth';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -15,38 +14,52 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		if (productId) {
 			// Get performance analysis for a specific product
-			const product = await productService.getProductById(productId);
-			if (!product) {
+			const productModel = await ProductModel.getById(productId);
+			if (!productModel) {
 				return json({ error: 'Product not found' }, { status: 404 });
 			}
 
-			const allSales = await saleService.getAllSales();
-			const sales = allSales.filter(s => s.product_id === productId);
-			const reviews = await reviewService.getAllReviews({ productId });
+			const product = productModel.toJSON();
+			const allSalesModels = await SaleModel.getAll();
+			const sales = allSalesModels.filter(s => s.product_id === productId).map(s => s.toJSON());
+			const reviewsModels = await ReviewModel.getByProduct(productId);
+			const reviews = reviewsModels.map(r => ({ rating: r.rating }));
 
-			const analysis = await aiService.analyzeProductPerformance(
+			// Simple performance analysis
+			const totalSales = sales.reduce((sum, s) => sum + s.quantity, 0);
+			const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+			const analysis = {
 				productId,
-				product,
-				sales,
-				reviews.map(r => ({ rating: r.rating }))
-			);
+				salesVelocity: totalSales,
+				averageRating: avgRating,
+				totalRevenue: sales.reduce((sum, s) => sum + s.total_amount, 0),
+				reviewCount: reviews.length
+			};
 			return json(analysis);
 		} else {
 			// Get performance analysis for all products
-			const products = await productService.getAllProducts();
-			const allSales = await saleService.getAllSales();
-			const allReviews = await reviewService.getAllReviews({});
+			const productsModels = await ProductModel.getAll();
+			const products = productsModels.map(p => p.toJSON());
+			const allSalesModels = await SaleModel.getAll();
+			const allSales = allSalesModels.map(s => s.toJSON());
+			const allReviewsModels = await ReviewModel.getAll();
+			const allReviews = allReviewsModels.map(r => r.toJSON());
 
 			const analyses = await Promise.all(
 				products.map(async (product) => {
 					const productSales = allSales.filter(s => s.product_id === product.id);
 					const productReviews = allReviews.filter(r => r.product_id === product.id);
-					return aiService.analyzeProductPerformance(
-						product.id,
-						product,
-						productSales,
-						productReviews.map(r => ({ rating: r.rating }))
-					);
+					const totalSales = productSales.reduce((sum, s) => sum + s.quantity, 0);
+					const avgRating = productReviews.length > 0 
+						? productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length 
+						: 0;
+					return {
+						productId: product.id,
+						salesVelocity: totalSales,
+						averageRating: avgRating,
+						totalRevenue: productSales.reduce((sum, s) => sum + s.total_amount, 0),
+						reviewCount: productReviews.length
+					};
 				})
 			);
 

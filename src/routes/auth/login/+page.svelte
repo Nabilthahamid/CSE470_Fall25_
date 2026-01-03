@@ -4,7 +4,8 @@
 	import type { PageData, ActionData } from './$types';
 
 	export let form: ActionData;
-	export let params: Record<string, string> = {};
+	// Accept params prop from SvelteKit (even if unused)
+	export let params: Record<string, string> = {} as any;
 </script>
 
 <svelte:head>

@@ -1,7 +1,7 @@
 // CONTROLLER: Individual Community Build Detail page
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		const userId = locals.user?.id;
 
 		// Get the build
-		const build = await communityBuildService.getBuildById(buildId, userId);
+		const build = await CommunityBuildModel.getBuildById(buildId, userId);
 
 		if (!build) {
 			throw error(404, 'Build not found');
@@ -24,20 +24,19 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Get comments for this build
 		let comments = [];
 		try {
-			comments = await communityBuildService.getComments(buildId);
+			comments = await CommunityBuildModel.getComments(buildId);
 		} catch (err) {
 			console.error('Error loading comments:', err);
 			// Continue without comments
 		}
 
-		// Get similar builds
-		let similarBuilds = [];
-		try {
-			similarBuilds = await communityBuildService.findSimilarBuilds(buildId, 4);
-		} catch (err) {
-			console.error('Error loading similar builds:', err);
-			// Continue without similar builds
-		}
+		// Get similar builds - TODO: Implement in CommunityBuildModel if needed
+		let similarBuilds: any[] = [];
+		// try {
+		// 	similarBuilds = await CommunityBuildModel.findSimilarBuilds(buildId, 4);
+		// } catch (err) {
+		// 	console.error('Error loading similar builds:', err);
+		// }
 
 		// Note: View count is incremented in getBuildById
 

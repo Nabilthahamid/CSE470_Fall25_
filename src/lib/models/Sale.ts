@@ -3,6 +3,7 @@ export interface Sale {
 	id: string;
 	product_id: string;
 	user_id?: string | null;
+	order_id?: string | null;
 	quantity: number;
 	sale_price: number;
 	cost_price: number;
@@ -18,6 +19,7 @@ export interface Sale {
 export interface CreateSaleDTO {
 	product_id: string;
 	user_id?: string | null;
+	order_id?: string | null;
 	quantity: number;
 	skipStockCheck?: boolean; // Set to true when stock was already updated (e.g., from order)
 }

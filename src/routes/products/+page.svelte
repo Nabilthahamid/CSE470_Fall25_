@@ -11,6 +11,7 @@
 		isInComparison,
 		getComparisonCount
 	} from '$lib/utils/comparison';
+	import { toast } from '$lib/stores/toast';
 
 	export let data: PageData;
 	// params not used - suppress warning
@@ -69,14 +70,14 @@
 		if (comparisonStates[productId]) {
 			removeFromComparison(productId);
 			comparisonStates[productId] = false;
-			showPopupMessage('Removed from comparison', 'success');
+			toast.success('Removed from comparison');
 		} else {
 			const result = addToComparison(productId);
 			if (result.success) {
 				comparisonStates[productId] = true;
-				showPopupMessage(result.message, 'success');
+				toast.success(result.message);
 			} else {
-				showPopupMessage(result.message, 'error');
+				toast.error(result.message);
 			}
 		}
 		updateComparisonCount();
@@ -360,22 +361,20 @@
 								{#if product.stock > 0}
 									<form 
 										method="POST" 
-										action="/cart/add" 
+										action="/cart?/add" 
 										use:enhance={({ result }) => {
 											return async () => {
 												if (result && result.type === 'success') {
 													try {
 														const data = await result.json();
-														if (data.success) {
-															showPopupMessage('Added to cart successfully!', 'success');
-														} else {
-															showPopupMessage(data.error || 'Failed to add to cart', 'error');
+														if (!data.success) {
+															toast.error(data.error || 'Failed to add to cart');
 														}
 													} catch (e) {
-														showPopupMessage('Added to cart successfully!', 'success');
+														// Silent fail - redirect will happen
 													}
 												} else if (result && result.type === 'failure') {
-													showPopupMessage('Failed to add to cart. Please try again.', 'error');
+													toast.error('Failed to add to cart. Please try again.');
 												}
 											};
 										}}

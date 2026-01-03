@@ -1,6 +1,5 @@
 // UTILS: File storage utilities for Supabase Storage
 import { supabase } from '$lib/config/supabase';
-import { mediaService } from '$lib/services/MediaService';
 
 /**
  * Upload image file to Supabase Storage and optionally create media library record
@@ -54,45 +53,47 @@ export async function uploadImage(
 		data: { publicUrl }
 	} = supabase.storage.from(bucket).getPublicUrl(filePath);
 
-	// Add to media library if requested
-	if (addToLibrary) {
-		try {
-			// Get image dimensions if possible
-			let width: number | undefined;
-			let height: number | undefined;
-			
+		// Add to media library if requested
+		if (addToLibrary) {
 			try {
-				const img = new Image();
-				img.src = publicUrl;
-				await new Promise((resolve, reject) => {
-					img.onload = () => {
-						width = img.naturalWidth;
-						height = img.naturalHeight;
-						resolve(null);
-					};
-					img.onerror = reject;
-					setTimeout(reject, 5000); // Timeout after 5 seconds
-				});
-			} catch (e) {
-				// Ignore dimension errors
-			}
+				// Get image dimensions if possible
+				let width: number | undefined;
+				let height: number | undefined;
+				
+				try {
+					const img = new Image();
+					img.src = publicUrl;
+					await new Promise((resolve, reject) => {
+						img.onload = () => {
+							width = img.naturalWidth;
+							height = img.naturalHeight;
+							resolve(null);
+						};
+						img.onerror = reject;
+						setTimeout(reject, 5000); // Timeout after 5 seconds
+					});
+				} catch (e) {
+					// Ignore dimension errors
+				}
 
-			await mediaService.createMedia({
-				filename: fileNameUnique,
-				original_filename: file.name,
-				file_url: publicUrl,
-				file_type: 'image',
-				file_size: file.size,
-				mime_type: file.type,
-				width,
-				height,
-				folder
-			});
-		} catch (mediaError) {
-			// Don't fail the upload if media library creation fails
-			console.warn('Failed to add image to media library:', mediaError);
+				// Create media library record directly
+				await supabase.from('media_files').insert({
+					filename: fileNameUnique,
+					original_filename: file.name,
+					file_url: publicUrl,
+					file_type: 'image',
+					file_size: file.size,
+					mime_type: file.type,
+					width,
+					height,
+					folder,
+					created_at: new Date().toISOString()
+				});
+			} catch (mediaError) {
+				// Don't fail the upload if media library creation fails
+				console.warn('Failed to add image to media library:', mediaError);
+			}
 		}
-	}
 
 	return publicUrl;
 }

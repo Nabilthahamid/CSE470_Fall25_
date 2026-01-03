@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
 	import MediaPicker from '$lib/components/MediaPicker.svelte';
+	import { toast } from '$lib/stores/toast';
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -702,7 +703,20 @@
 								<a href="/admin/products/{product.id}/edit" class="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg no-underline text-sm font-semibold transition-all hover:bg-indigo-700 hover:shadow-md text-center">
 									Edit
 								</a>
-								<form method="POST" action="?/delete" use:enhance class="flex-1">
+								<form method="POST" action="?/delete" use:enhance={({ update }) => {
+									return async ({ result, update: updateFn }) => {
+										if (updateFn) {
+											await updateFn();
+										} else if (update) {
+											await update();
+										}
+										if (result.type === 'success') {
+											toast.success('Product deleted successfully');
+										} else if (result.type === 'failure') {
+											toast.error(result.data?.error || 'Failed to delete product');
+										}
+									};
+								}} class="flex-1">
 									<input type="hidden" name="id" value={product.id} />
 									<button 
 										type="submit" 

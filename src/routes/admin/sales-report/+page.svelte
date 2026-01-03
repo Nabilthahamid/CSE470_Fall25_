@@ -4,7 +4,6 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import type { PageData, ActionData } from './$types';
-	import { productService } from '$lib/services/ProductService';
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -23,8 +22,11 @@
 	onMount(async () => {
 		if (typeof window === 'undefined') return; // Only run on client
 		try {
-			const allProducts = await productService.getAllProducts();
-			products = allProducts.map((p) => ({ id: p.id, name: p.name }));
+			const response = await fetch('/api/admin/quick-search?q=');
+			if (response.ok) {
+				const data = await response.json();
+				products = data.products.map((p: any) => ({ id: p.id, name: p.name }));
+			}
 			loadAIAnalytics();
 		} catch (error) {
 			console.error('Failed to load products:', error);

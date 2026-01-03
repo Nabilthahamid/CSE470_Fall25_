@@ -1,7 +1,7 @@
 // CONTROLLER: Media Library Page
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { mediaService } from '$lib/services/MediaService';
+import * as media from '$lib/utils/media';
 import { uploadImage, deleteImage } from '$lib/utils/storage';
 import { handleError } from '$lib/utils/errors';
 
@@ -13,19 +13,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const search = url.searchParams.get('search') || undefined;
 		const type = url.searchParams.get('type') as 'image' | 'video' | 'document' | 'other' | undefined;
 
-		let media;
+		let mediaFiles;
 		if (search) {
-			media = await mediaService.searchMedia(search);
+			mediaFiles = await media.searchMedia(search);
 		} else if (type) {
-			media = await mediaService.getMediaByType(type);
+			mediaFiles = await media.getMediaByType(type);
 		} else {
-			media = await mediaService.getAllMedia(folder);
+			mediaFiles = await media.getAllMedia(folder);
 		}
 
-		const stats = await mediaService.getMediaStats();
+		const stats = await media.getMediaStats();
 
 		return {
-			media,
+			media: mediaFiles,
 			stats,
 			folder,
 			search,
@@ -77,7 +77,7 @@ export const actions: Actions = {
 			}
 
 			// Create media record
-			await mediaService.createMedia({
+			await media.createMedia({
 				filename: file.name,
 				original_filename: file.name,
 				file_url: fileUrl,
@@ -108,7 +108,7 @@ export const actions: Actions = {
 		if (formData.get('folder')) updateData.folder = formData.get('folder')?.toString();
 
 		try {
-			await mediaService.updateMedia(id, updateData);
+			await media.updateMedia(id, updateData);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -128,7 +128,7 @@ export const actions: Actions = {
 			}
 
 			// Delete from database
-			await mediaService.deleteMedia(id);
+			await media.deleteMedia(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

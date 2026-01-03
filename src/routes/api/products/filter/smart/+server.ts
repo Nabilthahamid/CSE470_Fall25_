@@ -1,15 +1,15 @@
 // API: Smart filters and sorting
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { productService } from '$lib/services/ProductService';
-import { enhancedAIService } from '$lib/services/EnhancedAIService';
+import { ProductModel } from '$lib/models/ProductModel';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const { query, filters, sortBy } = await request.json();
 
 		// Get all products
-		let products = await productService.getAllProducts();
+		const productsModels = await ProductModel.getAll();
+		let products = productsModels.map(p => p.toJSON());
 
 		// Apply smart filters based on query
 		if (query) {

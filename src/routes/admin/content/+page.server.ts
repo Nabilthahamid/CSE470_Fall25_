@@ -1,7 +1,7 @@
 // CONTROLLER: Content Management Page
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { contentService } from '$lib/services/ContentService';
+import { getHomepageContent, getAllBanners, getAllPages, getAllFAQs, updateHomepageContent, createBanner, updateBanner, deleteBanner, createPage, updatePage, deletePage, createFAQ, updateFAQ, deleteFAQ } from '$lib/utils/content';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -12,10 +12,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 		// Use Promise.allSettled to handle individual service errors gracefully
 		const results = await Promise.allSettled([
-			contentService.getHomepageContent(),
-			contentService.getAllBanners(),
-			contentService.getAllPages(),
-			contentService.getAllFAQs()
+			getHomepageContent(),
+			getAllBanners(),
+			getAllPages(),
+			getAllFAQs()
 		]);
 
 		const homepageContent = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -57,7 +57,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await contentService.updateHomepageContent(homepageContent);
+			await updateHomepageContent(homepageContent);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -80,7 +80,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await contentService.createBanner(banner);
+			await createBanner(banner);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -104,7 +104,7 @@ export const actions: Actions = {
 		if (formData.get('end_date')) banner.end_date = formData.get('end_date')?.toString() || null;
 
 		try {
-			await contentService.updateBanner(id, banner);
+			await updateBanner(id, banner);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -117,7 +117,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await contentService.deleteBanner(id);
+			await deleteBanner(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -137,7 +137,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await contentService.createPage(page);
+			await createPage(page);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -158,7 +158,7 @@ export const actions: Actions = {
 		if (formData.get('is_published') !== null) page.is_published = formData.get('is_published')?.toString() === 'true';
 
 		try {
-			await contentService.updatePage(id, page);
+			await updatePage(id, page);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -171,7 +171,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await contentService.deletePage(id);
+			await deletePage(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -190,7 +190,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await contentService.createFAQ(faq);
+			await createFAQ(faq);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -235,7 +235,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			const updatedFAQ = await contentService.updateFAQ(id, faq);
+			const updatedFAQ = await updateFAQ(id, faq);
 			console.log('FAQ updated successfully:', updatedFAQ); // Debug log
 			return { success: 'FAQ updated successfully!' };
 		} catch (error: any) {
@@ -256,7 +256,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await contentService.deleteFAQ(id);
+			await deleteFAQ(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

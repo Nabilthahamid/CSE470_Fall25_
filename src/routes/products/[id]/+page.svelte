@@ -1,6 +1,7 @@
 <!-- VIEW: Product detail page -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
 	import {
@@ -8,6 +9,7 @@
 		removeFromComparison,
 		isInComparison
 	} from '$lib/utils/comparison';
+	import { toast } from '$lib/stores/toast';
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -33,14 +35,14 @@
 		if (isInCompare) {
 			removeFromComparison(data.product.id);
 			isInCompare = false;
-			showPopupMessage('Removed from comparison', 'success');
+			toast.success('Removed from comparison');
 		} else {
 			const result = addToComparison(data.product.id);
 			if (result.success) {
 				isInCompare = true;
-				showPopupMessage(result.message, 'success');
+				toast.success(result.message);
 			} else {
-				showPopupMessage(result.message, 'error');
+				toast.error(result.message);
 			}
 		}
 	}
@@ -203,16 +205,15 @@
 
 			const result = await response.json();
 			if (result.success) {
-				showPopupMessage('Added to cart successfully!', 'success');
 				setTimeout(() => {
 					window.location.href = '/checkout';
 				}, 1500);
 			} else {
-				showPopupMessage(result.error || 'Failed to add to cart', 'error');
+				toast.error(result.error || 'Failed to add to cart');
 			}
 		} catch (error) {
 			console.error('Error adding to cart:', error);
-			showPopupMessage('Failed to add to cart. Please try again.', 'error');
+			toast.error('Failed to add to cart. Please try again.');
 		}
 	}
 </script>
@@ -461,23 +462,20 @@
 				{#if data.product.stock > 0}
 					<form 
 						method="POST" 
-						action="/cart/add?redirect=/products/{data.product.id}" 
-						use:enhance={({ update }) => {
-							return async ({ update: updateFn }) => {
-								// The endpoint will redirect, so we just update the page
-								if (updateFn) {
-									await updateFn();
-								} else if (update) {
-									await update();
+						action="/cart?/add" 
+						class="flex-1"
+						use:enhance={({ formData, cancel }) => {
+							return async ({ update, result }) => {
+								if (result.type === 'failure') {
+									toast.error('Failed to add to cart. Please try again.');
 								}
-								// Show success message
-								showPopupMessage('Added to cart successfully!', 'success');
+								await update();
 							};
 						}}
-						class="flex-1"
 					>
 						<input type="hidden" name="product_id" value={data.product.id} />
 						<input type="hidden" name="quantity" bind:value={quantity} />
+						<input type="hidden" name="redirect" value="/products/{data.product.id}" />
 						<button
 							type="submit"
 							class="w-full px-6 py-3 rounded font-semibold bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-900 hover:text-white transition-colors"
@@ -595,33 +593,41 @@
 						<div class="p-3">
 							<h3 class="font-semibold text-sm mb-1 line-clamp-2 text-gray-900">{relatedProduct.name}</h3>
 							<p class="text-lg font-bold text-indigo-600 mb-2">Tk {relatedProduct.price.toFixed(2)}</p>
-							<form
-								method="POST"
-								action="/cart/add?redirect=/products/{data.product.id}"
-								use:enhance={({ update }) => {
-									return async ({ update: updateFn }) => {
-										// The endpoint will redirect, so we just update the page
-										if (updateFn) {
-											await updateFn();
-										} else if (update) {
-											await update();
+							<button
+								type="button"
+								on:click={async (e) => {
+									e.stopPropagation();
+									try {
+										const formData = new FormData();
+										formData.append('product_id', relatedProduct.id);
+										formData.append('quantity', '1');
+										
+										const response = await fetch('/cart/add?redirect=/products/' + data.product.id, {
+											method: 'POST',
+											body: formData
+										});
+										
+										if (response.ok || response.redirected) {
+											// Navigate to the redirect URL or stay on current page
+											if (response.redirected) {
+												await goto(response.url);
+											} else {
+												// If no redirect, just reload to show updated cart
+												await goto('/products/' + data.product.id, { invalidateAll: true });
+											}
+										} else {
+											const result = await response.json().catch(() => ({}));
+											toast.error(result.error || 'Failed to add to cart');
 										}
-										// Show success message
-										showPopupMessage('Added to cart successfully!', 'success');
-									};
+									} catch (error) {
+										console.error('Error adding to cart:', error);
+										toast.error('Failed to add to cart. Please try again.');
+									}
 								}}
-								on:submit|stopPropagation
-								class="mt-2"
+								class="w-full text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium mt-2"
 							>
-								<input type="hidden" name="product_id" value={relatedProduct.id} />
-								<input type="hidden" name="quantity" value="1" />
-								<button
-									type="submit"
-									class="w-full text-xs px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors font-medium"
-								>
-									+ Add to Cart
-								</button>
-							</form>
+								+ Add to Cart
+							</button>
 						</div>
 					</a>
 				{/each}

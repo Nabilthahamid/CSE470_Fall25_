@@ -1,8 +1,8 @@
 // API: Validate coupon code
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { discountService } from '$lib/services/DiscountService';
-import { cartService } from '$lib/services/CartService';
+import { validateDiscount, calculateDiscountAmount } from '$lib/utils/discount';
+import { CartModel } from '$lib/models/CartModel';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -13,12 +13,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const userId = locals.user?.id || undefined;
-		const cartTotal = await cartService.getCartTotal(userId);
-		const cartItems = await cartService.getCartItems(userId);
+		const cartTotal = await CartModel.getCartTotal(userId);
+		const cartItems = await CartModel.getCartItems(userId);
 		const productIds = cartItems.map(item => item.product_id).filter(Boolean) as string[];
 
 		// Validate the coupon (userId can be empty string for guests)
-		const validation = await discountService.validateDiscount(
+		const validation = await validateDiscount(
 			code.trim(),
 			userId || '',
 			cartTotal,
@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Calculate discount amount
-		const discountAmount = discountService.calculateDiscountAmount(validation.discount, cartTotal);
+		const discountAmount = calculateDiscountAmount(validation.discount, cartTotal);
 		const finalTotal = cartTotal - discountAmount;
 
 		return json({

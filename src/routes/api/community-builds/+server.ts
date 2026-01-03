@@ -1,7 +1,7 @@
 // API: Community Builds - Get public builds with filters
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 import type { CommunityBuildFilters } from '$lib/models/PCBuild';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const tags = url.searchParams.get('tags');
 		if (tags) filters.tags = tags.split(',');
 
-		const builds = await communityBuildService.getPublicBuilds(filters, userId);
+		const builds = await CommunityBuildModel.getPublicBuilds(filters, userId);
 
 		return json({ builds, count: builds.length });
 	} catch (error: any) {

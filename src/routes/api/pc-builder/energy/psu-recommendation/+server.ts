@@ -1,9 +1,9 @@
 // API: Get power supply recommendation
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { energyEfficiencyService } from '$lib/services/EnergyEfficiencyService';
-import { productService } from '$lib/services/ProductService';
-import { pcBuildService } from '$lib/services/PCBuildService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { getAllCategories } from '$lib/utils/pc-builder';
+import { recommendPowerSupply } from '$lib/utils/energy';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -14,17 +14,23 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Get all PSU products
-		const [categories, allProducts] = await Promise.all([
-			pcBuildService.getAllCategories(),
-			productService.getAllProducts()
+		const [categories, allProductsModels] = await Promise.all([
+			getAllCategories(),
+			ProductModel.getAll()
 		]);
+		const allProducts = allProductsModels.map(p => p.toJSON());
 
-		const psuCategory = categories.find(c => c.name === 'power_supply');
+		const psuCategory = categories.find(c => 
+			c.name === 'power_supply' || c.display_name?.toLowerCase().includes('power')
+		);
 		const psuProducts = psuCategory
 			? allProducts.filter(p => p.component_category_id === psuCategory.id)
-			: [];
+			: allProducts.filter(p => {
+				const category = categories.find(c => c.id === p.component_category_id);
+				return category?.name === 'power_supply' || category?.display_name?.toLowerCase().includes('power');
+			});
 
-		const recommendation = energyEfficiencyService.recommendPowerSupply(
+		const recommendation = recommendPowerSupply(
 			total_peak_watts,
 			psuProducts
 		);

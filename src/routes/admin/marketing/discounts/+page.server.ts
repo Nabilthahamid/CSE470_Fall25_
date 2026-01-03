@@ -1,7 +1,7 @@
 // CONTROLLER: Discount Management Page
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { discountService } from '$lib/services/DiscountService';
+import { getAllDiscounts, getDiscountAnalytics, getDiscountUsage, createDiscount, updateDiscount, deleteDiscount } from '$lib/utils/discount';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -13,9 +13,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const activeTab = url.searchParams.get('tab') || 'discounts';
 
 		const [discounts, analytics, usage] = await Promise.all([
-			discountService.getAllDiscounts(),
-			discountService.getDiscountAnalytics(startDate, endDate),
-			discountService.getDiscountUsage(startDate, endDate)
+			getAllDiscounts(),
+			getDiscountAnalytics(startDate, endDate),
+			getDiscountUsage(startDate, endDate)
 		]);
 
 		return {
@@ -74,7 +74,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await discountService.createDiscount(discount);
+			await createDiscount(discount);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -145,7 +145,7 @@ export const actions: Actions = {
 		}
 
 		try {
-			await discountService.updateDiscount(id, discount);
+			await updateDiscount(id, discount);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -158,7 +158,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await discountService.deleteDiscount(id);
+			await deleteDiscount(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

@@ -2,20 +2,25 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { productService } from '$lib/services/ProductService';
-import { pcBuildService } from '$lib/services/PCBuildService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { getAllCategories } from '$lib/utils/pc-builder';
+import { trackProductMediaUsage } from '$lib/utils/media';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	requireAdmin(locals.user);
 
 	try {
-		const product = await productService.getProductById(params.id);
+		const productModel = await ProductModel.getById(params.id);
+		if (!productModel) {
+			throw new Error('Product not found');
+		}
+		const product = productModel.toJSON();
 		
 		// Load component categories (handle gracefully if table doesn't exist)
 		let categories = [];
 		try {
-			categories = await pcBuildService.getAllCategories();
+			categories = await getAllCategories();
 		} catch (error) {
 			console.error('Error loading component categories:', error);
 			// Continue without categories
@@ -24,7 +29,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Load all products for related products selection
 		let allProducts = [];
 		try {
-			allProducts = await productService.getAllProducts();
+			const allProductsModels = await ProductModel.getAll();
+			allProducts = allProductsModels.map(p => p.toJSON());
 		} catch (error) {
 			console.error('Error loading products:', error);
 		}
@@ -92,43 +98,25 @@ export const actions: Actions = {
 		}
 
 		try {
-			const product = await productService.getById(params.id);
-			if (!product) {
+			const productModel = await ProductModel.getById(params.id);
+			if (!productModel) {
 				return { error: 'Product not found' };
 			}
 
 			// Track old image URL for removal
-			const oldImageUrl = product.image_url;
+			const oldImageUrl = productModel.image_url;
 
-			await productService.updateProduct(params.id, updateData);
+			await productModel.update(updateData);
 
 			// Track media usage for new image
 			if (newImageUrl) {
 				try {
-					const { mediaService } = await import('$lib/services/MediaService');
-					// Remove old usage if image changed
-					if (oldImageUrl && oldImageUrl !== newImageUrl) {
-						await mediaService.removeProductMediaUsage(params.id, oldImageUrl).catch((err) => {
-							console.warn('Failed to remove old media usage (non-critical):', err.message);
-						});
-					}
 					// Track new usage
-					await mediaService.trackProductMediaUsage(params.id, newImageUrl, product.name).catch((err) => {
+					await trackProductMediaUsage(params.id, newImageUrl, productModel.name).catch((err) => {
 						console.warn('Failed to track media usage (non-critical):', err.message);
 					});
 				} catch (error: any) {
-					// Silently fail if import fails or service doesn't exist
-					console.warn('Media service not available (non-critical):', error?.message || error);
-				}
-			} else if (delete_image && oldImageUrl) {
-				// Remove usage if image was deleted
-				try {
-					const { mediaService } = await import('$lib/services/MediaService');
-					await mediaService.removeProductMediaUsage(params.id, oldImageUrl).catch((err) => {
-						console.warn('Failed to remove media usage (non-critical):', err.message);
-					});
-				} catch (error: any) {
-					console.warn('Media service not available (non-critical):', error?.message || error);
+					console.warn('Media tracking not available (non-critical):', error?.message || error);
 				}
 			}
 

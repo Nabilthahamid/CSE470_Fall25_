@@ -1,7 +1,7 @@
 // API: Create return request endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { returnService } from '$lib/services/ReturnService';
+import { ReturnModel } from '$lib/models/ReturnModel';
 import { requireAuth } from '$lib/utils/auth';
 import { handleError } from '$lib/utils/errors';
 
@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Create return request
-		const returnRequest = await returnService.createReturnRequest(
+		const returnRequestModel = await ReturnModel.create(
 			{
 				order_id,
 				product_id,
@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			locals.user.id
 		);
 
-		return json({ success: true, returnRequest }, { status: 201 });
+		return json({ success: true, returnRequest: returnRequestModel.toJSON() }, { status: 201 });
 	} catch (error) {
 		const { message } = handleError(error);
 		return json({ error: message }, { status: 400 });

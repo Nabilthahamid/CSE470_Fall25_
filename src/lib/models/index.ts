@@ -7,4 +7,5 @@ export * from './Notification';
 export * from './Cart';
 export * from './Order';
 export * from './PCBuild';
+export * from './Campaign';
 

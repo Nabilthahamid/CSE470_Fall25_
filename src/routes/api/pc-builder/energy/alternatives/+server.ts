@@ -1,9 +1,9 @@
 // API: Find energy-efficient alternatives
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { energyEfficiencyService } from '$lib/services/EnergyEfficiencyService';
-import { productService } from '$lib/services/ProductService';
-import { pcBuildService } from '$lib/services/PCBuildService';
+import { ProductModel } from '$lib/models/ProductModel';
+import { getAllCategories } from '$lib/utils/pc-builder';
+import { findEnergyEfficientAlternatives, calculateBuildEnergy, calculateEnergySavings } from '$lib/utils/energy';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -14,15 +14,16 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Get categories and products
-		const [categories, allProducts] = await Promise.all([
-			pcBuildService.getAllCategories(),
-			productService.getAllProducts()
+		const [categories, allProductsModels] = await Promise.all([
+			getAllCategories(),
+			ProductModel.getAll()
 		]);
+		const allProducts = allProductsModels.map(p => p.toJSON());
 
 		// Build component list
 		const componentList = await Promise.all(
 			components.map(async (comp: any) => {
-				const product = await productService.getProductById(comp.product_id);
+				const product = allProducts.find(p => p.id === comp.product_id);
 				const category = categories.find(c => c.id === comp.component_category_id);
 
 				if (!product || !category) {
@@ -33,17 +34,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			})
 		);
 
+		// Calculate original energy
+		const originalAnalysis = await calculateBuildEnergy(componentList);
+
 		// Find energy-efficient alternatives
-		const alternatives = await energyEfficiencyService.findEnergyEfficientAlternatives(
+		const alternatives = await findEnergyEfficientAlternatives(
 			componentList,
 			allProducts
 		);
 
-		// Calculate original energy
-		const originalAnalysis = await energyEfficiencyService.calculateBuildEnergy(componentList);
-
 		// Calculate savings
-		const savings = energyEfficiencyService.calculateEnergySavings(originalAnalysis, alternatives);
+		const savings = calculateEnergySavings(originalAnalysis, alternatives);
 
 		return json({
 			alternatives,

@@ -1,20 +1,21 @@
 // API: Admin AI Price Optimization endpoint
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { aiService } from '$lib/services/AIService';
-import { saleService } from '$lib/services/SaleService';
-import { productService } from '$lib/services/ProductService';
+import { SaleModel } from '$lib/models/SaleModel';
+import { ProductModel } from '$lib/models/ProductModel';
 import { requireAdmin } from '$lib/utils/auth';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	try {
 		requireAdmin(locals.user);
 
-		const sales = await saleService.getAllSales();
-		const products = await productService.getAllProducts();
+		const salesModels = await SaleModel.getAll();
+		const sales = salesModels.map(s => s.toJSON());
+		const productsModels = await ProductModel.getAll();
+		const products = productsModels.map(p => p.toJSON());
 
-		// Get price optimizations
-		const optimizations = await aiService.optimizePrices(products, sales);
+		// Basic price optimizations (AI service removed)
+		const optimizations: any[] = [];
 
 		return json({ optimizations });
 	} catch (error: any) {

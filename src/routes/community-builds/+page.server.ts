@@ -1,7 +1,7 @@
 // CONTROLLER: Community Builds Gallery page
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { communityBuildService } from '$lib/services/CommunityBuildService';
+import { CommunityBuildModel } from '$lib/models/CommunityBuildModel';
 import type { CommunityBuildFilters } from '$lib/models/PCBuild';
 import { handleError } from '$lib/utils/errors';
 
@@ -34,7 +34,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		if (featured === 'true') filters.featured = true;
 
 		// Get builds
-		const builds = await communityBuildService.getPublicBuilds(filters, userId);
+		const builds = await CommunityBuildModel.getPublicBuilds(filters, userId);
 		
 		console.log(`Community builds page: Loaded ${builds.length} public builds`);
 		if (builds.length > 0) {
@@ -42,10 +42,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		}
 
 		// Get featured builds for hero section
-		const featuredBuilds = await communityBuildService.getFeaturedBuilds(6);
+		const featuredBuilds = await CommunityBuildModel.getFeaturedBuilds(6);
 
 		// Get popular builds
-		const popularBuilds = await communityBuildService.getPopularBuilds(10);
+		const popularBuilds = await CommunityBuildModel.getPopularBuilds(10);
 
 		return {
 			builds,

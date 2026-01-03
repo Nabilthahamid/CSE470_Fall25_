@@ -6,7 +6,12 @@
 	export let userId: string | null = null;
 
 	let isOpen = false;
-	let messages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: Date }> = [];
+	let messages: Array<{ 
+		role: 'user' | 'assistant'; 
+		content: string; 
+		timestamp: Date;
+		products?: Array<{ id: string; name: string; price: number; image_url?: string }>;
+	}> = [];
 	let inputMessage = '';
 	let isLoading = false;
 	let chatContainer: HTMLDivElement;
@@ -72,11 +77,12 @@
 
 			const data = await response.json();
 			
-			// Add assistant response
+			// Add assistant response with product suggestions
 			messages = [...messages, { 
 				role: 'assistant', 
 				content: data.response, 
-				timestamp: new Date() 
+				timestamp: new Date(),
+				products: data.products || []
 			}];
 
 			// Scroll to bottom after response
@@ -249,6 +255,42 @@
 									{/if}
 								{/each}
 							</div>
+							
+							{#if message.products && message.products.length > 0}
+								<div class="mt-3 pt-3 border-t border-gray-200">
+									<p class="text-xs font-semibold text-gray-600 mb-2">Suggested Products:</p>
+									<div class="space-y-2">
+										{#each message.products as product}
+											<a 
+												href="/products/{product.id}" 
+												class="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
+											>
+												{#if product.image_url}
+													<img 
+														src={product.image_url} 
+														alt={product.name}
+														class="w-12 h-12 object-cover rounded"
+														on:error={(e) => { e.currentTarget.style.display = 'none'; }}
+													/>
+												{:else}
+													<div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+														<svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+														</svg>
+													</div>
+												{/if}
+												<div class="flex-1 min-w-0">
+													<p class="text-xs font-medium text-gray-900 group-hover:text-indigo-600 truncate">{product.name}</p>
+													<p class="text-xs font-semibold text-indigo-600">৳{product.price.toLocaleString()}</p>
+												</div>
+												<svg class="w-4 h-4 text-gray-400 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+												</svg>
+											</a>
+										{/each}
+									</div>
+								</div>
+							{/if}
 						{:else}
 							<p class="text-sm whitespace-pre-wrap break-words">{message.content}</p>
 						{/if}

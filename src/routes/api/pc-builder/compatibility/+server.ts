@@ -1,9 +1,8 @@
 // API: Enhanced PC Builder Compatibility Checker with AI explanations
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { pcBuildService } from '$lib/services/PCBuildService';
-import { productService } from '$lib/services/ProductService';
-import { aiService } from '$lib/services/AIService';
+import { getAllCategories } from '$lib/utils/pc-builder';
+import { ProductModel } from '$lib/models/ProductModel';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -13,8 +12,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Components array is required' }, { status: 400 });
 		}
 
-		const allProducts = await productService.getAllProducts();
-		const categories = await pcBuildService.getAllCategories();
+		const allProductsModels = await ProductModel.getAll();
+		const allProducts = allProductsModels.map(p => p.toJSON());
+		const categories = await getAllCategories();
 
 		const warnings: Array<{
 			type: 'incompatible' | 'warning' | 'bottleneck' | 'optimization';

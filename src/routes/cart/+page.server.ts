@@ -1,62 +1,24 @@
-// CONTROLLER: Cart page
+// VIEW: Cart page - thin wrapper that calls controller
 import type { PageServerLoad, Actions } from './$types';
-import { cartService } from '$lib/services/CartService';
-import { handleError } from '$lib/utils/errors';
+import { CartController } from '$lib/controllers';
 
-export const load: PageServerLoad = async ({ locals }) => {
-	try {
-		const userId = locals.user?.id || undefined;
-		const cartItems = await cartService.getCartItems(userId);
-		const total = await cartService.getCartTotal(userId);
-
-		return {
-			cartItems,
-			total,
-			error: null
-		};
-	} catch (error) {
-		const { message } = handleError(error);
-		return {
-			cartItems: [],
-			total: 0,
-			error: message
-		};
-	}
+export const load: PageServerLoad = async (event) => {
+	const controller = new CartController(event);
+	return await controller.loadCart();
 };
 
 export const actions: Actions = {
-	update: async ({ request, locals }) => {
-		const formData = await request.formData();
-		const itemId = formData.get('item_id')?.toString();
-		const quantity = parseInt(formData.get('quantity')?.toString() || '1');
-
-		if (!itemId) {
-			return { error: 'Item ID is required' };
-		}
-
-		try {
-			await cartService.updateCartItem(itemId, { quantity });
-			return { success: true };
-		} catch (error) {
-			const { message } = handleError(error);
-			return { error: message };
-		}
+	add: async (event) => {
+		const controller = new CartController(event);
+		return await controller.addToCart();
 	},
-	remove: async ({ request }) => {
-		const formData = await request.formData();
-		const itemId = formData.get('item_id')?.toString();
-
-		if (!itemId) {
-			return { error: 'Item ID is required' };
-		}
-
-		try {
-			await cartService.removeCartItem(itemId);
-			return { success: true };
-		} catch (error) {
-			const { message } = handleError(error);
-			return { error: message };
-		}
+	update: async (event) => {
+		const controller = new CartController(event);
+		return await controller.updateCartItem();
+	},
+	remove: async (event) => {
+		const controller = new CartController(event);
+		return await controller.removeFromCart();
 	}
 };
 

@@ -1,7 +1,7 @@
 // CONTROLLER: Email Marketing Page
 import type { PageServerLoad, Actions } from './$types';
 import { requireAdmin } from '$lib/utils/auth';
-import { emailMarketingService } from '$lib/services/EmailMarketingService';
+import { getAllNewsletters, getAllSequences, getAllCampaigns, getEmailAnalytics, createNewsletter, deleteNewsletter, createSequence, deleteSequence, createCampaign, updateCampaign, deleteCampaign } from '$lib/utils/email-marketing';
 import { handleError } from '$lib/utils/errors';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -13,10 +13,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		const activeTab = url.searchParams.get('tab') || 'newsletters';
 
 		const [newsletters, sequences, campaigns, analytics] = await Promise.all([
-			emailMarketingService.getAllNewsletters(),
-			emailMarketingService.getAllSequences(),
-			emailMarketingService.getAllCampaigns(),
-			emailMarketingService.getEmailAnalytics(startDate, endDate)
+			getAllNewsletters(),
+			getAllSequences(),
+			getAllCampaigns(),
+			getEmailAnalytics(startDate, endDate)
 		]);
 
 		return {
@@ -68,7 +68,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await emailMarketingService.createNewsletter(newsletter);
+			await createNewsletter(newsletter);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -81,7 +81,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await emailMarketingService.deleteNewsletter(id);
+			await deleteNewsletter(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -102,7 +102,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await emailMarketingService.createSequence(sequence);
+			await createSequence(sequence);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -115,7 +115,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await emailMarketingService.deleteSequence(id);
+			await deleteSequence(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -136,7 +136,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await emailMarketingService.createCampaign(campaign);
+			await createCampaign(campaign);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -158,7 +158,7 @@ export const actions: Actions = {
 		};
 
 		try {
-			await emailMarketingService.updateCampaign(id, campaign);
+			await updateCampaign(id, campaign);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);
@@ -171,7 +171,7 @@ export const actions: Actions = {
 		const id = formData.get('id')?.toString() || '';
 
 		try {
-			await emailMarketingService.deleteCampaign(id);
+			await deleteCampaign(id);
 			return { success: true };
 		} catch (error) {
 			const { message } = handleError(error);

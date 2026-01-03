@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
 	import type { PageData, ActionData } from './$types';
-	import { shippingService } from '$lib/services/ShippingService';
+	// Shipping service removed - using form action for rate calculation
 
 	export let data: PageData;
 	export let form: ActionData;
@@ -49,22 +49,9 @@
 	let calcPostalCode = '';
 	let calcValue = 0;
 
-	async function calculateRates() {
-		try {
-			const rates = await shippingService.calculateShippingRates({
-				weight: calcWeight,
-				destination: {
-					country: calcCountry,
-					region: calcRegion,
-					city: calcCity,
-					postal_code: calcPostalCode
-				},
-				value: calcValue || undefined
-			});
-			calculatedRates = rates;
-		} catch (error: any) {
-			alert('Failed to calculate rates: ' + error.message);
-		}
+	// Handle calculated rates from form action
+	$: if (form?.rates) {
+		calculatedRates = form.rates;
 	}
 
 	function editProvider(provider: any) {
@@ -614,67 +601,77 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<div>
 					<h3 class="text-lg font-semibold text-gray-900 mb-4">Calculate Shipping</h3>
-					<div class="space-y-4">
-						<div>
-							<label class="block mb-2 font-medium">Weight (kg) *</label>
-							<input
-								type="number"
-								bind:value={calcWeight}
-								min="0"
-								step="0.1"
-								class="w-full p-3 border-2 border-gray-300 rounded-lg"
-							/>
+					<form method="POST" action="?/calculateRate" use:enhance>
+						<div class="space-y-4">
+							<div>
+								<label class="block mb-2 font-medium">Weight (kg) *</label>
+								<input
+									type="number"
+									name="weight"
+									bind:value={calcWeight}
+									min="0"
+									step="0.1"
+									required
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div>
+								<label class="block mb-2 font-medium">Country *</label>
+								<input
+									type="text"
+									name="country"
+									bind:value={calcCountry}
+									required
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div>
+								<label class="block mb-2 font-medium">Region</label>
+								<input
+									type="text"
+									name="region"
+									bind:value={calcRegion}
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+									placeholder="e.g., Dhaka"
+								/>
+							</div>
+							<div>
+								<label class="block mb-2 font-medium">City</label>
+								<input
+									type="text"
+									name="city"
+									bind:value={calcCity}
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div>
+								<label class="block mb-2 font-medium">Postal Code</label>
+								<input
+									type="text"
+									name="postal_code"
+									bind:value={calcPostalCode}
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<div>
+								<label class="block mb-2 font-medium">Order Value (Tk)</label>
+								<input
+									type="number"
+									name="value"
+									bind:value={calcValue}
+									min="0"
+									step="0.01"
+									class="w-full p-3 border-2 border-gray-300 rounded-lg"
+								/>
+							</div>
+							<button
+								type="submit"
+								class="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700"
+							>
+								Calculate Rates
+							</button>
 						</div>
-						<div>
-							<label class="block mb-2 font-medium">Country *</label>
-							<input
-								type="text"
-								bind:value={calcCountry}
-								class="w-full p-3 border-2 border-gray-300 rounded-lg"
-							/>
-						</div>
-						<div>
-							<label class="block mb-2 font-medium">Region</label>
-							<input
-								type="text"
-								bind:value={calcRegion}
-								class="w-full p-3 border-2 border-gray-300 rounded-lg"
-								placeholder="e.g., Dhaka"
-							/>
-						</div>
-						<div>
-							<label class="block mb-2 font-medium">City</label>
-							<input
-								type="text"
-								bind:value={calcCity}
-								class="w-full p-3 border-2 border-gray-300 rounded-lg"
-							/>
-						</div>
-						<div>
-							<label class="block mb-2 font-medium">Postal Code</label>
-							<input
-								type="text"
-								bind:value={calcPostalCode}
-								class="w-full p-3 border-2 border-gray-300 rounded-lg"
-							/>
-						</div>
-						<div>
-							<label class="block mb-2 font-medium">Order Value (Tk)</label>
-							<input
-								type="number"
-								bind:value={calcValue}
-								min="0"
-								step="0.01"
-								class="w-full p-3 border-2 border-gray-300 rounded-lg"
-							/>
-						</div>
-						<button
-							on:click={calculateRates}
-							class="w-full bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700"
-						>
-							Calculate Rates
-						</button>
-					</div>
+					</form>
 				</div>
 				<div>
 					<h3 class="text-lg font-semibold text-gray-900 mb-4">Available Rates</h3>
