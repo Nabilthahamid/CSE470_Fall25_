@@ -36,13 +36,21 @@
 		}
 
 		try {
-			const response = await fetch('/api/admin/quick-search?q=');
+			const response = await fetch('/api/products/list');
+			
+			// Check if response is actually JSON
+			const contentType = response.headers.get('content-type');
+			if (!contentType || !contentType.includes('application/json')) {
+				throw new Error('Server returned non-JSON response. Please try again.');
+			}
+			
 			if (response.ok) {
 				const data = await response.json();
-				const allProducts = data.products;
+				const allProducts = data.products || [];
 				products = allProducts.filter((p: Product) => comparisonIds.includes(p.id));
 			} else {
-				throw new Error('Failed to fetch products');
+				const errorData = await response.json().catch(() => ({ error: 'Failed to fetch products' }));
+				throw new Error(errorData.error || 'Failed to fetch products');
 			}
 			
 			// Sort products to match the order in comparisonIds
@@ -58,6 +66,7 @@
 			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load products';
+			console.error('Error loading comparison products:', err);
 		} finally {
 			loading = false;
 		}
@@ -76,12 +85,19 @@
 				body: JSON.stringify({ productIds: products.map(p => p.id) })
 			});
 
-			if (response.ok) {
-				const data = await response.json();
-				aiInsights = data.insights;
-				showAIInsights = true;
+			// Check if response is actually JSON
+			const contentType = response.headers.get('content-type');
+			if (contentType && contentType.includes('application/json')) {
+				if (response.ok) {
+					const data = await response.json();
+					aiInsights = data.insights;
+					showAIInsights = true;
+				} else {
+					const errorData = await response.json().catch(() => ({ error: 'Failed to load AI insights' }));
+					console.error('Failed to load AI insights:', errorData.error);
+				}
 			} else {
-				console.error('Failed to load AI insights');
+				console.error('Server returned non-JSON response for AI insights');
 			}
 		} catch (err) {
 			console.error('Error loading AI insights:', err);
